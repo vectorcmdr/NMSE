@@ -1,0 +1,30 @@
+# GitHub Actions workflow to deploy NMSE.Site (static HTML/JS/CSS) to GitHub Pages.
+#
+# This workflow uploads the contents of the `NMSE.Site/` directory as a Pages artifact.
+# GitHub Pages will then serve it as the site root (index.html).
+
+name: Deploy NMSE.Site to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'NMSE.Site/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload static site for Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: NMSE.Site
