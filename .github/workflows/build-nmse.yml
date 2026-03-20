@@ -29,9 +29,9 @@ env:
 
 on:
   # -- Un/comment the push block below to enable automated releases --
-   push:
-     paths:
-       - "version.json"
+  push:
+    paths:
+      - "version.json"
 
   # Allow manual triggering from the Actions tab
   workflow_dispatch:
