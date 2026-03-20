@@ -1,8 +1,6 @@
 <div align="center">
 
-# _**COMING SOON**_
-
-<br />
+> Preview builds are now live! 🎉
 
 # NMSE (No Man's Save Editor)
 
