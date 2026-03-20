@@ -49,7 +49,7 @@ This guide walks you through every feature of the application so you can confide
 > 💡 No installation is required - NMSE is fully portable. You can run it from a USB drive or any folder.
 
 
-While NMSE is a native Windows application, it runs on **Linux** and **macOS** via Wine compatibility layers. Guides are available for [Wine][guide-wine], [Bottles][guide-bottles], [Whisky][guide-whisky], and [CrossOver][guide-crossover]. A native cross-platform version [is planned][cross-platfom-plan].
+While NMSE is a native Windows application, it runs on **Linux** and **macOS** via Wine compatibility layers. Guides are available for [Wine][guide-wine], [Bottles][guide-bottles], [Whisky][guide-whisky], and [CrossOver][guide-crossover]. A native cross-platform version [is planned][cross-platform-plan].
 
 ### Supported Platforms
 
@@ -312,7 +312,7 @@ The **Starships** tab lets you manage up to 12 starships in your collection, inc
 | **Type** | Fighter, Explorer, Hauler, Shuttle, Exotic, Solar, Interceptor, Living Ship |
 | **Class** | C, B, A, or S class |
 | **Seed** | The procedural generation seed (changes appearance) |
-| **Base Stats** | Damage, Shield, Hyperdrive, and Maneuverability stats |
+| **Base Stats** | Damage, Shield, Hyperdrive, and Manoeuvrability stats |
 | **Inventory** | Cargo and Technology slots, inventory resize, import / export |
 
 ### Switching Ships
@@ -321,7 +321,7 @@ Use the dropdown at the top of the panel to switch between your ships. Each ship
 
 ### Managing Starships
 
-Set the ship to use old colors via the <kbd>[ ] Use Old Color</kbd>
+Set the ship to use old colours via the <kbd>[ ] Use Old Colour</kbd>
 
 Delete a ship with the <kbd>Delete</kbd> button.
 
@@ -368,7 +368,7 @@ Edit your freighter's stats, inventory, technology, and view the functional room
 | **Type** | Tiny, Small, Normal, Capital, Pirate |
 | **Class** | C, B, A, or S class |
 | **Seeds** | The procedural generation seeds (changes crew race, crew appearance, and freighter appearance + stats) |
-| **Base Stats** | Hyperdrive and FLeet Coordination stats |
+| **Base Stats** | Hyperdrive and Fleet Coordination stats |
 | **Inventory** | Cargo and Technology slots, inventory resize, import / export |
 | **Rooms** | Freighter base room presence |
 
@@ -478,7 +478,7 @@ You can use the <kbd>Creature Builder (Web)</kbd> button above the list of compa
 | **Summoned [ ]** | Companion summoned state |
 | **Allow Reroll [ ]** | Companion reroll state |
 | **UA** | UA number |
-| **Seeds** | Creature, secondary, species, genus, bone scale, color base |
+| **Seeds** | Creature, secondary, species, genus, bone scale, colour base |
 | **Stats** | Companion stats (Helpfulness, aggression, independence, hungry, lonely, trust increase/decrease dates) |
 
 > 💡 **Tip:** The Descriptors / Parts can be edited depending on the selected species and type so that you can select different body part types. These are defined by what the game allows, so different companions will offer different options (some of which are fixed).
@@ -499,7 +499,7 @@ Use the dropdown at the top of the Base Info section to switch between your base
 
 Backup / Restore / via the <kbd>Backup</kbd> and <kbd>Restore</kbd> buttons.
 
-You can move the base computer to another components location via the <kbd>Move Base Computer</kbd> button. It will prompt you to select a base component by ID.
+You can move the base computer to another component's location via the <kbd>Move Base Computer</kbd> button. It will prompt you to select a base component by ID.
 
 | Bases |
 |-------|
@@ -836,7 +836,7 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 [guide-bottles]: ../dev/bottles-linux-guide.md
 [guide-whisky]: ../dev/whisky-macos-guide.md
 [guide-crossover]: ../dev/crossover-macos-guide.md
-[cross-platfom-plan]: ../dev/cross-platform-workplan.md
+[cross-platform-plan]: ../dev/cross-platform-workplan.md
 
 <!-- External Links -->
 [releases]: https://github.com/vectorcmdr/NMSE/releases/latest
