@@ -138,8 +138,10 @@ While NMSE is a native Windows application, it runs on **Linux** and **macOS** v
 
 See the cross-platform guides for running NMSE via Wine:
 
-- 🍷 [Wine on Linux][guide-wine] · 🧴 [Bottles on Linux][guide-bottles]
-- 🥃 [Whisky on macOS][guide-whisky] · ✖️ [CrossOver on macOS][guide-crossover]
+- 🍷 [Wine on Linux][guide-wine]
+- 🧴 [Bottles on Linux][guide-bottles]
+- 🥃 [Whisky on macOS][guide-whisky]
+- ✖️[CrossOver on macOS][guide-crossover]
 
 ---
 
@@ -232,8 +234,8 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 [badge-build]: https://img.shields.io/github/actions/workflow/status/vectorcmdr/NMSE/build-nmse.yml?branch=main&label=build&logo=github
 [badge-license]: https://img.shields.io/github/license/vectorcmdr/NMSE?color=blue
 [badge-dotnet]: https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white
-[badge-release]: https://img.shields.io/github/v/release/vectorcmdr/NMSE?include_prereleases&label=📦%20release&color=green
-[badge-stars]: https://img.shields.io/github/stars/vectorcmdr/NMSE?style=flat&color=yellow&label=⭐%20stars
+[badge-release]: https://img.shields.io/github/v/release/vectorcmdr/NMSE?include_prereleases&label=⇓%20release&color=green
+[badge-stars]: https://img.shields.io/github/stars/vectorcmdr/NMSE?style=flat&color=yellow&label=★%20stars
 [badge-platform]: https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white
 [badge-sponsor]: https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white
 [badge-kofi]: https://img.shields.io/badge/Support-Ko--fi-29abe0?logo=ko-fi&logoColor=white
