@@ -10,9 +10,9 @@ assignees: ''
 
 - [ ] I have checked that this feature is not included in the [latest release of NMSE](https://github.com/vectorcmdr/NMSE/releases/latest).
 - [ ] I have [searched the issue tracker for open and closed issues](https://github.com/vectorcmdr/NMSE/issues) that are similar to this feature request, without success.
-- [ ] I have searched the [documentation](https://github.com/vectorcmdr/NMSE/README.md) so see if this feature is present, without success.
+- [ ] I have searched the [documentation](https://github.com/vectorcmdr/NMSE/blob/main/README.md#-documentation) so see if this feature is present, without success.
 - [ ] This issue contains only one feature request.
-- [ ] I have read and agree to follow the [code of conduct](https://github.com/vectorcmdr/NMSE/CODE_OF_CONDUCT.md).
+- [ ] I have read and agree to follow the [code of conduct](https://github.com/vectorcmdr/NMSE/blob/main/.github/CODE_OF_CONDUCT.md).
 
 ## ✨ Feature Description
 

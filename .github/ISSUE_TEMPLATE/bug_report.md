@@ -11,9 +11,9 @@ assignees: ''
 - [ ] I have encountered this bug in the [latest release of NMSE](https://github.com/vectorcmdr/NMSE/releases/latest).
 - [ ] I have encountered this bug in the [official downloads of NMSE](https://github.com/vectorcmdr/NMSE/releases/latest).
 - [ ] I have [searched the issue tracker for open and closed issues](https://github.com/vectorcmdr/NMSE/issues) that are similar to the bug report I want to file, without success.
-- [ ] I have searched the [documentation](https://github.com/vectorcmdr/NMSE/README.md) for information that matches the description of the bug I want to file, without success.
+- [ ] I have searched the [documentation](https://github.com/vectorcmdr/NMSE/blob/main/README.md#-documentation) for information that matches the description of the bug I want to file, without success.
 - [ ] This issue contains only one bug.
-- [ ] I have read and agree to follow the [code of conduct](https://github.com/vectorcmdr/NMSE/CODE_OF_CONDUCT.md).
+- [ ] I have read and agree to follow the [code of conduct](https://github.com/vectorcmdr/NMSE/blob/main/.github/CODE_OF_CONDUCT.md).
 
 ## 🐞 Bug Description
 
