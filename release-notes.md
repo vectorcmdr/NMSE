@@ -1,11 +1,20 @@
-## NMSE — No Man's Save Editor v1.0.361 (preview)
+## NMSE — No Man's Save Editor v1.0.362 (preview)
+
+### Changelog
+
+- Fixed Frigates AOT trimming error due to use of `DisplayMember` (reflection metadata was stripped) in favour of overrides only.
+
+<br />
+
+<details>
+<summary>Previous Changelog 1.0.361 (preview)</summary>
 
 ### Changelog
 
 - Project moved to Native AOT with trimmig for builds. Users don't require .NET 10 to be separately installed anymore.
 - Fix for icon loading issue for Windows taskbar (due to DB loading workaround).
 
-<br />
+</details>
 
 <details>
 <summary>Previous Changelog 1.0.356 (preview)</summary>
@@ -65,7 +74,6 @@ User guides are available from the [repo](https://github.com/vectorcmdr/NMSE/blo
 
 Download via **Assets** below.
 
-> Requires **.NET 10.0 Runtime** (Windows 10/11 64-bit).
 > Linux and macOS users can run NMSE via Wine — see the [guides](https://github.com/vectorcmdr/NMSE#-cross-platform-via-wine).
 
 > 🛡️ VirusTotal scans for peace of mind are pending [here](#): pending...
