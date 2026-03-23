@@ -1,7 +1,10 @@
 # --------------------------------------------------------------
 # NMSE Release Build Workflow
-# Builds, tests, zips, and publishes a GitHub Release whenever
-# version.json is updated on the default branch.
+# Builds, tests, publishes (Native AOT), and creates a GitHub
+# Release whenever version.json is updated on the default branch.
+#
+# The publish step produces a fully self-contained, trimmed,
+# Native AOT executable - users do not need .NET installed.
 #
 # Each release is tagged with a semantic version (e.g. v1.2.3)
 # derived from version.json.  The release body is read from
@@ -22,7 +25,7 @@ env:
   BUILD_CONFIGURATION: Release
 
 on:
-  # -- Un/comment the push block below to enable automated releases --
+  #-- Un/comment the push block below to enable automated releases --
   push:
     paths:
       - "version.json"
@@ -58,6 +61,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ${{ env.PROJECT_FILE }}
 
+      # Build managed IL for testing (fast, no AOT compilation)
       - name: Build
         run: dotnet build ${{ env.PROJECT_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
@@ -66,6 +70,13 @@ jobs:
 
       - name: Run tests
         run: dotnet test ${{ env.TEST_PROJECT_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore --verbosity normal
+
+      # Publish Native AOT: produces a self-contained, trimmed native executable.
+      # This step re-builds with AOT compilation (ILC) and takes longer than the
+      # managed build above, but the output requires no .NET runtime on the target.
+      - name: Publish (Native AOT)
+        if: success()
+        run: dotnet publish ${{ env.PROJECT_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
       # -- Publish artifacts ----------------------------------
 

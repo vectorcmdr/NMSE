@@ -2,7 +2,11 @@
 # NMSE PR Validation Workflow
 # Builds and tests the NMSE project on pull requests that touch
 # source files.  No artifacts are produced and no release is
-# created — this exists purely to catch regressions before merge.
+# created - this exists purely to catch regressions before merge.
+#
+# NOTE: This uses 'dotnet build' (fast, managed IL) not
+# 'dotnet publish' (slow, Native AOT).  AOT compilation is
+# only performed in the release workflow (build-nmse.yml).
 #
 # All actions are pinned to immutable commit SHAs to mitigate
 # supply-chain attacks.  When upgrading, update both the SHA
@@ -23,33 +27,33 @@ env:
   BUILD_CONFIGURATION: Release
 
 on:
-  # -- Un/comment the pull_request block below to enable PR validation --
-  pull_request:
-    paths:
-      # Root-level project files
-      - "NMSE.csproj"
-      - "NMSE.slnx"
-      - "Directory.Build.props"
-      - "Program.cs"
-      # Project source folders
-      - "Config/**"
-      - "Core/**"
-      - "Data/**"
-      - "IO/**"
-      - "Models/**"
-      - "UI/**"
-      # Shared resources consumed by NMSE
-      - "Resources/**"
-      # Version file (PRs that bump version should also be validated)
-      - "version.json"
-      # Test project changes should trigger PR builds so test regressions
-      # are caught before merge
-      - "NMSE.Tests/**"
-      # Never trigger on the extractor projects
-      - "!NMSE.Extractor/**"
-      - "!NMSE.Extractor.Tests/**"
-      # Ignore the static site project
-      - "!NMSE.Site/**"
+  # -- Uncomment the pull_request block below to enable PR validation --
+  # pull_request:
+  #   paths:
+  #     # Root-level project files
+  #     - "NMSE.csproj"
+  #     - "NMSE.slnx"
+  #     - "Directory.Build.props"
+  #     - "Program.cs"
+  #     # Project source folders
+  #     - "Config/**"
+  #     - "Core/**"
+  #     - "Data/**"
+  #     - "IO/**"
+  #     - "Models/**"
+  #     - "UI/**"
+  #     # Shared resources consumed by NMSE
+  #     - "Resources/**"
+  #     # Version file (PRs that bump version should also be validated)
+  #     - "version.json"
+  #     # Test project changes should trigger PR builds so test regressions
+  #     # are caught before merge
+  #     - "NMSE.Tests/**"
+  #     # Never trigger on the extractor projects
+  #     - "!NMSE.Extractor/**"
+  #     - "!NMSE.Extractor.Tests/**"
+  #     # Ignore the static site project
+  #     - "!NMSE.Site/**"
 
   # Allow manual triggering from the Actions tab
   workflow_dispatch:

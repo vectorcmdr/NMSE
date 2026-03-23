@@ -1,0 +1,105 @@
+# --------------------------------------------------------------
+# NMSE Wine AppImage Build Workflow
+# Builds NMSE for win-x64 and then packages an AppImage via scripts/linux/build-appimage.sh
+# --------------------------------------------------------------
+
+name: Build NMSE Wine AppImage
+
+env:
+  PROJECT_NAME: NMSE
+  PROJECT_FILE: NMSE.csproj
+  BUILD_CONFIGURATION: Release
+  DOTNET_VERSION: "10.0.x"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Read version from version.json
+        id: version
+        run: |
+          ver=$(jq -r '"\(.major).\(.minor).\(.patch)"' version.json)
+          echo "VERSION=$ver" >> $GITHUB_OUTPUT
+          echo "TAG=v$ver" >> $GITHUB_OUTPUT
+          echo "Version: $ver  Tag: v$ver"
+
+      - name: Install Wine and dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends wine64 wine32 cabextract wget
+
+      - name: Publish self-contained win-x64 build
+        id: publish
+        run: |
+          PUBLISH_DIR="$GITHUB_WORKSPACE/build/publish-win-x64"
+          mkdir -p "$PUBLISH_DIR"
+          dotnet publish ${{ env.PROJECT_FILE }} \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --runtime win-x64 \
+            --self-contained \
+            -p:PublishAot=false \
+            --output "$PUBLISH_DIR"
+          echo "PUBLISH_DIR=$PUBLISH_DIR" >> $GITHUB_OUTPUT
+
+      - name: Make AppImage script executable
+        run: chmod +x scripts/linux/build-appimage.sh
+
+      - name: Build Linux AppImage via Wine script
+        id: appimage
+        run: |
+          PUBLISH_DIR="${{ steps.publish.outputs.PUBLISH_DIR }}"
+          OUTPUT_FILE="$GITHUB_WORKSPACE/NMSE-x86_64.AppImage"
+          scripts/linux/build-appimage.sh "$PUBLISH_DIR" "$OUTPUT_FILE"
+          # The script may fall back to .tar.gz if appimagetool is unavailable
+          if [[ -f "$OUTPUT_FILE" ]]; then
+            echo "APPIMAGE_PATH=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+          elif [[ -f "${OUTPUT_FILE%.AppImage}.tar.gz" ]]; then
+            echo "APPIMAGE_PATH=${OUTPUT_FILE%.AppImage}.tar.gz" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: No output file produced by build-appimage.sh"
+            exit 1
+          fi
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: NMSE-Wine-AppImage
+          path: ${{ steps.appimage.outputs.APPIMAGE_PATH }}
+          if-no-files-found: error
+
+      - name: Publish AppImage to GitHub release
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.TAG }}"
+          APPIMAGE_PATH="${{ steps.appimage.outputs.APPIMAGE_PATH }}"
+
+          echo "Tag: $TAG"
+          echo "AppImage: $APPIMAGE_PATH"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists"
+          else
+            echo "Creating release $TAG"
+            gh release create "$TAG" "$APPIMAGE_PATH" --title "NMSE $TAG" --notes "Automated Wine AppImage build for $TAG"
+            exit 0
+          fi
+
+          echo "Uploading AppImage as release asset (replace existing if present)"
+          gh release upload "$TAG" "$APPIMAGE_PATH" --clobber
