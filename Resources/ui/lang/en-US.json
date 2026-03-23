@@ -1262,6 +1262,8 @@
   "starship.type_the_wraith": "The Wraith",
   "starship.type_utopia_speeder": "Utopia Speeder",
   "starship.use_old_colour": "Use Old Color",
+  "status.backup_created": "Backup created before saving.",
+  "status.backup_restore_failed": "Backup restore failed: {0}",
   "status.db_load_warning": "Warning: Could not load game database: {0}",
   "status.exported_json": "Exported to {0}",
   "status.failed_load_ps4": "Failed to load PS4 save",

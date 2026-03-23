@@ -191,7 +191,7 @@
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
                     <ProgressBar IsIndeterminate="True" Width="200" Height="6" />
                     <TextBlock Text="{Binding LoadingMessage}"
-                               Foreground="White" FontSize="14"
+                               Foreground="{DynamicResource SemiColorWhite}" FontSize="14"
                                HorizontalAlignment="Center" />
                 </StackPanel>
             </Border>

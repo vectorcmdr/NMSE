@@ -178,7 +178,7 @@
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="{loc:Locale player.section_save_utils}" Classes="sectionHeader" />
                                     <TextBlock Text="{loc:Locale player.save_utils_warning}"
-                                               Foreground="#FFFF4444" FontWeight="Bold" TextWrapping="Wrap" />
+                                               Foreground="{DynamicResource SemiColorDanger}" FontWeight="Bold" TextWrapping="Wrap" />
 
                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
                                         <TextBlock Text="{loc:Locale player.source_label}" VerticalAlignment="Center" />

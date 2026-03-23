@@ -76,31 +76,34 @@
                                                Width="48" Height="48"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
 
-                                        <ctrl:MarqueeTextBlock Text="{Binding ItemName}"
-                                                              FontSize="9" Foreground="White"
-                                                              IsVisible="{Binding !IsEmpty}"
-                                                              HorizontalAlignment="Stretch"
-                                                              VerticalAlignment="Top"
-                                                              Margin="2,1,2,0"
-                                                              ScrollSpeed="25" PauseSeconds="2" />
-
-                                        <TextBlock Text="{Binding DisplayAmount}"
-                                                   FontSize="10" FontWeight="Bold"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                                   Margin="0,0,4,2" />
-
                                         <TextBlock Text="&#x26A1;" FontSize="12"
                                                    IsVisible="{Binding IsSupercharged}"
                                                    HorizontalAlignment="Left" VerticalAlignment="Top"
-                                                   Margin="2,1,0,0" />
+                                                   Margin="2,2,0,0"
+                                                   IsHitTestVisible="False" />
 
-                                        <StackPanel IsVisible="{Binding ShowCharge}"
-                                                    VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
-                                                    Margin="4,0,4,14">
-                                            <ProgressBar Value="{Binding Amount}" Maximum="{Binding MaxAmount}"
-                                                         Height="3" Minimum="0" />
-                                        </StackPanel>
+                                        <ctrl:MarqueeTextBlock Text="{Binding ItemName}"
+                                                              FontSize="9"
+                                                              Foreground="{DynamicResource SemiColorText0}"
+                                                              IsVisible="{Binding !IsEmpty}"
+                                                              HorizontalAlignment="Stretch"
+                                                              VerticalAlignment="Top"
+                                                              Margin="14,4,2,0"
+                                                              ScrollSpeed="25" PauseSeconds="2" />
+
+                                        <ProgressBar IsVisible="{Binding ShowCharge}"
+                                                     Value="{Binding Amount}" Maximum="{Binding MaxAmount}"
+                                                     Height="2" Minimum="0"
+                                                     MinWidth="0"
+                                                     Width="22"
+                                                     HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                                     Margin="3,0,0,4" />
+
+                                        <TextBlock Text="{Binding DisplayAmount}"
+                                                   FontSize="10" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SemiColorText0}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                   Margin="0,0,3,2" />
 
                                         <Border IsVisible="{Binding HasAdjacencyBorder}"
                                                 BorderBrush="{Binding AdjBorderColor}"

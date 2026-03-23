@@ -529,14 +529,6 @@ public partial class MainWindowViewModel : ViewModelBase
             StatusText = loadingMsg;
 
             string? saveDir = Path.GetDirectoryName(filePath);
-            if (saveDir != null)
-            {
-                _ = Task.Run(() =>
-                {
-                    try { SaveFileManager.BackupSaveDirectory(saveDir); }
-                    catch (Exception ex) { Debug.WriteLine($"Backup failed: {ex.Message}"); }
-                });
-            }
 
             ProgressValue = 10;
             _currentSaveData = await Task.Run(loadFunc);
@@ -553,14 +545,25 @@ public partial class MainWindowViewModel : ViewModelBase
 
             SaveFileManager.RegisterContextTransforms(_currentSaveData);
 
-            Account.SetSaveDirectory(saveDir);
             MainStats.SetSaveFilePath(filePath);
 
-            ProgressValue = 80;
-            _loadedTabIndices.Clear();
+            ProgressValue = 70;
 
-            LoadPanelForTab(SelectedNavIndex);
-            _loadedTabIndices.Add(SelectedNavIndex);
+            Account.SetSaveDirectory(saveDir);
+            Account.LoadData(_currentSaveData, _database, _iconManager);
+            if (Account.AccountData != null)
+                MainStats.LoadAccountData(Account.AccountData);
+
+            ProgressValue = 80;
+            int accountIdx = Panels.IndexOf(Account);
+            _loadedTabIndices.Clear();
+            _loadedTabIndices.Add(accountIdx);
+
+            if (SelectedNavIndex != accountIdx)
+            {
+                LoadPanelForTab(SelectedNavIndex);
+                _loadedTabIndices.Add(SelectedNavIndex);
+            }
 
             ProgressValue = 100;
             await Task.Delay(200);
@@ -628,6 +631,17 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             SyncAllPanelData();
+
+            if (HasUnsavedChanges)
+            {
+                string? saveDir = Path.GetDirectoryName(_currentFilePath);
+                if (saveDir != null)
+                {
+                    try { SaveFileManager.BackupSaveDirectory(saveDir); }
+                    catch (Exception ex) { Debug.WriteLine($"Pre-save backup failed: {ex.Message}"); }
+                }
+            }
+
             int slotIdx = SelectedSlotIndex >= 0 ? SelectedSlotIndex : 0;
             SaveFileManager.SaveToFile(_currentFilePath, _currentSaveData,
                 compress: true, writeMeta: true, platform: _detectedPlatform, slotIndex: slotIdx);
