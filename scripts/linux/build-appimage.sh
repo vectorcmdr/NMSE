@@ -235,17 +235,11 @@ fi
 echo "[BUILD] Building AppImage ..."
 OUTPUT_FILE="${2:-$SCRIPT_DIR/NMSE-x86_64.AppImage}"
 
-# appimagetool requires FUSE; if running in CI without FUSE, extract and run
-if "$APPIMAGETOOL" --appimage-extract-and-run "$APPDIR" "$OUTPUT_FILE" 2>/dev/null; then
-    echo "[BUILD] ✓ AppImage created: $OUTPUT_FILE"
-elif "$APPIMAGETOOL" "$APPDIR" "$OUTPUT_FILE" 2>/dev/null; then
-    echo "[BUILD] ✓ AppImage created: $OUTPUT_FILE"
-else
-    echo "[BUILD] WARNING: appimagetool failed. Creating tar.gz bundle instead ..."
-    OUTPUT_FILE="${OUTPUT_FILE%.AppImage}.tar.gz"
-    tar -czf "$OUTPUT_FILE" -C "$BUILD_DIR" "NMSE.AppDir"
-    echo "[BUILD] ✓ Bundle created: $OUTPUT_FILE"
-fi
+# ARCH is required — appimagetool cannot guess it from the AppDir name.
+export ARCH=x86_64
+
+"$APPIMAGETOOL" "$APPDIR" "$OUTPUT_FILE"
+echo "[BUILD] ✓ AppImage created: $OUTPUT_FILE"
 
 echo "[BUILD] Size: $(du -sh "$OUTPUT_FILE" | cut -f1)"
 
