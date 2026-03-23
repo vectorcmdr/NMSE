@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NMSE.Core;
 
 namespace NMSE.Data;
 
@@ -210,7 +211,7 @@ public static class UiStrings
         try
         {
             string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+            return JsonSerializer.Deserialize(json, AppJsonContext.Default.DictionaryStringString);
         }
         catch
         {

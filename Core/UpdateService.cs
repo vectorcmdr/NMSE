@@ -261,13 +261,12 @@ public static class UpdateService
     {
         appDir ??= AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
 
-        // Determine the EXE name from the running assembly, falling back to
-        // Environment.ProcessPath and then a hardcoded default.  Deriving it
-        // from assembly metadata means renaming the executable in a rebrand
-        // or different distribution won't silently break the updater.
+        // Determine the EXE name from the running process, falling back to
+        // a hardcoded default.  Environment.ProcessPath is the most reliable
+        // source in both managed and Native AOT scenarios (Assembly.Location
+        // is empty for single-file/AOT apps).
         string exeName = Path.GetFileName(
-            System.Reflection.Assembly.GetEntryAssembly()?.Location
-            ?? Environment.ProcessPath
+            Environment.ProcessPath
             ?? "NMSE.exe");
 
         // Extract zip to a temporary directory

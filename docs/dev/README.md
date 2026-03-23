@@ -35,8 +35,12 @@ The solution file is `NMSE.slnx` (modern XML format).
 
 ### Build System
 
-The project targets .NET 10.0 (Windows) with ReadyToRun and Tiered PGO enabled for
-native-speed startup.
+The project targets .NET 10.0 (Windows) with Native AOT and trimming enabled for release.
+
+- **Development**: `dotnet build` produces managed IL (fast, supports debugging).
+- **Release**: `dotnet publish -c Release` produces a self-contained, trimmed, Native AOT
+  executable. Users do not need .NET installed. The CI workflow uses this for releases.
+- Tiered PGO is enabled for development builds (`dotnet run`); it has no effect on AOT output.
 
 ## Documentation Index
 

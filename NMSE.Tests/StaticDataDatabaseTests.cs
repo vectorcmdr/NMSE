@@ -2091,4 +2091,28 @@ public class StaticDataDatabaseTests
         Assert.Equal(id, WikiGuideDatabase.GetTopicName(id));
         Assert.Equal("", WikiGuideDatabase.GetTopicCategory(id));
     }
+
+    // --- Application Icon integrity ---
+
+    [Fact]
+    public void ApplicationIcon_IcoFileExists_AndHasValidHeader()
+    {
+        var dir = AppDomain.CurrentDomain.BaseDirectory;
+        string? icoPath = null;
+        for (int i = 0; i < 10; i++)
+        {
+            var candidate = Path.Combine(dir, "Resources", "app", "NMSE.ico");
+            if (File.Exists(candidate)) { icoPath = candidate; break; }
+            var parent = Directory.GetParent(dir);
+            if (parent == null) break;
+            dir = parent.FullName;
+        }
+        Assert.NotNull(icoPath);
+        var bytes = File.ReadAllBytes(icoPath);
+        // ICO header: reserved (0), type (1 = icon), image count (>0)
+        Assert.True(bytes.Length > 6, "ICO file too small");
+        Assert.Equal(0, BitConverter.ToUInt16(bytes, 0)); // Reserved
+        Assert.Equal(1, BitConverter.ToUInt16(bytes, 2)); // Type = ICO
+        Assert.True(BitConverter.ToUInt16(bytes, 4) > 0, "ICO has no images");
+    }
 }

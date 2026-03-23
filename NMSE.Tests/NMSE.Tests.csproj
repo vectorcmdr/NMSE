@@ -96,6 +96,7 @@
     <Compile Include="..\Core\InventoryImportHelper.cs" Link="Core\InventoryImportHelper.cs" />
     <Compile Include="..\Core\InventorySlotHelper.cs" Link="Core\InventorySlotHelper.cs" />
     <Compile Include="..\Core\UpdateService.cs" Link="Core\UpdateService.cs" />
+    <Compile Include="..\Core\AppJsonContext.cs" Link="Core\AppJsonContext.cs" />
   </ItemGroup>
 
   <!-- Config (application settings - no WinForms dependency) -->

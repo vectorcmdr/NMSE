@@ -159,7 +159,7 @@ public class ExportConfig
     /// </summary>
     public void SaveToFile(string filePath)
     {
-        var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(this, AppJsonContext.Default.ExportConfig);
         File.WriteAllText(filePath, json);
     }
 
@@ -173,7 +173,7 @@ public class ExportConfig
             if (File.Exists(filePath))
             {
                 var json = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize<ExportConfig>(json);
+                var config = JsonSerializer.Deserialize(json, AppJsonContext.Default.ExportConfig);
                 if (config != null)
                 {
                     SetInstance(config);

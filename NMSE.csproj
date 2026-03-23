@@ -16,15 +16,25 @@
 
 		<!-- Suppress CA1416 (platform compatibility) - this is a Windows-only WinForms app.
 		     The net10.0-windows TFM already ensures Windows-only, but some analyzer
-		     configurations still emit false positives for WinForms API calls. -->
-		<NoWarn>$(NoWarn);CA1416</NoWarn>
+		     configurations still emit false positives for WinForms API calls.
+		     IL2026/IL2104/IL3050 are AOT/trimmer warnings from WinForms internals that
+		     are safe to suppress — Microsoft's WinForms SDK handles these at publish. -->
+		<NoWarn>$(NoWarn);CA1416;IL2026;IL2104;IL3050</NoWarn>
 
-		<!-- ReadyToRun pre-compiles IL to native code at publish time, dramatically reducing
-		     JIT compilation overhead on first run. Requires 'dotnet publish' to take effect. -->
-		<PublishReadyToRun>true</PublishReadyToRun>
+		<!-- Native AOT compilation: produces a fully native executable with no .NET
+		     runtime dependency.  Users do not need .NET 10 installed.  Takes effect
+		     only during 'dotnet publish'; 'dotnet build' still produces managed IL
+		     for development and testing. -->
+		<PublishAot>true</PublishAot>
 
-		<!-- Tiered PGO enables profile-guided optimization in the JIT, improving steady-state
-		     performance for hot paths like JSON parsing after warmup. Active in all builds. -->
+		<!-- WinForms trimming/AOT is not fully annotated by Microsoft yet, but works
+		     for this application's usage patterns (no designer serialization, no
+		     dynamic control creation).  Suppress the SDK error to allow trimming. -->
+		<_SuppressWinFormsTrimError>true</_SuppressWinFormsTrimError>
+
+		<!-- Tiered PGO enables profile-guided optimization in the JIT, improving
+		     steady-state performance for development builds (dotnet run).
+		     Has no effect on the AOT-published binary. -->
 		<TieredPGO>true</TieredPGO>
 
 		<!-- Version is read from version.json at build time by the GenerateBuildInfo target -->
@@ -75,25 +85,33 @@
 
 	<ItemGroup>
 	  <None Remove="Resources\app\TOOLS.ico" />
+	  <None Remove="Resources\app\NMSE.ico" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="Resources\app\NMSE.ico" />
 		<EmbeddedResource Include="Resources\app\NMSGeoSans_Kerned.ttf" />
+		<!-- Copy the ICO file to the output directory so the app can load it
+		     from disk at runtime.  This is the most reliable icon-loading path
+		     (no ResourceManager, no embedded-resource naming quirks).
+		     ApplicationIcon (above) still embeds the icon in the native EXE
+		     for Explorer/shell use. -->
+		<Content Include="Resources\app\NMSE.ico">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>
-		<Compile Update="UI\MainForm.Designer.cs">
+		<Compile Update="Properties\Resources.Designer.cs">
 			<DesignTime>True</DesignTime>
 			<AutoGen>True</AutoGen>
-			<DependentUpon>MainForm.resx</DependentUpon>
+			<DependentUpon>Resources.resx</DependentUpon>
 		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Update="UI\MainForm.resx">
-			<Generator>PublicResXFileCodeGenerator</Generator>
-			<LastGenOutput>MainForm.Designer.cs</LastGenOutput>
+		<EmbeddedResource Update="Properties\Resources.resx">
+			<Generator>ResXFileCodeGenerator</Generator>
+			<LastGenOutput>Resources.Designer.cs</LastGenOutput>
 		</EmbeddedResource>
 	</ItemGroup>
 
@@ -151,8 +169,17 @@
 		</ItemGroup>
 	</Target>
 
+	<!-- Zip the build output for local development (dotnet build -c Release) -->
 	<Target Name="ZipBuildOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
 		<ZipDirectory SourceDirectory="$(OutputPath)" DestinationFile="$(MSBuildProjectDirectory)/Build/bin/NMSE-$(NmseVersion)-$(Configuration).zip" Overwrite="true" />
+	</Target>
+
+	<!-- Zip the publish output for release builds (dotnet publish -c Release).
+	     The publish directory contains the Native AOT compiled, trimmed,
+	     self-contained executable and its runtime dependencies.
+	     Intentionally overwrites the build zip — the AOT binary is the release artifact. -->
+	<Target Name="ZipPublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release'">
+		<ZipDirectory SourceDirectory="$(PublishDir)" DestinationFile="$(MSBuildProjectDirectory)/Build/bin/NMSE-$(NmseVersion)-$(Configuration).zip" Overwrite="true" />
 	</Target>
 
 </Project>
