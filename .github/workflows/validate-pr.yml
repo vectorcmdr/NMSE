@@ -24,6 +24,7 @@ env:
 on:
   # -- Un/comment the pull_request block below to enable PR validation --
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       # Root-level project files
       - "NMSE.csproj"
