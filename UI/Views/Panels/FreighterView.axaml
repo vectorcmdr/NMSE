@@ -21,7 +21,7 @@
 
                             <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale freighter.name}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FreighterName}" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FreighterName}" Watermark="Procedural - No Name Set" />
 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale freighter.type}" VerticalAlignment="Center" />
                                 <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FreighterTypes}"
@@ -81,6 +81,13 @@
                                     <TextBox Text="{Binding CrewSeed}" />
                                 </DockPanel>
                             </Grid>
+
+                            <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Button Content="{loc:Locale common.export}" Command="{Binding ExportCommand}" />
+                                <Button Content="{loc:Locale common.import}" Command="{Binding ImportCommand}" />
+                                <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteCommand}" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Right: Inventories -->

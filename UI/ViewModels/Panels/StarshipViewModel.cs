@@ -227,4 +227,61 @@ public partial class StarshipViewModel : PanelViewModelBase
         }
         SelectedTypeIndex = -1;
     }
+
+    /// <summary>File dialog funcs set by view code-behind.</summary>
+    public Func<string, string, Task<string?>>? SaveFileFunc { get; set; }
+    public Func<string, Task<string?>>? OpenFileFunc { get; set; }
+
+    [RelayCommand]
+    private async Task ExportShip()
+    {
+        if (_shipOwnership == null || SelectedShipIndex < 0 || SaveFileFunc == null) return;
+        int idx = _shipDataIndices[SelectedShipIndex];
+        if (idx >= _shipOwnership.Length) return;
+
+        var ship = _shipOwnership.GetObject(idx);
+        if (ship == null) return;
+
+        var cfg = ExportConfig.Instance;
+        var vars = new Dictionary<string, string>
+        {
+            ["ship_name"] = ShipName,
+            ["type"] = ShipTypes.Count > 0 && SelectedTypeIndex >= 0 ? ShipTypes[SelectedTypeIndex] : "",
+            ["class"] = ShipClasses.Count > 0 && SelectedClassIndex >= 0 ? ShipClasses[SelectedClassIndex] : ""
+        };
+        string fileName = ExportConfig.BuildFileName(cfg.StarshipTemplate, cfg.StarshipExt, vars);
+        var path = await SaveFileFunc(fileName, cfg.StarshipExt);
+        if (path != null)
+            ship.ExportToFile(path);
+    }
+
+    [RelayCommand]
+    private async Task ImportShip()
+    {
+        if (_shipOwnership == null || SelectedShipIndex < 0 || OpenFileFunc == null) return;
+        int idx = _shipDataIndices[SelectedShipIndex];
+        if (idx >= _shipOwnership.Length) return;
+
+        var path = await OpenFileFunc(ExportConfig.Instance.StarshipExt);
+        if (path == null) return;
+
+        var imported = JsonObject.ImportFromFile(path);
+        if (imported == null) return;
+
+        _shipOwnership.Set(idx, imported);
+        OnSelectedShipIndexChanged(SelectedShipIndex);
+    }
+
+    [RelayCommand]
+    private void DeleteShip()
+    {
+        if (_shipOwnership == null || SelectedShipIndex < 0) return;
+        int idx = _shipDataIndices[SelectedShipIndex];
+        if (idx >= _shipOwnership.Length) return;
+
+        _shipOwnership.RemoveAt(idx);
+        RefreshShipList();
+        if (ShipList.Count > 0)
+            SelectedShipIndex = 0;
+    }
 }

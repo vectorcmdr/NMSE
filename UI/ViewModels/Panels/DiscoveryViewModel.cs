@@ -178,6 +178,30 @@ public partial class DiscoveryViewModel : PanelViewModelBase
         }
         DiscoveryLogic.SaveGlyphBitfield(playerState, runesBitfield);
     }
+
+    [RelayCommand]
+    private void ClearTechFilter() { TechFilter = ""; }
+
+    [RelayCommand]
+    private void ClearProductFilter() { ProductFilter = ""; }
+
+    [RelayCommand]
+    private void AddTech() { /* TODO: open item picker for tech */ }
+
+    [RelayCommand]
+    private void AddProduct() { /* TODO: open item picker for products */ }
+
+    [RelayCommand]
+    private void ExportTech() { /* TODO: export known tech */ }
+
+    [RelayCommand]
+    private void ImportTech() { /* TODO: import known tech */ }
+
+    [RelayCommand]
+    private void ExportProduct() { /* TODO: export known products */ }
+
+    [RelayCommand]
+    private void ImportProduct() { /* TODO: import known products */ }
 }
 
 public partial class DiscoveryItemViewModel : ObservableObject

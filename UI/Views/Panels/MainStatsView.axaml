@@ -19,7 +19,7 @@
                             <Border Classes="card" Padding="12">
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="{loc:Locale player.section_stats}" Classes="sectionHeader" />
-                                    <Grid ColumnDefinitions="120,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.health}" VerticalAlignment="Center" />
                                         <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Health}" Minimum="0" Maximum="999999" FormatString="F0" />
 
@@ -47,7 +47,7 @@
                                     <TextBlock Text="{loc:Locale player.save_info}" Classes="sectionHeader" />
                                     <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.save_name}" VerticalAlignment="Center" />
-                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SaveName}" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SaveName}" Watermark="Procedural - No Name Set" />
 
                                         <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.save_summary}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                         <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SaveSummary}" Margin="0,4,0,0" />
@@ -118,7 +118,7 @@
                             <Border Classes="card" Padding="12">
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="{loc:Locale player.section_edit_coords}" Classes="sectionHeader" />
-                                    <Grid ColumnDefinitions="120,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.galaxy}" VerticalAlignment="Center" />
                                         <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding GalaxyIndex}" Minimum="0" Maximum="255" FormatString="F0" />
 
@@ -164,47 +164,6 @@
                                         <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding WarpsToNextBattle}" Minimum="0" Maximum="100" FormatString="F0" Margin="0,4,0,0" IsReadOnly="True" />
                                     </Grid>
                                     <Button Content="{loc:Locale player.trigger_space_battle}" Command="{Binding TriggerSpaceBattleCommand}" Margin="0,8,0,0" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-
-                <!-- Save Utilities Tab -->
-                <TabItem Header="{loc:Locale player.tab_save_utils}">
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel Spacing="16" Margin="8">
-                            <Border Classes="card" Padding="12">
-                                <StackPanel Spacing="8">
-                                    <TextBlock Text="{loc:Locale player.section_save_utils}" Classes="sectionHeader" />
-                                    <TextBlock Text="{loc:Locale player.save_utils_warning}"
-                                               Foreground="{DynamicResource SemiColorDanger}" FontWeight="Bold" TextWrapping="Wrap" />
-
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                                        <TextBlock Text="{loc:Locale player.source_label}" VerticalAlignment="Center" />
-                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding SourceSlotIndex}" MinWidth="100" />
-                                        <TextBlock Text="{loc:Locale player.dest_label}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding DestSlotIndex}" MinWidth="100" />
-                                    </StackPanel>
-
-                                    <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                        <Button Content="{loc:Locale player.copy_slot}" Command="{Binding CopySlotCommand}" Margin="0,0,4,4" />
-                                        <Button Content="{loc:Locale player.move_slot}" Command="{Binding MoveSlotCommand}" Margin="0,0,4,4" />
-                                        <Button Content="{loc:Locale player.swap_slots}" Command="{Binding SwapSlotsCommand}" Margin="0,0,4,4" />
-                                        <Button Content="{loc:Locale player.delete_slot}" Command="{Binding DeleteSlotCommand}" Margin="0,0,4,4" />
-                                    </WrapPanel>
-
-                                    <Separator Margin="0,8" />
-
-                                    <TextBlock Text="{loc:Locale player.transfer_label}" Classes="sectionHeader" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{loc:Locale player.dest_platform}" VerticalAlignment="Center" />
-                                        <ComboBox ItemsSource="{Binding PlatformItems}" SelectedIndex="{Binding TransferPlatformIndex}" MinWidth="140" />
-                                        <Button Content="{loc:Locale player.transfer_to_platform}" Command="{Binding TransferPlatformCommand}" />
-                                    </StackPanel>
-
-                                    <TextBlock Text="{Binding StatusText}" Margin="0,8,0,0"
-                                               Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -257,6 +216,47 @@
                             </DataGrid.Columns>
                         </DataGrid>
                     </DockPanel>
+                </TabItem>
+
+                <!-- Save Utilities Tab -->
+                <TabItem Header="{loc:Locale player.tab_save_utils}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="8">
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_save_utils}" Classes="sectionHeader" />
+                                    <TextBlock Text="{loc:Locale player.save_utils_warning}"
+                                               Foreground="{DynamicResource SemiColorDanger}" FontWeight="Bold" TextWrapping="Wrap" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                        <TextBlock Text="{loc:Locale player.source_label}" VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding SourceSlotIndex}" MinWidth="100" />
+                                        <TextBlock Text="{loc:Locale player.dest_label}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding DestSlotIndex}" MinWidth="100" />
+                                    </StackPanel>
+
+                                    <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="{loc:Locale player.copy_slot}" Command="{Binding CopySlotCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.move_slot}" Command="{Binding MoveSlotCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.swap_slots}" Command="{Binding SwapSlotsCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.delete_slot}" Command="{Binding DeleteSlotCommand}" Margin="0,0,4,4" />
+                                    </WrapPanel>
+
+                                    <Separator Margin="0,8" />
+
+                                    <TextBlock Text="{loc:Locale player.transfer_label}" Classes="sectionHeader" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{loc:Locale player.dest_platform}" VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding PlatformItems}" SelectedIndex="{Binding TransferPlatformIndex}" MinWidth="140" />
+                                        <Button Content="{loc:Locale player.transfer_to_platform}" Command="{Binding TransferPlatformCommand}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding StatusText}" Margin="0,8,0,0"
+                                               Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
         </DockPanel>

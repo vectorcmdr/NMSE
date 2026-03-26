@@ -91,6 +91,16 @@ public class IconManager : IDisposable
             _cache[kvp.Key] = kvp.Value;
     }
 
+    /// <summary>
+    /// Gets a small class icon for item classification badges (e.g. "S", "A", "B", "C" class).
+    /// </summary>
+    public Bitmap? GetClassIcon(string? itemClass)
+    {
+        if (string.IsNullOrEmpty(itemClass)) return null;
+        string filename = $"CLASS_{itemClass.ToUpperInvariant()}.png";
+        return GetIcon(filename);
+    }
+
     public Bitmap? GetIconForItem(string? itemId, GameItemDatabase? database)
     {
         if (database == null || string.IsNullOrEmpty(itemId)) return null;

@@ -270,4 +270,10 @@ public partial class SquadronViewModel : ObservableObject
                 try { SelectedPilot.Data.Set("TraitsSeed", normalized); } catch { }
         }
     }
+
+    [RelayCommand]
+    private void Export() { /* TODO: implement squadron export */ }
+
+    [RelayCommand]
+    private void Import() { /* TODO: implement squadron import */ }
 }

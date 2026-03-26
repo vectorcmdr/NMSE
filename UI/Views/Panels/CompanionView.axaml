@@ -33,7 +33,7 @@
                                 <TextBlock Text="{loc:Locale companion.identity}" Classes="sectionHeader" />
                                 <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
                                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale companion.name}" VerticalAlignment="Center" />
-                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CompanionName}" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CompanionName}" Watermark="Procedural - No Name Set" />
 
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale companion.creature_id}" VerticalAlignment="Center" Margin="0,4,0,0" />
                                     <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CreatureId}" Margin="0,4,0,0" />

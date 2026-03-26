@@ -39,6 +39,16 @@ public partial class InventorySlotViewModel : ObservableObject
     [ObservableProperty] private string _adjBorderColor = "Transparent";
     [ObservableProperty] private bool _hasAdjacencyBorder;
 
+    // Cell visual enhancements
+    [ObservableProperty] private Bitmap? _classMiniIcon;
+    [ObservableProperty] private bool _hasClassMiniIcon;
+    [ObservableProperty] private string _elementSymbol = "";
+    [ObservableProperty] private bool _hasElementSymbol;
+    [ObservableProperty] private string _slotBackground = "SemiColorBackground1";
+    [ObservableProperty] private double _slotOpacity = 1.0;
+    [ObservableProperty] private string _superchargeColor = "#FFD700";
+    [ObservableProperty] private string _superchargeBorderColor = "#FFD700";
+
     public JsonObject? SlotData { get; set; }
     public int SlotIndex { get; set; }
 }
@@ -46,7 +56,8 @@ public partial class InventorySlotViewModel : ObservableObject
 public partial class InventoryGridViewModel : ObservableObject
 {
     private const int GridColumns = 10;
-    private const double SlotVisualSize = 76;
+    private const double SlotVisualWidth = 76;
+    private const double SlotVisualHeight = 106;
 
     private JsonArray? _slots;
     private JsonObject? _currentInventory;
@@ -69,8 +80,8 @@ public partial class InventoryGridViewModel : ObservableObject
     [ObservableProperty] private InventorySlotViewModel? _selectedSlot;
     [ObservableProperty] private int _gridWidth = 10;
     [ObservableProperty] private int _gridHeight = 6;
-    [ObservableProperty] private double _gridPixelWidth = GridColumns * SlotVisualSize;
-    [ObservableProperty] private double _gridPixelHeight = 6 * SlotVisualSize;
+    [ObservableProperty] private double _gridPixelWidth = GridColumns * SlotVisualWidth;
+    [ObservableProperty] private double _gridPixelHeight = 6 * SlotVisualHeight;
     [ObservableProperty] private int _resizeWidth = 10;
     [ObservableProperty] private int _resizeHeight = 6;
     [ObservableProperty] private string _maxSupportedText = "";
@@ -142,8 +153,8 @@ public partial class InventoryGridViewModel : ObservableObject
         var (validWidth, validHeight) = DetermineGridDimensions(inventory, _slots);
         GridWidth = validWidth;
         GridHeight = validHeight;
-        GridPixelWidth = validWidth * SlotVisualSize;
-        GridPixelHeight = validHeight * SlotVisualSize;
+        GridPixelWidth = validWidth * SlotVisualWidth;
+        GridPixelHeight = validHeight * SlotVisualHeight;
         ResizeWidth = validWidth;
         ResizeHeight = validHeight;
 
@@ -391,9 +402,56 @@ public partial class InventoryGridViewModel : ObservableObject
             }
             else if (amount > 0 || maxAmount > 0)
             {
-                displayAmount = $"{amount:N0}";
+                displayAmount = maxAmount > 0 ? $"{amount:N0}/{maxAmount:N0}" : $"{amount:N0}";
             }
         }
+
+        // Element symbol for raw materials / substances
+        string elementSymbol = "";
+        bool hasElementSymbol = false;
+        if (!isEmpty && resolvedItem != null)
+        {
+            var elemSym = ElementDatabase.GetSymbol(resolvedItem.Id);
+            if (!string.IsNullOrEmpty(elemSym))
+            {
+                elementSymbol = elemSym;
+                hasElementSymbol = true;
+            }
+        }
+
+        // Class mini icon badge - derived from Quality or Rarity
+        Bitmap? classMiniIcon = null;
+        bool hasClassMiniIcon = false;
+        if (!isEmpty && resolvedItem != null && _iconManager != null)
+        {
+            string? itemClass = resolvedItem.QualityToClass();
+            if (string.IsNullOrEmpty(itemClass))
+                itemClass = resolvedItem.RarityToClass();
+
+            if (!string.IsNullOrEmpty(itemClass) && itemClass != "NONE"
+                && ShouldShowClassMiniIcon(resolvedItem.ItemType, itemId))
+            {
+                if (itemClass == "?") itemClass = "Sentinel";
+                classMiniIcon = _iconManager.GetIcon($"CLASSMINI.{itemClass}.png");
+                hasClassMiniIcon = classMiniIcon != null;
+            }
+        }
+
+        // Slot background color based on state
+        string slotBg = "SemiColorBackground1";
+        double slotOpacity = 1.0;
+        if (!isEnabled)
+        {
+            slotOpacity = 0.4;
+        }
+        else if (isEmpty)
+        {
+            slotOpacity = 0.5;
+        }
+
+        // Supercharge colors
+        string superchargeColor = "#FFD700"; // gold
+        string superchargeBorderColor = "#FFD700";
 
         return new InventorySlotViewModel
         {
@@ -417,7 +475,15 @@ public partial class InventoryGridViewModel : ObservableObject
             Description = description,
             Position = $"({col}, {row})",
             SlotData = slotData,
-            SlotIndex = index
+            SlotIndex = index,
+            ElementSymbol = elementSymbol,
+            HasElementSymbol = hasElementSymbol,
+            ClassMiniIcon = classMiniIcon,
+            HasClassMiniIcon = hasClassMiniIcon,
+            SlotBackground = slotBg,
+            SlotOpacity = slotOpacity,
+            SuperchargeColor = superchargeColor,
+            SuperchargeBorderColor = superchargeBorderColor
         };
     }
 
@@ -820,5 +886,210 @@ public partial class InventoryGridViewModel : ObservableObject
             target.SlotData, target.GridCol, target.GridRow);
         LoadInventory(_currentInventory);
         RaiseDataModified();
+    }
+
+    // --- Context menu commands (operate on a specific slot parameter) ---
+
+    [RelayCommand]
+    private async Task ContextAddItem(InventorySlotViewModel? slot)
+    {
+        if (slot == null || PickItemFunc == null) return;
+        SelectSlot(slot);
+        var newItemId = await PickItemFunc();
+        if (string.IsNullOrEmpty(newItemId)) return;
+        DetailItemId = newItemId;
+        ApplyChanges();
+    }
+
+    [RelayCommand]
+    private void RemoveItemAt(InventorySlotViewModel? slot)
+    {
+        if (slot?.SlotData == null) return;
+        SelectSlot(slot);
+        RemoveItem();
+    }
+
+    [RelayCommand]
+    private void ToggleSlotEnabled(InventorySlotViewModel? slot)
+    {
+        if (slot == null || _currentInventory == null) return;
+
+        var validSlots = _currentInventory.GetArray("ValidSlotIndices");
+        if (validSlots == null)
+        {
+            validSlots = new JsonArray();
+            _currentInventory.Set("ValidSlotIndices", validSlots);
+        }
+
+        int x = slot.GridCol, y = slot.GridRow;
+
+        if (slot.IsEnabled)
+        {
+            // Disable: only if slot has no item
+            if (slot.SlotData != null && !string.IsNullOrEmpty(slot.ItemId)
+                && slot.ItemId != "^" && slot.ItemId != "^YOURSLOTITEM")
+                return;
+
+            for (int i = 0; i < validSlots.Length; i++)
+            {
+                var idx = validSlots.GetObject(i);
+                if (idx != null && idx.GetInt("X") == x && idx.GetInt("Y") == y)
+                {
+                    validSlots.RemoveAt(i);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Enable: add to ValidSlotIndices
+            var newIdx = new JsonObject();
+            newIdx.Add("X", x);
+            newIdx.Add("Y", y);
+            validSlots.Add(newIdx);
+        }
+
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    [RelayCommand]
+    private void EnableAllSlots()
+    {
+        if (_currentInventory == null) return;
+        var validSlots = _currentInventory.GetArray("ValidSlotIndices");
+        if (validSlots == null)
+        {
+            validSlots = new JsonArray();
+            _currentInventory.Set("ValidSlotIndices", validSlots);
+        }
+
+        var existing = new HashSet<(int, int)>();
+        for (int i = 0; i < validSlots.Length; i++)
+        {
+            try
+            {
+                var idx = validSlots.GetObject(i);
+                if (idx != null) existing.Add((idx.GetInt("X"), idx.GetInt("Y")));
+            }
+            catch { }
+        }
+
+        for (int row = 0; row < GridHeight; row++)
+        {
+            for (int col = 0; col < GridWidth; col++)
+            {
+                if (!existing.Contains((col, row)))
+                {
+                    var newIdx = new JsonObject();
+                    newIdx.Add("X", col);
+                    newIdx.Add("Y", row);
+                    validSlots.Add(newIdx);
+                }
+            }
+        }
+
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    [RelayCommand]
+    private void RepairSlotAt(InventorySlotViewModel? slot)
+    {
+        if (slot?.SlotData == null) return;
+        slot.SlotData.Set("DamageFactor", 0.0);
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    [RelayCommand]
+    private void SuperchargeSlotAt(InventorySlotViewModel? slot)
+    {
+        if (slot?.SlotData == null) return;
+        bool current = slot.SlotData.GetBool("SuperCharged");
+        slot.SlotData.Set("SuperCharged", !current);
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    [RelayCommand]
+    private void FillStackAt(InventorySlotViewModel? slot)
+    {
+        if (slot?.SlotData == null || slot.IsEmpty) return;
+        slot.SlotData.Set("Amount", slot.MaxAmount);
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    [RelayCommand]
+    private void CopyItemAt(InventorySlotViewModel? slot)
+    {
+        if (slot != null && !slot.IsEmpty)
+            _copiedSlot = slot;
+    }
+
+    [RelayCommand]
+    private void PasteItemAt(InventorySlotViewModel? slot)
+    {
+        if (_copiedSlot?.SlotData == null || slot?.SlotData == null) return;
+
+        var source = _copiedSlot.SlotData;
+        var target = slot.SlotData;
+
+        SetSlotItemId(target, ExtractItemId(source));
+        target.Set("Amount", source.GetInt("Amount"));
+        target.Set("MaxAmount", source.GetInt("MaxAmount"));
+        target.Set("DamageFactor", source.GetDouble("DamageFactor"));
+
+        LoadInventory(_currentInventory);
+        RaiseDataModified();
+    }
+
+    // Export / Import inventory commands (placeholder - to be wired to file dialogs by view)
+    public Func<Task>? ExportInventoryFunc { get; set; }
+    public Func<Task>? ImportInventoryFunc { get; set; }
+
+    [RelayCommand]
+    private async Task ExportInventory()
+    {
+        if (ExportInventoryFunc != null)
+            await ExportInventoryFunc();
+    }
+
+    [RelayCommand]
+    private async Task ImportInventory()
+    {
+        if (ImportInventoryFunc != null)
+            await ImportInventoryFunc();
+    }
+
+    /// <summary>
+    /// Properties to control context menu visibility.
+    /// </summary>
+    public bool IsSlotToggleDisabled => _slotToggleDisabled;
+    public bool IsSuperchargeDisabled => _superchargeDisabled;
+    public bool IsTechInventory => _isTechInventory;
+    public bool HasCopiedSlot => _copiedSlot != null;
+
+    /// <summary>
+    /// Returns true when the item type and ID indicate that a class mini icon
+    /// should be displayed. Only Technology, Technology Module, and Upgrades
+    /// items are eligible, and Upgrades whose IDs end with "INV_TOKEN" are excluded.
+    /// </summary>
+    private static bool ShouldShowClassMiniIcon(string itemType, string itemId)
+    {
+        if (string.IsNullOrEmpty(itemType))
+            return false;
+        if (itemType.Equals("Technology", StringComparison.OrdinalIgnoreCase)
+            || itemType.Equals("Technology Module", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (itemType.Equals("Upgrades", StringComparison.OrdinalIgnoreCase))
+        {
+            string baseId = itemId.StartsWith("^") ? itemId[1..] : itemId;
+            var hashIdx = baseId.IndexOf('#');
+            if (hashIdx >= 0) baseId = baseId[..hashIdx];
+            return !baseId.EndsWith("INV_TOKEN", StringComparison.OrdinalIgnoreCase);
+        }
+        return false;
     }
 }

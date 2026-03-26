@@ -155,4 +155,45 @@ public partial class InventoryGridControl : UserControl
             .OfType<Button>()
             .FirstOrDefault(b => b.Tag is InventorySlotViewModel);
     }
+
+    private void OnSlotContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (sender is not ContextMenu contextMenu) return;
+        if (DataContext is not InventoryGridViewModel vm) return;
+
+        var slot = contextMenu.Tag as InventorySlotViewModel;
+        if (slot == null)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        // Select the slot when right-clicking
+        vm.SelectSlotCommand.Execute(slot);
+
+        bool hasItem = slot.SlotData != null && !string.IsNullOrEmpty(slot.ItemId) && slot.ItemId != "^" && slot.ItemId != "^YOURSLOTITEM";
+
+        foreach (var item in contextMenu.Items)
+        {
+            if (item is not MenuItem menuItem) continue;
+
+            var header = menuItem.Header?.ToString() ?? "";
+
+            // Dynamically show/hide menu items based on slot state
+            if (menuItem.Name == "EnableSlotMenuItem")
+            {
+                menuItem.IsVisible = !vm.IsSlotToggleDisabled;
+                menuItem.Header = slot.IsEnabled
+                    ? Data.UiStrings.Get("inventory.ctx_disable_slot")
+                    : Data.UiStrings.Get("inventory.ctx_enable_slot");
+            }
+            else if (menuItem.Name == "SuperchargeMenuItem")
+            {
+                menuItem.IsVisible = !vm.IsSuperchargeDisabled;
+                menuItem.Header = slot.IsSupercharged
+                    ? Data.UiStrings.Get("inventory.ctx_remove_supercharge")
+                    : Data.UiStrings.Get("inventory.ctx_supercharge");
+            }
+        }
+    }
 }

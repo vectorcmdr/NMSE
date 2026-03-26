@@ -17,7 +17,12 @@
                     <DockPanel Margin="8">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
                             <TextBox Text="{Binding TechFilter}" Watermark="{loc:Locale discovery.filter_items}" Width="250" />
+                            <Button Content="X" Command="{Binding ClearTechFilterCommand}"
+                                    ToolTip.Tip="Clear filter" Width="30" />
                             <Button Content="{loc:Locale discovery.remove_selected}" Command="{Binding RemoveTechCommand}" />
+                            <Button Content="Add" Command="{Binding AddTechCommand}" />
+                            <Button Content="{loc:Locale common.export}" Command="{Binding ExportTechCommand}" />
+                            <Button Content="{loc:Locale common.import}" Command="{Binding ImportTechCommand}" />
                         </StackPanel>
                         <ListBox ItemsSource="{Binding KnownTechs}" SelectionMode="Single"
                                  SelectedItem="{Binding SelectedTech}">
@@ -39,7 +44,12 @@
                     <DockPanel Margin="8">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
                             <TextBox Text="{Binding ProductFilter}" Watermark="{loc:Locale discovery.filter_items}" Width="250" />
+                            <Button Content="X" Command="{Binding ClearProductFilterCommand}"
+                                    ToolTip.Tip="Clear filter" Width="30" />
                             <Button Content="{loc:Locale discovery.remove_selected}" Command="{Binding RemoveProductCommand}" />
+                            <Button Content="Add" Command="{Binding AddProductCommand}" />
+                            <Button Content="{loc:Locale common.export}" Command="{Binding ExportProductCommand}" />
+                            <Button Content="{loc:Locale common.import}" Command="{Binding ImportProductCommand}" />
                         </StackPanel>
                         <ListBox ItemsSource="{Binding KnownProducts}" SelectionMode="Single"
                                  SelectedItem="{Binding SelectedProduct}">

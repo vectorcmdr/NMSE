@@ -43,6 +43,10 @@
                 <!-- Twitch Rewards -->
                 <TabItem Header="{loc:Locale account.tab_twitch}">
                     <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Warning: Twitch rewards require a linked Twitch account"
+                                   Foreground="#E0A030" FontWeight="SemiBold" FontSize="12"
+                                   Margin="0,0,0,8" />
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
                             <Button Content="{loc:Locale common.unlock_all}" Command="{Binding UnlockAllTwitchCommand}" />
                             <Button Content="{loc:Locale common.lock_all}" Command="{Binding LockAllTwitchCommand}" />
@@ -69,6 +73,10 @@
                 <!-- Platform Rewards -->
                 <TabItem Header="{loc:Locale account.tab_platform}">
                     <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Warning: Platform rewards require specific platform configurations"
+                                   Foreground="#E0A030" FontWeight="SemiBold" FontSize="12"
+                                   Margin="0,0,0,8" />
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
                             <Button Content="{loc:Locale common.unlock_all}" Command="{Binding UnlockAllPlatformCommand}" />
                             <Button Content="{loc:Locale common.lock_all}" Command="{Binding LockAllPlatformCommand}" />

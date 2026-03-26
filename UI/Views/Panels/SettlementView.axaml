@@ -14,6 +14,10 @@
                 <Border Classes="card" Padding="12">
                     <StackPanel Spacing="8">
                         <TextBlock Text="{loc:Locale settlement.title}" Classes="sectionHeader" />
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                            <TextBlock Text="{Binding SettlementNames.Count, StringFormat='Settlements: {0}'}"
+                                       VerticalAlignment="Center" Opacity="0.7" FontSize="12" />
+                        </StackPanel>
                         <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" Margin="0,8,0,0">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale settlement.title}" VerticalAlignment="Center" />
                             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SettlementNames}"
@@ -34,7 +38,7 @@
                 <!-- Settlement Stats -->
                 <Border Classes="card" Padding="12">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="{loc:Locale player.section_statistics}" Classes="sectionHeader" />
+                        <TextBlock Text="Stats" Classes="sectionHeader" />
                         <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale settlement.population}" VerticalAlignment="Center" />
                             <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Population}" Minimum="0" Maximum="200" Increment="1" />
@@ -85,10 +89,15 @@
                 </Border>
 
                 <!-- Actions -->
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="{loc:Locale settlement.delete}" Command="{Binding DeleteSettlementCommand}" />
-                    <Button Content="{loc:Locale common.export}" Command="{Binding ExportSettlementCommand}" />
-                    <Button Content="{loc:Locale common.import}" Command="{Binding ImportSettlementCommand}" />
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Warning: Removing a settlement is irreversible"
+                               Foreground="#E05050" FontWeight="SemiBold" FontSize="12"
+                               Margin="0,0,0,4" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{loc:Locale settlement.delete}" Command="{Binding DeleteSettlementCommand}" />
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportSettlementCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportSettlementCommand}" />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

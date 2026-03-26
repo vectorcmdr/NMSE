@@ -32,6 +32,13 @@
                     <TextBlock Text="{loc:Locale exocraft.global_options}" FontWeight="SemiBold" Margin="0,4,0,4" />
                     <CheckBox Content="{loc:Locale exocraft.third_person}" IsChecked="{Binding ThirdPersonCamera}" />
                     <CheckBox Content="{loc:Locale exocraft.minotaur_ai}" IsChecked="{Binding MinotaurAI}" />
+
+                    <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportCommand}" />
+                        <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteCommand}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Right: Inventories -->

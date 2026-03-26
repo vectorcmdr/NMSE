@@ -206,4 +206,62 @@ public partial class MultitoolViewModel : PanelViewModelBase
         }
         SelectedTypeIndex = -1;
     }
+
+    /// <summary>File dialog funcs set by view code-behind.</summary>
+    public Func<string, string, Task<string?>>? SaveFileFunc { get; set; }
+    public Func<string, Task<string?>>? OpenFileFunc { get; set; }
+
+    [RelayCommand]
+    private async Task ExportTool()
+    {
+        if (_multitools == null || SelectedToolIndex < 0 || SaveFileFunc == null) return;
+        int idx = _toolDataIndices[SelectedToolIndex];
+        if (idx >= _multitools.Length) return;
+
+        var tool = _multitools.GetObject(idx);
+        if (tool == null) return;
+
+        var cfg = ExportConfig.Instance;
+        var vars = new Dictionary<string, string>
+        {
+            ["multitool_name"] = ToolName,
+            ["type"] = ToolTypes.Count > 0 && SelectedTypeIndex >= 0 ? ToolTypes[SelectedTypeIndex] : "",
+            ["class"] = ToolClasses.Count > 0 && SelectedClassIndex >= 0 ? ToolClasses[SelectedClassIndex] : ""
+        };
+        string fileName = ExportConfig.BuildFileName(cfg.MultitoolTemplate, cfg.MultitoolExt, vars);
+        var path = await SaveFileFunc(fileName, cfg.MultitoolExt);
+        if (path != null)
+            tool.ExportToFile(path);
+    }
+
+    [RelayCommand]
+    private async Task ImportTool()
+    {
+        if (_multitools == null || SelectedToolIndex < 0 || OpenFileFunc == null) return;
+        int idx = _toolDataIndices[SelectedToolIndex];
+        if (idx >= _multitools.Length) return;
+
+        var path = await OpenFileFunc(ExportConfig.Instance.MultitoolExt);
+        if (path == null) return;
+
+        var imported = JsonObject.ImportFromFile(path);
+        if (imported == null) return;
+
+        _multitools.Set(idx, imported);
+        OnSelectedToolIndexChanged(SelectedToolIndex);
+    }
+
+    [RelayCommand]
+    private void DeleteTool()
+    {
+        if (_multitools == null || SelectedToolIndex < 0) return;
+        int idx = _toolDataIndices[SelectedToolIndex];
+        if (idx >= _multitools.Length) return;
+
+        // Clear the tool by removing it from array
+        _multitools.RemoveAt(idx);
+        RefreshToolList();
+        if (ToolList.Count > 0)
+            SelectedToolIndex = 0;
+    }
 }

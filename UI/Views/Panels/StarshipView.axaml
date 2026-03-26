@@ -26,7 +26,8 @@
 
                     <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale starship.name}" VerticalAlignment="Center" />
-                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShipName}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShipName}"
+                                 Watermark="Procedural - No Name Set" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale common.type}" VerticalAlignment="Center" />
                         <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ShipTypes}"
@@ -77,6 +78,14 @@
                     <Button Content="{loc:Locale starship.make_primary}" Margin="0,12,0,0"
                             Command="{Binding MakePrimaryCommand}"
                             HorizontalAlignment="Stretch" />
+
+                    <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportShipCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportShipCommand}" />
+                        <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteShipCommand}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Right: Inventories -->

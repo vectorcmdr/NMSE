@@ -26,7 +26,8 @@
 
                     <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale multitool.name}" VerticalAlignment="Center" />
-                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ToolName}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ToolName}"
+                                 Watermark="Procedural - No Name Set" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale common.type}" VerticalAlignment="Center" />
                         <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ToolTypes}"
@@ -68,6 +69,14 @@
                     <Button Content="{loc:Locale multitool.make_primary}" Margin="0,12,0,0"
                             Command="{Binding MakePrimaryCommand}"
                             HorizontalAlignment="Stretch" />
+
+                    <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportToolCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportToolCommand}" />
+                        <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteToolCommand}" />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Right: Inventory -->

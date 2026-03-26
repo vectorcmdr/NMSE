@@ -105,6 +105,11 @@
                 <Border Grid.Column="0" Width="{Binding NavWidth}" BorderThickness="0,0,1,0"
                         BorderBrush="{DynamicResource SemiColorBorder}"
                         Background="{DynamicResource SemiColorNavBackground}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseInOut" />
+                        </Transitions>
+                    </Border.Transitions>
                     <DockPanel>
                         <Button DockPanel.Dock="Top" Command="{Binding ToggleNavCommand}"
                                 Classes="navToggle"

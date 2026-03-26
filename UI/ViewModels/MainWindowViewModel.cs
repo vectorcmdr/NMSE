@@ -387,9 +387,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
                     saveFiles.Add(slotFiles);
                     string difficulty = DetectDifficulty(slotFiles[0]);
-                    string label = string.IsNullOrEmpty(difficulty)
-                        ? $"Slot {i + 1}"
-                        : $"Slot {i + 1} - {difficulty}";
+                    string saveName = DetectSaveName(slotFiles[0]);
+                    string label = BuildSlotLabel($"Slot {i + 1}", saveName, difficulty);
                     SaveSlots.Add(label);
                 }
             }
@@ -403,9 +402,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     saveFiles.Add(new List<string> { ps4Files[i] });
                     string difficulty = DetectDifficulty(ps4Files[i]);
-                    string label = string.IsNullOrEmpty(difficulty)
-                        ? $"Save {i + 1}"
-                        : $"Save {i + 1} - {difficulty}";
+                    string saveName = DetectSaveName(ps4Files[i]);
+                    string label = BuildSlotLabel($"Save {i + 1}", saveName, difficulty);
                     SaveSlots.Add(label);
                 }
             }
@@ -464,6 +462,28 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         catch { }
         return "";
+    }
+
+    private static string DetectSaveName(string filePath)
+    {
+        try
+        {
+            return SaveFileManager.DetectSaveNameFast(filePath);
+        }
+        catch { }
+        return "";
+    }
+
+    /// <summary>
+    /// Build a slot label combining prefix, save name, and difficulty.
+    /// Format: "Slot N - SaveName - DIFFICULTY" or "Slot N - DIFFICULTY" or "Slot N".
+    /// </summary>
+    private static string BuildSlotLabel(string prefix, string saveName, string difficulty)
+    {
+        var parts = new List<string> { prefix };
+        if (!string.IsNullOrEmpty(saveName)) parts.Add(saveName);
+        if (!string.IsNullOrEmpty(difficulty)) parts.Add(difficulty);
+        return string.Join(" - ", parts);
     }
 
     private static string GameModeToString(int mode) => mode switch

@@ -227,4 +227,13 @@ public partial class FreighterViewModel : PanelViewModelBase
         }
         SelectedCrewRaceIndex = -1;
     }
+
+    [RelayCommand]
+    private void Export() { /* TODO: implement freighter export */ }
+
+    [RelayCommand]
+    private void Import() { /* TODO: implement freighter import */ }
+
+    [RelayCommand]
+    private void Delete() { /* TODO: implement freighter delete */ }
 }

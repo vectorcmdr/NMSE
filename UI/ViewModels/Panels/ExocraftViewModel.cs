@@ -144,4 +144,13 @@ public partial class ExocraftViewModel : PanelViewModelBase
         }
         return "vehicle";
     }
+
+    [RelayCommand]
+    private void Export() { /* TODO: implement exocraft export */ }
+
+    [RelayCommand]
+    private void Import() { /* TODO: implement exocraft import */ }
+
+    [RelayCommand]
+    private void Delete() { /* TODO: implement exocraft delete */ }
 }
