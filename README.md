@@ -1,6 +1,7 @@
 <div align="center">
 
-> Preview builds are now live! 🎉
+> Preview builds are now live! 🎉 <br>
+> Expect some bugs while in preview.
 
 # NMSE (No Man's Save Editor)
 
@@ -212,11 +213,17 @@ NMSE is licensed under the **GNU General Public License v3.0** - see the [LICENS
 
 ---
 
-## 🙏 Acknowledgements
+## 🤝 Acknowledgements
 
 - **[Hello Games][hello-games]** for creating No Man's Sky
 - The NMS modding and save editing community
 - All [contributors][contributors] and [sponsors][sponsor] who help make NMSE better
+
+### Contributors:
+
+<a href="https://github.com/vectorcmdr/NMSE/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vectorcmdr/NMSE" />
+</a>
 
 ---
 
