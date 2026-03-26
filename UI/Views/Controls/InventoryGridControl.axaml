@@ -148,7 +148,7 @@
                                                               IsVisible="{Binding !IsEmpty}"
                                                               HorizontalAlignment="Stretch"
                                                               VerticalAlignment="Top"
-                                                              Margin="18,4,26,0"
+                                                              Margin="2,4,2,0"
                                                               ScrollSpeed="25" PauseSeconds="2" />
 
                                         <!-- Element symbol badge (bottom-right) -->
