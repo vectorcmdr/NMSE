@@ -1,4 +1,4 @@
-## NMSE — No Man's Save Editor v1.0.368 (preview)
+## NMSE — No Man's Save Editor v1.0.369 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
@@ -13,6 +13,8 @@
     - Production moved to it's own tab.
     - Building States (experimental) tab added. Contains initial reverse engineered state data and an ability to set building states from list or integer.
     - Building Editor (experimental) tab added. Contains the same reverse engineered states but with the ability to set each bit in the bitflag (for custom states).
+- Linux AppImage builds now on CI (thanks @maniro-x)
+- Both Windows and Linux downloads now supported on the website (via latest build fetch).
 
 #### Bug Fixes:
 
@@ -28,28 +30,22 @@
 
 
 <details>
-<summary>Previous Changelog 1.0.362 (preview)</summary>
+<summary>Previous Changelogs</summary>
 
-### Changelog
+### Previous Changelog 1.0.362 (preview)
 
 - Fixed Frigates AOT trimming error due to use of `DisplayMember` (reflection metadata was stripped) in favour of overrides only.
 
-</details>
+<br/>
 
-<details>
-<summary>Previous Changelog 1.0.361 (preview)</summary>
-
-### Changelog
+### Previous Changelog 1.0.361 (preview)
 
 - Project moved to Native AOT with trimmig for builds. Users don't require .NET 10 to be separately installed anymore.
 - Fix for icon loading issue for Windows taskbar (due to DB loading workaround).
 
-</details>
+<br/>
 
-<details>
-<summary>Previous Changelog 1.0.356 (preview)</summary>
-
-### Changelog
+### Previous Changelog 1.0.356 (preview)
 
 - Further GDI hardening to help with crash-to-desktop for some users. ()
 - Add item dialog fixes for discoveries panels (multi-select bugs).
@@ -59,12 +55,9 @@
 
 These fixes and changes address Issues #7, #5, #13, #9, and #11
 
-</details>
+<br/>
 
-<details>
-<summary>Previous Changelog 1.0.355 (preview)</summary>
-
-### Changelog
+### Previous Changelog 1.0.355 (preview)
 
 This preview release contains critical bug fixes and additions for the following:
 
