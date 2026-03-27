@@ -134,20 +134,27 @@ public class IconManager : IDisposable
     /// Returns a downscaled copy of <paramref name="original"/> if either
     /// dimension exceeds <see cref="MaxCacheDimension"/>; otherwise returns
     /// a copy at the original size. The caller owns the returned image.
+    /// Always renders through <see cref="Graphics.DrawImage"/> so that
+    /// corrupt source data (loaded with <c>validateImageData: false</c>)
+    /// is caught here rather than later when the cached image is drawn.
     /// </summary>
     private static Image Downscale(Image original)
     {
         int ow = original.Width, oh = original.Height;
         int maxDim = Math.Max(ow, oh);
+
+        int nw, nh;
         if (maxDim <= MaxCacheDimension)
         {
-            // Already small enough - clone so the caller can dispose the original
-            return new Bitmap(original);
+            nw = ow;
+            nh = oh;
         }
-
-        float scale = (float)MaxCacheDimension / maxDim;
-        int nw = Math.Max(1, (int)(ow * scale));
-        int nh = Math.Max(1, (int)(oh * scale));
+        else
+        {
+            float scale = (float)MaxCacheDimension / maxDim;
+            nw = Math.Max(1, (int)(ow * scale));
+            nh = Math.Max(1, (int)(oh * scale));
+        }
 
         var bmp = new Bitmap(nw, nh, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bmp))
