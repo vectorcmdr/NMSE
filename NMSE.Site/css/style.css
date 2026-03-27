@@ -179,6 +179,31 @@ main {
   text-decoration: none;
 }
 
+/* Ensure SVG icons inside buttons align nicely with the text */
+.btn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  vertical-align: middle;
+  margin-right: 0.45rem;
+  fill: currentColor;
+}
+
+#download .build-info {
+  margin-top: 0.3rem;
+}
+#download .btn-row {
+  margin-top: 0rem;
+}
+#download .note {
+  margin-top: 0.8rem;
+}
+
+/* Make the Linux (penguin) icon slightly larger for better visual weight. */
+#download-link-linux svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
 .btn-row {
   display: flex;
   justify-content: center;

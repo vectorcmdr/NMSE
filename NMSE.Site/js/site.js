@@ -37,19 +37,59 @@ function timeAgo(dateString) {
 
 // -- Download link + build info --------------------------------- */
 (function initDownloadLink() {
-  const link = document.getElementById("download-link");
+  const winLink = document.getElementById("download-link-windows");
+  const linuxLink = document.getElementById("download-link-linux");
   const note = document.getElementById("download-note");
   const buildInfo = document.getElementById("build-info");
   const buildNumber = document.getElementById("build-number");
   const buildUpdated = document.getElementById("build-updated");
+
+  // SVG icons used for the download buttons (kept as strings so they can be
+  // injected into button innerHTML and inherit currentColor)
+  const WINDOWS_SVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M2 3.5L11 2v8H2z" fill="currentColor"/>
+      <path d="M13 2l9-1v8h-9z" fill="currentColor" opacity="0.95"/>
+      <path d="M2 13l9-1v8L2 20z" fill="currentColor" opacity="0.9"/>
+      <path d="M13 12l9-1v8l-9 1z" fill="currentColor" opacity="0.85"/>
+    </svg>`;
+
+  const LINUX_SVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <!-- Black body -->
+      <path d="M32 6c-11 0-20 9-20 20 0 7 4 13 8 17 4 4 10 7 12 7s8-3 12-7c4-4 8-10 8-17 0-11-9-20-20-20z" fill="#000000"/>
+      <!-- White belly -->
+      <ellipse cx="32" cy="34" rx="10" ry="14" fill="#FFFFFF"/>
+      <!-- Face (white) -->
+      <ellipse cx="32" cy="22" rx="6" ry="5" fill="#FFFFFF"/>
+      <!-- Eyes (black) -->
+      <circle cx="29" cy="21" r="1.2" fill="#000000"/>
+      <circle cx="35" cy="21" r="1.2" fill="#000000"/>
+      <!-- Beak (yellow) -->
+      <path d="M32 24.5 L28.5 27 L35.5 27 Z" fill="#FFCC33"/>
+      <!-- Feet (yellow) -->
+      <ellipse cx="26" cy="48" rx="3.5" ry="2" fill="#FFCC33"/>
+      <ellipse cx="38" cy="48" rx="3.5" ry="2" fill="#FFCC33"/>
+    </svg>`;
+
+  const WINDOWS_BUTTON_HTML = WINDOWS_SVG + ' <b>Download</b>';
+  const LINUX_BUTTON_HTML = LINUX_SVG + ' <b>Download</b>';
 
   // Fallback: send users to the Actions page if the release API fails
   const actionsUrl =
     `https://github.com/${SITE_CONFIG.owner}/${SITE_CONFIG.repo}/actions/workflows/${SITE_CONFIG.workflowFile}`;
   const fallbackNote = "Opens the build workflow page \u2013 download the artifact from there.";
 
-  link.href = actionsUrl;
-  link.textContent = "Download";
+  // Default to the Actions page so buttons are never dead links
+  if (winLink) {
+    winLink.href = actionsUrl;
+    // Use the shared constant defined above
+    winLink.innerHTML = WINDOWS_BUTTON_HTML;
+  }
+  if (linuxLink) {
+    linuxLink.href = actionsUrl;
+    linuxLink.innerHTML = LINUX_BUTTON_HTML;
+  }
 
   // Fetch the latest GitHub Release (created by CI with a versioned tag e.g. v1.2.3)
   const apiUrl =
@@ -62,22 +102,50 @@ function timeAgo(dateString) {
     })
     .then(release => {
       if (release.assets && release.assets.length > 0) {
-        const asset = release.assets[0];
-        link.href = asset.browser_download_url;
-        link.textContent = "Download NMSE";
+        // Prefer a .zip for Windows and an .AppImage for Linux (case-insensitive)
+        const assets = release.assets;
+        const zipAsset = assets.find(a => /\.zip$/i.test(a.name) || /\.zip$/i.test(a.browser_download_url));
+        const appImageAsset = assets.find(a => /\.appimage$/i.test(a.name) || /\.appimage$/i.test(a.browser_download_url));
+
+        if (winLink) {
+          if (zipAsset) {
+            winLink.href = zipAsset.browser_download_url;
+            winLink.innerHTML = WINDOWS_BUTTON_HTML;
+            winLink.title = zipAsset.name;
+          } else {
+            // No zip found - use first asset as fallback but keep users informed
+            winLink.href = assets[0].browser_download_url;
+            winLink.innerHTML = WINDOWS_BUTTON_HTML;
+            winLink.title = assets[0].name;
+          }
+        }
+
+        if (linuxLink) {
+          if (appImageAsset) {
+            linuxLink.href = appImageAsset.browser_download_url;
+            linuxLink.innerHTML = LINUX_BUTTON_HTML;
+            linuxLink.title = appImageAsset.name;
+          } else {
+            // No AppImage found - keep it pointing to actions page as a fallback and set an explanatory title
+            linuxLink.href = actionsUrl;
+            linuxLink.innerHTML = LINUX_BUTTON_HTML;
+            linuxLink.title = "No Linux AppImage available in this release";
+          }
+        }
 
         // Show the version from the release name or tag (e.g. "NMSE v1.2.3" or "v1.2.3")
         buildNumber.textContent = release.name || release.tag_name;
         buildUpdated.textContent = `updated ${timeAgo(release.published_at)}`;
         buildInfo.hidden = false;
-        note.textContent = "Direct download \u2013 no GitHub login required.";
+        note.textContent = "Click download above for your OS.";
       } else {
         note.textContent = "No builds available yet.";
       }
     })
     .catch(() => {
       // Release not found - fall back to Actions page
-      link.href = actionsUrl;
+      if (winLink) winLink.href = actionsUrl;
+      if (linuxLink) linuxLink.href = actionsUrl;
       note.textContent = fallbackNote;
     });
 })();
