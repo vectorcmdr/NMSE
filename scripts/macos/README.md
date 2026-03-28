@@ -6,6 +6,7 @@ Scripts and configuration files for running NMSE on macOS via Wine compatibility
 
 | File | Description |
 |------|-------------|
+| `build-dmg.sh` | CI script - builds a macOS DMG containing NMSE.app with Wine launcher |
 | `nmse-whisky.rb` | Homebrew Cask formula - installs NMSE as a Whisky-managed app |
 | `README.md` | This file |
 
@@ -38,7 +39,7 @@ See [Whisky macOS Guide](../../docs/whisky-macos-guide.md) for detailed instruct
 
 ### Option 2: CrossOver (Paid, Best Apple Silicon Support)
 
-[CrossOver](https://www.codeweavers.com/crossover) is a commercial Wine distribution ($74/year)
+[CrossOver](https://www.codeweavers.com/crossover) is a commercial Wine distribution ($74/year 👎)
 with the best Apple Silicon compatibility and professional support.
 
 See [CrossOver macOS Guide](../../docs/crossover-macos-guide.md) for setup instructions.

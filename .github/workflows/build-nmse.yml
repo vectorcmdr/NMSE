@@ -10,6 +10,15 @@
 # derived from version.json.  The release body is read from
 # release-notes.md in the repo root.
 #
+# Platform builds:
+#   - Windows: Native AOT (required)
+#   - Linux:   AppImage with bundled Wine (required)
+#   - macOS:   DMG with Wine launcher (optional, best-effort)
+#
+# The release step is additive: if a matching release already
+# exists (e.g. from a previous run), only missing artifacts are
+# uploaded - existing files, title, and notes are preserved.
+#
 # All actions are pinned to immutable commit SHAs to mitigate
 # supply-chain attacks.  When upgrading, update both the SHA
 # and the version comment.
@@ -24,6 +33,10 @@ env:
   DOTNET_VERSION: "10.0.x"
   BUILD_CONFIGURATION: Release
 
+# Top-level permissions grant contents:write to all jobs.
+# This is required for the release job to create tags and releases
+# via the GITHUB_TOKEN.  Without this, repos whose default workflow
+# permissions are set to "read" will fail with HTTP 403.
 permissions:
   contents: write
 
@@ -67,7 +80,7 @@ jobs:
       - name: Publish (Native AOT)
         if: success()
         run: dotnet publish ${{ env.PROJECT_FILE }} --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
-      
+
       # -- Publish artifacts ----------------------------------
 
       - name: Locate build zip
@@ -122,7 +135,7 @@ jobs:
           OUTPUT_FILE="$GITHUB_WORKSPACE/NMSE-x64.AppImage"
           scripts/linux/build-appimage.sh "$WIN_DIR" "$OUTPUT_FILE"
           echo "APPIMAGE_PATH=$OUTPUT_FILE" >> $GITHUB_OUTPUT
-      
+
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
@@ -130,22 +143,72 @@ jobs:
           path: ${{ steps.appimage.outputs.APPIMAGE_PATH }}
           if-no-files-found: error
 
+  # -- macOS DMG (best-effort) ----------------------------------
+  # Packages the Windows build into a macOS .app bundle with a
+  # Wine launcher script. Users need Wine installed separately.
+  # This job is optional (best-effort fallback).
+  build-macos:
+    runs-on: macos-latest
+    needs: build-win
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download win build
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ env.PROJECT_NAME }}-build
+
+      - name: Unzip win build
+        run: |
+          winbuild="$(ls NMSE*.zip)"
+          unzip "$winbuild" -d "$GITHUB_WORKSPACE/win"
+
+      - name: Run build-dmg script
+        id: dmg
+        run: |
+          chmod +x ./scripts/macos/build-dmg.sh
+          WIN_DIR="$GITHUB_WORKSPACE/win"
+          OUTPUT_FILE="$GITHUB_WORKSPACE/NMSE-x64.dmg"
+          scripts/macos/build-dmg.sh "$WIN_DIR" "$OUTPUT_FILE"
+          echo "DMG_PATH=$OUTPUT_FILE" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ env.PROJECT_NAME }}-macOS-DMG
+          path: ${{ steps.dmg.outputs.DMG_PATH }}
+          if-no-files-found: error
+
+  # -- Release ----------------------------------
   release:
     runs-on: windows-latest
-    needs: build-linux
-    steps:  
+    needs: [build-linux, build-macos]
+    # Only require build-linux (which implies build-win) to succeed.
+    if: always() && needs.build-linux.result == 'success'
+
+    steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download WinBuild
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ env.PROJECT_NAME }}-build        
+          name: ${{ env.PROJECT_NAME }}-build
 
       - name: Download AppImage
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ env.PROJECT_NAME }}-Wine-AppImage
+
+      # macOS DMG is optional — download only if the build succeeded
+      - name: Download macOS DMG
+        if: needs.build-macos.result == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ env.PROJECT_NAME }}-macOS-DMG
 
       - name: Read version from version.json
         id: version
@@ -156,7 +219,7 @@ jobs:
           "VERSION=$ver"     >> $env:GITHUB_OUTPUT
           "TAG=v$ver"        >> $env:GITHUB_OUTPUT
           Write-Host "Version: $ver  Tag: v$ver"
-          
+
       - name: Build release notes
         if: success()
         id: notes
@@ -188,20 +251,45 @@ jobs:
         run: |
           $tag = "${{ steps.version.outputs.TAG }}"
           $ver = "${{ steps.version.outputs.VERSION }}"
+          $cfg = "${{ env.BUILD_CONFIGURATION }}"
 
-          # Rename AppImage to match win build
-          Rename-Item -Path "NMSE-x64.AppImage" -NewName "NMSE-${{ steps.version.outputs.VERSION }}-${{ env.BUILD_CONFIGURATION}}-x64.AppImage"
-
-          # Check whether this version tag already exists
-          $existing = gh release view $tag 2>&1
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Release $tag already exists — deleting to recreate"
-            gh release delete $tag --yes --cleanup-tag
+          # -- Rename artifacts to include version ---------------
+          if (Test-Path "NMSE-x64.AppImage") {
+            Rename-Item "NMSE-x64.AppImage" "NMSE-${ver}-${cfg}-x64.AppImage"
+          }
+          if (Test-Path "NMSE-x64.dmg") {
+            Rename-Item "NMSE-x64.dmg" "NMSE-${ver}-${cfg}-x64.dmg"
           }
 
-          # Create a new release tagged with the semantic version
-          gh release create $tag `
-            "*.zip" "*.AppImage"`
-            --title "NMSE v${ver}" `
-            --notes-file "${{ steps.notes.outputs.NOTES_FILE }}"
-          
+          # -- Gather all available release files ----------------
+          $files = @()
+          Get-ChildItem "*.zip"      | ForEach-Object { $files += $_.Name }
+          Get-ChildItem "*.AppImage" | ForEach-Object { $files += $_.Name }
+          Get-ChildItem "*.dmg"      | ForEach-Object { $files += $_.Name }
+
+          Write-Host "Artifacts to release: $($files -join ', ')"
+
+          # -- Create or update the release ----------------------
+          # If the release already exists (e.g. from a previous run or
+          # a manual re-run), upload only the missing artifacts.
+          # Existing files, title, and notes are preserved.
+          $existing = gh release view $tag --json assets --jq ".assets[].name" 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists — uploading missing artifacts"
+            $existingNames = $existing -split "`n" | Where-Object { $_ }
+
+            foreach ($f in $files) {
+              if ($existingNames -contains $f) {
+                Write-Host "  Skipping $f (already in release)"
+              } else {
+                Write-Host "  Uploading $f"
+                gh release upload $tag $f
+              }
+            }
+          } else {
+            Write-Host "Creating new release $tag"
+            $allFiles = $files -join '" "'
+            gh release create $tag $files `
+              --title "NMSE v${ver}" `
+              --notes-file "${{ steps.notes.outputs.NOTES_FILE }}"
+          }
