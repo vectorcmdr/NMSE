@@ -136,7 +136,7 @@ main {
 
 .card h3 {
   font-size: 1.35rem;
-  letter-spacing: 0.0.5em;
+  letter-spacing: 0.5em;
   margin-bottom: 0.5rem;
   color: var(--glow);
 }
