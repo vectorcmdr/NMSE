@@ -552,8 +552,7 @@ partial class SettlementPanel
             bsGrid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
 
-        // Column-first ordering: col 0 = slots 0-7, col 1 = slots 8-15, etc.
-        // This makes slots read top-to-bottom (1→8, 9→16, ...) per the requirements.
+        // Column-first ordering (fits better).
         for (int c = 0; c < bCols; c++)
         {
             for (int r = 0; r < bRows; r++)
@@ -563,14 +562,14 @@ partial class SettlementPanel
 
                 var cellPanel = new TableLayoutPanel
                 {
-                    ColumnCount = 2,
-                    RowCount = 2,
+                    ColumnCount = 1,
+                    RowCount = 3,
                     Dock = DockStyle.Fill,
                     AutoSize = true,
                     Margin = new Padding(2),
                 };
-                cellPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-                cellPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+                cellPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                cellPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 cellPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
                 cellPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -585,7 +584,7 @@ partial class SettlementPanel
 
                 var comboField = new ComboBox
                 {
-                    Width = 160,
+                    Dock = DockStyle.Top,
                     DropDownStyle = ComboBoxStyle.DropDownList,
                     DropDownWidth = 360,
                 };
@@ -596,7 +595,7 @@ partial class SettlementPanel
 
                 var nudField = new NumericUpDown
                 {
-                    Width = 100,
+                    Dock = DockStyle.Top,
                     Minimum = int.MinValue,
                     Maximum = int.MaxValue,
                     TextAlign = HorizontalAlignment.Right,
@@ -605,8 +604,8 @@ partial class SettlementPanel
                 _buildingStateNuds[slotIdx] = nudField;
 
                 cellPanel.Controls.Add(slotLabel, 0, 0);
-                cellPanel.Controls.Add(comboField, 1, 0);
-                cellPanel.Controls.Add(nudField, 1, 1);
+                cellPanel.Controls.Add(comboField, 0, 1);
+                cellPanel.Controls.Add(nudField, 0, 2);
                 bsGrid.Controls.Add(cellPanel, c, r * 2);
 
                 var infoLabel = new Label
