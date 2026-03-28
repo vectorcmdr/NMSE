@@ -12,6 +12,13 @@ public class JsonArray
     /// <summary>The number of elements in this array.</summary>
     public int Length { get; private set; }
 
+    /// <summary>
+    /// Parses a JSON string into a <see cref="JsonArray"/>.
+    /// </summary>
+    /// <param name="json">The JSON string to parse.</param>
+    /// <returns>The parsed JSON array.</returns>
+    public static JsonArray Parse(string json) => JsonParser.ParseArray(json);
+
     /// <summary>The parent container (a <see cref="JsonObject"/> or <see cref="JsonArray"/>) that holds this array, or <c>null</c> for root arrays.</summary>
     internal object? Parent { get; set; }
 

@@ -48,8 +48,8 @@ public static class ContainersIndexManager
     private const long CONTAINERSINDEX_FOOTER = 268435456; // 0x10000000
     private const int BLOBCONTAINER_HEADER = 4;
     private const int BLOBCONTAINER_COUNT = 2;
-    private const int BLOBCONTAINER_IDENTIFIER_LENGTH = 80;
-    private const int BLOBCONTAINER_TOTAL_LENGTH = 232;
+    private const int BLOBCONTAINER_IDENTIFIER_LENGTH = 128;
+    private const int BLOBCONTAINER_TOTAL_LENGTH = 328;
 
     /// <summary>
     /// Check if a directory contains Xbox Game Pass saves.
@@ -136,6 +136,10 @@ public static class ContainersIndexManager
     /// <summary>
     /// Load a save file from an Xbox blob directory.
     /// Returns the decompressed JSON string, or null if not found.
+    /// Xbox saves can use three compression formats:
+    ///   1. HGSAVEV2 - "HGSAVEV2\0" header followed by multi-frame LZ4 chunks
+    ///   2. NMS LZ4 streaming - 0xE5A1EDFE magic per chunk (multi-block)
+    ///   3. Plain/single-block LZ4 or uncompressed
     /// </summary>
     public static string? LoadXboxSave(XboxSlotInfo slotInfo)
     {
@@ -145,21 +149,32 @@ public static class ContainersIndexManager
         try
         {
             using var fs = new FileStream(slotInfo.DataFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            byte[] headerBuf = new byte[4];
-            fs.ReadExactly(headerBuf, 0, 4);
+
+            // Need at least the HGSAVEV2 header length to detect format
+            byte[] headerBuf = new byte[Hgsv2Header.Length];
+            int headerRead = 0;
+            while (headerRead < headerBuf.Length && headerRead < fs.Length)
+            {
+                int n = fs.Read(headerBuf, headerRead, (int)Math.Min(headerBuf.Length - headerRead, fs.Length - headerRead));
+                if (n <= 0) break;
+                headerRead += n;
+            }
             fs.Position = 0;
 
-            // Xbox saves can be either NMS LZ4-chunked format or single-block LZ4
-            if (IsNmsLz4Header(headerBuf))
+            // Check for HGSAVEV2 format first (post-Omega Xbox saves)
+            if (IsHgsv2Header(headerBuf, headerRead))
             {
-                // Standard NMS LZ4 format - delegate to SaveFileManager's decompression
+                return DecompressHgsv2(fs);
+            }
+
+            // Check for NMS LZ4 streaming format (0xE5A1EDFE magic)
+            if (headerRead >= 4 && IsNmsLz4Header(headerBuf))
+            {
                 return DecompressNmsLz4(fs);
             }
-            else
-            {
-                // Might be a single-block LZ4 or uncompressed
-                return ReadPlainOrSingleLz4(fs);
-            }
+
+            // Fallback: plain or single-block LZ4
+            return ReadPlainOrSingleLz4(fs);
         }
         catch
         {
@@ -408,11 +423,83 @@ public static class ContainersIndexManager
 
     private static readonly byte[] Lz4Magic = { 0xE5, 0xA1, 0xED, 0xFE };
 
+    // HGSAVEV2 header: "HGSAVEV2\0" (9 bytes), used by post-Omega Xbox/Microsoft saves
+    private static readonly byte[] Hgsv2Header = Encoding.ASCII.GetBytes("HGSAVEV2").Concat(new byte[] { 0x00 }).ToArray();
+
     private static bool IsNmsLz4Header(byte[] header)
     {
         return header.Length >= 4 &&
                header[0] == Lz4Magic[0] && header[1] == Lz4Magic[1] &&
                header[2] == Lz4Magic[2] && header[3] == Lz4Magic[3];
+    }
+
+    private static bool IsHgsv2Header(byte[] header, int length)
+    {
+        if (length < Hgsv2Header.Length) return false;
+        for (int i = 0; i < Hgsv2Header.Length; i++)
+        {
+            if (header[i] != Hgsv2Header[i]) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Decompress HGSAVEV2 format: "HGSAVEV2\0" header followed by multi-frame LZ4.
+    /// Each frame: [decompressedSize(4 LE)] [compressedSize(4 LE)] [LZ4 data].
+    /// </summary>
+    private static string DecompressHgsv2(FileStream fs)
+    {
+        var latin1 = Encoding.GetEncoding(28591);
+
+        // Skip the HGSAVEV2 header
+        fs.Position = Hgsv2Header.Length;
+
+        // First pass: calculate total decompressed size
+        int totalSize = 0;
+        long scanPos = fs.Position;
+        byte[] frameHeader = new byte[8];
+
+        while (scanPos + 8 <= fs.Length)
+        {
+            fs.Position = scanPos;
+            if (fs.Read(frameHeader, 0, 8) < 8) break;
+
+            int decompressedLen = ReadInt32LE(frameHeader, 0);
+            int compressedLen = ReadInt32LE(frameHeader, 4);
+            if (decompressedLen < 0 || compressedLen < 0 ||
+                decompressedLen > 256 * 1024 * 1024 || compressedLen > 256 * 1024 * 1024) break;
+
+            totalSize += decompressedLen;
+            scanPos += 8 + compressedLen;
+        }
+
+        // Second pass: decompress all frames
+        byte[] result = new byte[totalSize];
+        int writePos = 0;
+        fs.Position = Hgsv2Header.Length;
+
+        while (fs.Position + 8 <= fs.Length && writePos < totalSize)
+        {
+            if (fs.Read(frameHeader, 0, 8) < 8) break;
+
+            int decompressedLen = ReadInt32LE(frameHeader, 0);
+            int compressedLen = ReadInt32LE(frameHeader, 4);
+            if (decompressedLen <= 0 || compressedLen <= 0) break;
+
+            byte[] block = new byte[compressedLen];
+            int totalRead = 0;
+            while (totalRead < compressedLen)
+            {
+                int n = fs.Read(block, totalRead, compressedLen - totalRead);
+                if (n <= 0) break;
+                totalRead += n;
+            }
+
+            int decompressed = Lz4Compressor.Decompress(block, 0, totalRead, result, writePos, decompressedLen);
+            writePos += decompressed;
+        }
+
+        return latin1.GetString(result, 0, writePos);
     }
 
     private static string DecompressNmsLz4(FileStream fs)

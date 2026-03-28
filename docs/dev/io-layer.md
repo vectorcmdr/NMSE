@@ -121,6 +121,12 @@ Xbox saves use an indirection layer: `containers.index` maps slot identifiers to
 directories containing `container.{N}` files. Each blob directory holds data and meta blobs
 addressed by GUID.
 
+Blob container files are exactly **328 bytes** (128-byte UTF-16LE identifiers per entry).
+Xbox saves can use three compression formats:
+- **HGSAVEV2**: `"HGSAVEV2\0"` header + multi-frame LZ4 chunks (post-Omega)
+- **NMS LZ4 streaming**: `0xE5A1EDFE` magic per chunk (multi-block)
+- **Plain/single-block**: uncompressed or single-block LZ4
+
 `XboxSlotInfo` holds: `Identifier`, `SecondIdentifier`, `SyncTime`, `SyncState`,
 `DirectoryGuid`, `BlobDirectoryPath`, `DataFilePath`, `MetaFilePath`, `LastModified`.
 

@@ -783,4 +783,187 @@ public class PlatformIOTests
         }
         finally { Directory.Delete(tmpDir, true); }
     }
+
+    [Fact]
+    public void ContainersIndexManager_ParseBlobContainer_Resolves128ByteIdentifiers()
+    {
+        // Xbox blob container files use 128-byte UTF-16LE identifiers (not 80 bytes).
+        // The total container.N file size is 328 bytes (header 8 + 2 entries * 160).
+        // Both NMSSaveEditor.jar (gc.d() reads 128 bytes) and libNOM (BLOBCONTAINER_IDENTIFIER_LENGTH=128)
+        // confirm this format.
+        string tmpDir = Path.Combine(Path.GetTempPath(), $"nmse_test_blobcontainer_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            Guid testGuid = Guid.NewGuid();
+            string blobDir = Path.Combine(tmpDir, testGuid.ToString("N").ToUpperInvariant());
+            Directory.CreateDirectory(blobDir);
+
+            // Create data and meta blob files
+            Guid dataGuid = Guid.NewGuid();
+            Guid metaGuid = Guid.NewGuid();
+            string dataPath = Path.Combine(blobDir, dataGuid.ToString("N").ToUpperInvariant());
+            string metaPath = Path.Combine(blobDir, metaGuid.ToString("N").ToUpperInvariant());
+            File.WriteAllBytes(dataPath, new byte[] { 0x01 });
+            File.WriteAllBytes(metaPath, new byte[] { 0x02 });
+
+            // Build a valid 328-byte container.1 file with 128-byte identifiers
+            byte[] containerBytes = new byte[328];
+            using (var ms = new MemoryStream(containerBytes))
+            using (var w = new BinaryWriter(ms))
+            {
+                w.Write(4);  // header
+                w.Write(2);  // count
+
+                // "data" entry: 128 bytes identifier + 16 cloud GUID + 16 local GUID
+                byte[] dataId = Encoding.Unicode.GetBytes("data");
+                w.Write(dataId);
+                ms.Position = 8 + 128; // skip to end of 128-byte identifier
+                w.Write(new byte[16]); // cloud GUID (zeros)
+                w.Write(dataGuid.ToByteArray()); // local GUID
+
+                // "meta" entry: 128 bytes identifier + 16 cloud GUID + 16 local GUID
+                byte[] metaId = Encoding.Unicode.GetBytes("meta");
+                w.Write(metaId);
+                ms.Position = 8 + 160 + 128; // skip to end of second 128-byte identifier
+                w.Write(new byte[16]); // cloud GUID (zeros)
+                w.Write(metaGuid.ToByteArray()); // local GUID
+            }
+            File.WriteAllBytes(Path.Combine(blobDir, "container.1"), containerBytes);
+
+            // Build a minimal valid containers.index
+            using var indexMs = new MemoryStream();
+            using var indexW = new BinaryWriter(indexMs);
+            indexW.Write(14);         // header
+            indexW.Write(1L);         // count
+            indexW.Write(0);          // processIdentifier (empty)
+            indexW.Write(0L);         // lastModifiedTime
+            indexW.Write(0);          // syncState
+            indexW.Write(0);          // accountGuid (empty)
+            indexW.Write(268435456L); // footer
+
+            // entry: Slot1Auto
+            string id = "Slot1Auto";
+            indexW.Write(id.Length);
+            indexW.Write(Encoding.Unicode.GetBytes(id));
+            indexW.Write(0);   // identifier2
+            indexW.Write(0);   // syncTime
+            indexW.Write((byte)1); // blob extension
+            indexW.Write(0);       // sync state
+            indexW.Write(testGuid.ToByteArray());
+            indexW.Write(0L);      // last modified
+            indexW.Write(0L);      // empty
+            indexW.Write(0L);      // total size
+            while (indexMs.Position < 200) indexW.Write((byte)0);
+
+            string indexPath = Path.Combine(tmpDir, "containers.index");
+            File.WriteAllBytes(indexPath, indexMs.ToArray());
+
+            var slots = ContainersIndexManager.ParseContainersIndex(indexPath);
+
+            Assert.True(slots.ContainsKey("Slot1Auto"));
+            var slot = slots["Slot1Auto"];
+            Assert.NotNull(slot.DataFilePath);
+            Assert.NotNull(slot.MetaFilePath);
+            Assert.True(File.Exists(slot.DataFilePath), "DataFilePath should point to existing file");
+            Assert.True(File.Exists(slot.MetaFilePath), "MetaFilePath should point to existing file");
+            Assert.Equal(dataPath, slot.DataFilePath);
+            Assert.Equal(metaPath, slot.MetaFilePath);
+        }
+        finally { Directory.Delete(tmpDir, true); }
+    }
+
+    [Fact]
+    public void ContainersIndexManager_WriteBlobContainer_Creates328ByteFile()
+    {
+        // Verify that WriteBlobContainer creates a file that's exactly 328 bytes
+        // with proper 128-byte identifier padding.
+        string tmpDir = Path.Combine(Path.GetTempPath(), $"nmse_test_write_blob_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            Guid dataGuid = Guid.NewGuid();
+            Guid metaGuid = Guid.NewGuid();
+
+            var slotInfo = new XboxSlotInfo
+            {
+                BlobDirectoryPath = tmpDir,
+                BlobContainerExtension = 0,
+            };
+
+            // Create dummy data/meta files
+            File.WriteAllBytes(Path.Combine(tmpDir, dataGuid.ToString("N").ToUpperInvariant()), new byte[] { 1 });
+            File.WriteAllBytes(Path.Combine(tmpDir, metaGuid.ToString("N").ToUpperInvariant()), new byte[] { 2 });
+
+            // Write the blob container (calls the private WriteBlobContainer indirectly via WriteXboxSave)
+            ContainersIndexManager.WriteXboxSave(slotInfo, new byte[] { 0xAA }, new byte[] { 0xBB });
+
+            // Find the created container file
+            string[] containerFiles = Directory.GetFiles(tmpDir, "container.*");
+            Assert.Single(containerFiles);
+
+            byte[] bytes = File.ReadAllBytes(containerFiles[0]);
+            Assert.Equal(328, bytes.Length);
+
+            // Verify header
+            int header = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+            Assert.Equal(4, header);
+
+            // Verify count
+            int count = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
+            Assert.Equal(2, count);
+
+            // Verify "data" identifier at offset 8 (first 8 bytes are UTF-16LE "data")
+            string dataId = Encoding.Unicode.GetString(bytes, 8, 8);
+            Assert.Equal("data", dataId);
+
+            // Verify "meta" identifier at offset 168 (8 + 128 + 32)
+            string metaId = Encoding.Unicode.GetString(bytes, 168, 8);
+            Assert.Equal("meta", metaId);
+        }
+        finally { Directory.Delete(tmpDir, true); }
+    }
+
+    [Fact]
+    public void ContainersIndexManager_LoadXboxSave_HandlesHgsv2Format()
+    {
+        // Verify that HGSAVEV2 format saves can be loaded.
+        // HGSAVEV2 format: "HGSAVEV2\0" + N frames of [decompressedLen(4)][compressedLen(4)][LZ4 data]
+        string tmpDir = Path.Combine(Path.GetTempPath(), $"nmse_test_hgsv2_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            // Create a simple JSON string to compress
+            string json = "{\"Test\":true}";
+            byte[] jsonBytes = Encoding.GetEncoding(28591).GetBytes(json);
+
+            // LZ4 compress the JSON
+            byte[] compressed = new byte[Lz4Compressor.MaxCompressedLength(jsonBytes.Length)];
+            int compressedLen = Lz4Compressor.Compress(jsonBytes, 0, jsonBytes.Length, compressed, 0, compressed.Length);
+
+            // Build HGSAVEV2 file
+            using var ms = new MemoryStream();
+            ms.Write(Encoding.ASCII.GetBytes("HGSAVEV2"));
+            ms.WriteByte(0); // null terminator
+            // Frame header: decompressed size + compressed size (LE)
+            ms.Write(BitConverter.GetBytes(jsonBytes.Length));
+            ms.Write(BitConverter.GetBytes(compressedLen));
+            ms.Write(compressed, 0, compressedLen);
+
+            Guid dataGuid = Guid.NewGuid();
+            string dataPath = Path.Combine(tmpDir, dataGuid.ToString("N").ToUpperInvariant());
+            File.WriteAllBytes(dataPath, ms.ToArray());
+
+            var slotInfo = new XboxSlotInfo
+            {
+                DataFilePath = dataPath,
+                BlobDirectoryPath = tmpDir,
+            };
+
+            string? result = ContainersIndexManager.LoadXboxSave(slotInfo);
+            Assert.NotNull(result);
+            Assert.Equal(json, result);
+        }
+        finally { Directory.Delete(tmpDir, true); }
+    }
 }
