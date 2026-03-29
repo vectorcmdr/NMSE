@@ -452,27 +452,138 @@ public class LogicTests
     public void StarshipLogic_FindCorvetteBaseIndex_RealSaveScenario_DriftedTS()
     {
         // Simulates the real save scenario where ship seeds and base TS values drift by 1 second:
-        //   Ship "USCSS Abraxas"  seed 0x68B31258 = 1756566104 → Base TS 1756566104 (exact)
-        //   Ship "USCSS Solomon"  seed 0x68F8EF8D = 1761144717 → Base TS 1761144718 (off by 1)
-        //   Ship "The Bebop"      seed 0x68BA4883 = 1757038723 → Base TS 1757038724 (off by 1)
+        //   Ship 7 "USCSS Abraxas"  seed 0x68B31258 = 1756566104 -> Base TS 1756566104 (exact)
+        //   Ship 8 "USCSS Solomon"  seed 0x68F8EF8D = 1761144717 -> Base TS 1761144718 (off by 1)
+        //   Ship 5 "The Bebop"      seed 0x68BA4883 = 1757038723 -> Base TS 1757038724 (off by 1)
+        // The bases also carry UserData matching the ShipOwnership index.
         var json = JsonObject.Parse(@"{
             ""Bases"": [
-                { ""Owner"": { ""TS"": 999 }, ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" } },
-                { ""Owner"": { ""TS"": 1756566104 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" } },
-                { ""Owner"": { ""TS"": 1761144718 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" } },
-                { ""Owner"": { ""TS"": 1757038724 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" } }
+                { ""Owner"": { ""TS"": 999 }, ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }, ""UserData"": 0 },
+                { ""Owner"": { ""TS"": 1756566104 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 7 },
+                { ""Owner"": { ""TS"": 1761144718 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 8 },
+                { ""Owner"": { ""TS"": 1757038724 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 5 }
             ]
         }");
         var bases = json.GetArray("Bases")!;
 
-        // Exact match for Abraxas
+        // UserData-based matching (primary strategy)
+        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 7, 1756566104));
+        Assert.Equal(2, StarshipLogic.FindCorvetteBaseIndex(bases, 8, 1761144717));
+        Assert.Equal(3, StarshipLogic.FindCorvetteBaseIndex(bases, 5, 1757038723));
+
+        // TS fallback still works when shipIndex is -1
         Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104));
-
-        // Drift-by-1 match for Solomon (seed 1761144717, TS 1761144718)
         Assert.Equal(2, StarshipLogic.FindCorvetteBaseIndex(bases, 1761144717));
-
-        // Drift-by-1 match for The Bebop (seed 1757038723, TS 1757038724)
         Assert.Equal(3, StarshipLogic.FindCorvetteBaseIndex(bases, 1757038723));
+    }
+
+    [Fact]
+    public void StarshipLogic_FindCorvetteBaseIndex_UserDataMatchPreferred()
+    {
+        // When both UserData and TS could match different bases, UserData wins.
+        var json = JsonObject.Parse(@"{
+            ""Bases"": [
+                { ""Owner"": { ""TS"": 1756566104 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 99 },
+                { ""Owner"": { ""TS"": 999 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 5 }
+            ]
+        }");
+        var bases = json.GetArray("Bases")!;
+
+        // Ship index 5 matches base 1 by UserData, even though base 0 has exact TS match
+        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 5, 1756566104));
+    }
+
+    [Fact]
+    public void StarshipLogic_GetPartPriority_IdentifiesCategories()
+    {
+        // Priority map lookup (no prefix fallback needed)
+        StarshipDatabase.Clear();
+
+        // Reactor (priority 1)
+        Assert.Equal(1, StarshipLogic.GetPartPriority("^B_GEN_0"));
+        Assert.Equal(1, StarshipLogic.GetPartPriority("^B_GEN_1"));
+
+        // Thruster (priority 2)
+        Assert.Equal(2, StarshipLogic.GetPartPriority("^B_TRU_C"));
+
+        // Landing Gear (priority 4)
+        Assert.Equal(4, StarshipLogic.GetPartPriority("^B_LND_A"));
+
+        // Landing Bay (priority 5)
+        Assert.Equal(5, StarshipLogic.GetPartPriority("^B_ALK_B"));
+
+        // Cockpit (priority 6)
+        Assert.Equal(6, StarshipLogic.GetPartPriority("^B_COK_A"));
+
+        // Shield is NOT in priority map — goes to OtherPriority
+        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^B_SHL_A"));
+
+        // Other (non-functional or not in priority map)
+        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^BUILDTABLE2"));
+        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^B_HAB_C"));
+        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^U_PARAGON"));
+        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority(""));
+    }
+
+    [Fact]
+    public void StarshipLogic_ReorderBuildingObjects_SortsByCategoryPriority()
+    {
+        // Load database for correct categorisation
+        LoadCorvetteDatabase();
+
+        // Create objects in scrambled order to verify reorder puts them in correct priority.
+        // Priority map: Reactor(1) -> Thruster(2) -> Wing(3) -> Gear(4) -> Access(5) -> Cockpit(6) -> Other
+        // B_STR_B_NE (Hull) and B_WNG_E (not in priority map) are NOT sorted — they go to Other group.
+        var json = JsonObject.Parse(@"{
+            ""Objects"": [
+                { ""ObjectID"": ""^BUILDTABLE2"", ""UserData"": 1 },
+                { ""ObjectID"": ""^B_COK_A"", ""UserData"": 2 },
+                { ""ObjectID"": ""^B_ALK_B"", ""UserData"": 3 },
+                { ""ObjectID"": ""^B_LND_A"", ""UserData"": 4 },
+                { ""ObjectID"": ""^B_STR_B_NE"", ""UserData"": 5 },
+                { ""ObjectID"": ""^B_TRU_C"", ""UserData"": 6 },
+                { ""ObjectID"": ""^B_GEN_1"", ""UserData"": 7 },
+                { ""ObjectID"": ""^B_WNG_E"", ""UserData"": 8 }
+            ]
+        }");
+        var objects = json.GetArray("Objects")!;
+        int result = StarshipLogic.ReorderBuildingObjects(objects);
+        Assert.Equal(8, result);
+
+        // Verify order: Reactor (B_GEN_1), Thruster (B_TRU_C), Gear (B_LND_A),
+        // Access (B_ALK_B), Cockpit (B_COK_A),
+        // Other group sorted alphabetically by object list display name:
+        //   "Hexagonal Table" (BUILDTABLE2) < "Osprey Wing Module (E)" (B_WNG_E) < "Supercruise Aerofoil (Ne)" (B_STR_B_NE)
+        Assert.Equal("^B_GEN_1", objects.GetObject(0).GetString("ObjectID"));     // Reactor (1)
+        Assert.Equal("^B_TRU_C", objects.GetObject(1).GetString("ObjectID"));     // Thruster (2)
+        Assert.Equal("^B_LND_A", objects.GetObject(2).GetString("ObjectID"));     // Gear (4)
+        Assert.Equal("^B_ALK_B", objects.GetObject(3).GetString("ObjectID"));     // Access (5)
+        Assert.Equal("^B_COK_A", objects.GetObject(4).GetString("ObjectID"));     // Cockpit (6)
+        Assert.Equal("^BUILDTABLE2", objects.GetObject(5).GetString("ObjectID")); // "Hexagonal Table"
+        Assert.Equal("^B_WNG_E", objects.GetObject(6).GetString("ObjectID"));     // "Osprey Wing Module (E)"
+        Assert.Equal("^B_STR_B_NE", objects.GetObject(7).GetString("ObjectID"));  // "Supercruise Aerofoil (Ne)"
+    }
+
+    [Fact]
+    public void StarshipLogic_ReorderBuildingObjects_PreservesRelativeOrderWithinCategory()
+    {
+        // Two cockpits and two landing bays - their relative order must be preserved.
+        var json = JsonObject.Parse(@"{
+            ""Objects"": [
+                { ""ObjectID"": ""^B_COK_A"", ""UserData"": 1 },
+                { ""ObjectID"": ""^B_ALK_C"", ""UserData"": 2 },
+                { ""ObjectID"": ""^B_COK_D"", ""UserData"": 3 },
+                { ""ObjectID"": ""^B_ALK_B"", ""UserData"": 4 }
+            ]
+        }");
+        var objects = json.GetArray("Objects")!;
+        StarshipLogic.ReorderBuildingObjects(objects);
+
+        // Landing bays come before cockpits, relative order within each is preserved
+        Assert.Equal("^B_ALK_C", objects.GetObject(0).GetString("ObjectID"));
+        Assert.Equal("^B_ALK_B", objects.GetObject(1).GetString("ObjectID"));
+        Assert.Equal("^B_COK_A", objects.GetObject(2).GetString("ObjectID"));
+        Assert.Equal("^B_COK_D", objects.GetObject(3).GetString("ObjectID"));
     }
 
     [Fact]
@@ -2301,7 +2412,7 @@ public class LogicTests
     }
 
     [Fact]
-    public void CatalogueLogic_LoadKnownItemIds_LoadsList()
+    public void CatalogueLogic_LoadKnownItemIds_StripsCaretPrefix()
     {
         var json = JsonObject.Parse(@"{
             ""KnownTech"": [""^FUEL1"", ""^ANTIMATTER"", ""^HYPERDRIVE""]
@@ -2309,23 +2420,64 @@ public class LogicTests
 
         var ids = CatalogueLogic.LoadKnownItemIds(json, "KnownTech");
         Assert.Equal(3, ids.Count);
-        Assert.Contains("^FUEL1", ids);
-        Assert.Contains("^ANTIMATTER", ids);
+        // Caret prefix is stripped so IDs match the game item database
+        Assert.Contains("FUEL1", ids);
+        Assert.Contains("ANTIMATTER", ids);
+        Assert.Contains("HYPERDRIVE", ids);
     }
 
     [Fact]
-    public void CatalogueLogic_SaveKnownItemIds_SavesList()
+    public void CatalogueLogic_SaveKnownItemIds_AddsCaretPrefix()
     {
         var json = JsonObject.Parse(@"{ ""KnownTech"": [] }");
-        var ids = new List<string> { "^A", "^B", "^C" };
+        // IDs without ^-prefix (as they come from the database / grid)
+        var ids = new List<string> { "A", "B", "C" };
 
         CatalogueLogic.SaveKnownItemIds(json, "KnownTech", ids);
 
+        // Verify the raw JSON array has ^-prefixed values
+        var arr = json.GetArray("KnownTech")!;
+        Assert.Equal("^A", arr.GetString(0));
+        Assert.Equal("^B", arr.GetString(1));
+        Assert.Equal("^C", arr.GetString(2));
+
+        // And round-trip back through Load strips the prefix again
         var loaded = CatalogueLogic.LoadKnownItemIds(json, "KnownTech");
         Assert.Equal(3, loaded.Count);
-        Assert.Equal("^A", loaded[0]);
-        Assert.Equal("^B", loaded[1]);
-        Assert.Equal("^C", loaded[2]);
+        Assert.Equal("A", loaded[0]);
+        Assert.Equal("B", loaded[1]);
+        Assert.Equal("C", loaded[2]);
+    }
+
+    [Fact]
+    public void CatalogueLogic_SaveKnownItemIds_DoesNotDoublePrefix()
+    {
+        var json = JsonObject.Parse(@"{ ""KnownTech"": [] }");
+        // IDs already with ^-prefix should not get double-prefixed
+        var ids = new List<string> { "^X", "^Y" };
+
+        CatalogueLogic.SaveKnownItemIds(json, "KnownTech", ids);
+
+        var arr = json.GetArray("KnownTech")!;
+        Assert.Equal("^X", arr.GetString(0));
+        Assert.Equal("^Y", arr.GetString(1));
+    }
+
+    [Fact]
+    public void CatalogueLogic_StripCaretPrefix_Works()
+    {
+        Assert.Equal("LASER", CatalogueLogic.StripCaretPrefix("^LASER"));
+        Assert.Equal("LASER", CatalogueLogic.StripCaretPrefix("LASER"));
+        Assert.Equal("^", CatalogueLogic.StripCaretPrefix("^")); // single ^ stays as-is (length 1)
+        Assert.Equal("", CatalogueLogic.StripCaretPrefix(""));
+    }
+
+    [Fact]
+    public void CatalogueLogic_EnsureCaretPrefix_Works()
+    {
+        Assert.Equal("^LASER", CatalogueLogic.EnsureCaretPrefix("LASER"));
+        Assert.Equal("^LASER", CatalogueLogic.EnsureCaretPrefix("^LASER"));
+        Assert.Equal("", CatalogueLogic.EnsureCaretPrefix("")); // empty stays empty
     }
 
     [Fact]
@@ -3160,6 +3312,53 @@ public class LogicTests
         Assert.Equal(20, obj.Length);
         for (int i = 0; i < 20; i++)
             Assert.Equal(i, obj.GetInt($"key{i}"));
+    }
+
+    [Fact]
+    public void JsonObject_Reorder_MovesForward()
+    {
+        var obj = new JsonObject();
+        obj.Add("a", 1);
+        obj.Add("b", 2);
+        obj.Add("c", 3);
+        obj.Add("d", 4);
+        // Move 'a' (index 0) to index 2
+        obj.Reorder(0, 2);
+        var names = obj.Names();
+        Assert.Equal("b", names[0]);
+        Assert.Equal("c", names[1]);
+        Assert.Equal("a", names[2]);
+        Assert.Equal("d", names[3]);
+        Assert.Equal(1, obj.GetInt("a"));
+    }
+
+    [Fact]
+    public void JsonObject_Reorder_MovesBackward()
+    {
+        var obj = new JsonObject();
+        obj.Add("a", 1);
+        obj.Add("b", 2);
+        obj.Add("c", 3);
+        obj.Add("d", 4);
+        // Move 'd' (index 3) to index 1
+        obj.Reorder(3, 1);
+        var names = obj.Names();
+        Assert.Equal("a", names[0]);
+        Assert.Equal("d", names[1]);
+        Assert.Equal("b", names[2]);
+        Assert.Equal("c", names[3]);
+        Assert.Equal(4, obj.GetInt("d"));
+    }
+
+    [Fact]
+    public void JsonObject_Reorder_SameIndex_NoOp()
+    {
+        var obj = new JsonObject();
+        obj.Add("a", 1);
+        obj.Add("b", 2);
+        obj.Reorder(0, 0);
+        Assert.Equal("a", obj.Names()[0]);
+        Assert.Equal("b", obj.Names()[1]);
     }
 
     [Fact]
@@ -4812,6 +5011,345 @@ public class LogicTests
         Assert.Contains("hello", formatted);
         // Formatted output should contain newlines/indentation
         Assert.Contains("\n", formatted);
+    }
+
+    // --- RawJsonLogic: FormatValueForEdit (no quotes for strings) ---
+
+    [Fact]
+    public void RawJsonLogic_FormatValueForEdit_StringWithoutQuotes()
+    {
+        // FormatValueForEdit should return raw string without surrounding quotes
+        string result = RawJsonLogic.FormatValueForEdit("^MIRROR");
+        Assert.Equal("^MIRROR", result);
+        Assert.False(result.StartsWith('"'));
+        Assert.False(result.EndsWith('"'));
+    }
+
+    [Fact]
+    public void RawJsonLogic_FormatValueForEdit_NullReturnsNull()
+    {
+        Assert.Equal("null", RawJsonLogic.FormatValueForEdit(null));
+    }
+
+    [Fact]
+    public void RawJsonLogic_FormatValueForEdit_BoolReturnsLowercase()
+    {
+        Assert.Equal("true", RawJsonLogic.FormatValueForEdit(true));
+        Assert.Equal("false", RawJsonLogic.FormatValueForEdit(false));
+    }
+
+    [Fact]
+    public void RawJsonLogic_FormatValueForEdit_NumberReturnsPlain()
+    {
+        Assert.Equal("42", RawJsonLogic.FormatValueForEdit(42));
+        Assert.Equal("3.14", RawJsonLogic.FormatValueForEdit(3.14));
+    }
+
+    // --- RawJsonLogic: ParseInputValue type preservation ---
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_StringOriginal_PreservesType()
+    {
+        // When original value is a string, the result should always be a string
+        Assert.IsType<string>(RawJsonLogic.ParseInputValue("true", "original"));
+        Assert.Equal("true", RawJsonLogic.ParseInputValue("true", "original"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_StringOriginal_PreservesNumericString()
+    {
+        // A numeric string like "42" should stay as string "42", not become int 42
+        Assert.IsType<string>(RawJsonLogic.ParseInputValue("42", "original"));
+        Assert.Equal("42", RawJsonLogic.ParseInputValue("42", "original"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_StringOriginal_PreservesNullString()
+    {
+        // A string value "null" should stay as string "null", not become null
+        Assert.IsType<string>(RawJsonLogic.ParseInputValue("null", "original"));
+        Assert.Equal("null", RawJsonLogic.ParseInputValue("null", "original"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_IntOriginal_ParsesNumber()
+    {
+        // When original is not a string, normal parsing applies
+        object? result = RawJsonLogic.ParseInputValue("42", 0);
+        Assert.Equal(42L, result);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_BoolOriginal_ParsesBool()
+    {
+        object? result = RawJsonLogic.ParseInputValue("true", false);
+        Assert.IsType<bool>(result);
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_NullOriginal_ParsesNull()
+    {
+        Assert.Null(RawJsonLogic.ParseInputValue("null", 0));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseInputValue_NewValue_ParsesTypes()
+    {
+        // Overload without originalValue should infer types
+        Assert.Null(RawJsonLogic.ParseInputValue("null"));
+        Assert.Equal(true, RawJsonLogic.ParseInputValue("true"));
+        Assert.Equal(false, RawJsonLogic.ParseInputValue("false"));
+        Assert.Equal(42L, RawJsonLogic.ParseInputValue("42"));
+        Assert.Equal("hello", RawJsonLogic.ParseInputValue("hello"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_StringEdit_RoundTrip()
+    {
+        // Simulate editing "^MIRROR" to "B_WNG_R" via FormatValueForEdit → ParseInputValue
+        string originalValue = "^MIRROR";
+        string editDisplayed = RawJsonLogic.FormatValueForEdit(originalValue);
+        Assert.Equal("^MIRROR", editDisplayed); // No quotes shown
+
+        // User types new value directly
+        object? result = RawJsonLogic.ParseInputValue("B_WNG_R", originalValue);
+        Assert.IsType<string>(result);
+        Assert.Equal("B_WNG_R", result);
+    }
+
+    // --- RawJsonLogic: ComputeSimpleDiff ---
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_IdenticalInputs_ReturnsNoChanges()
+    {
+        string json = "{\n  \"key\": \"value\"\n}";
+        string result = RawJsonLogic.ComputeSimpleDiff(json, json);
+        Assert.Equal("No changes detected.", result);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_AddedLine_ShowsPlusPrefix()
+    {
+        string original = "{\n  \"a\": 1\n}";
+        string modified = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+        string diff = RawJsonLogic.ComputeSimpleDiff(original, modified);
+        Assert.Contains("+ ", diff);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_RemovedLine_ShowsMinusPrefix()
+    {
+        string original = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+        string modified = "{\n  \"a\": 1\n}";
+        string diff = RawJsonLogic.ComputeSimpleDiff(original, modified);
+        Assert.Contains("- ", diff);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_UnchangedLines_ShowsDoubleSpacePrefix()
+    {
+        string original = "{\n  \"a\": 1\n}";
+        string modified = "{\n  \"a\": 2\n}";
+        string diff = RawJsonLogic.ComputeSimpleDiff(original, modified);
+        // The braces { and } should be unchanged
+        Assert.Contains("  {", diff);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_ChangedValue_ShowsBothOldAndNew()
+    {
+        var original = new JsonObject();
+        original.Add("name", "old");
+        var modified = new JsonObject();
+        modified.Add("name", "new");
+        string diff = RawJsonLogic.ComputeSimpleDiff(
+            RawJsonLogic.ToDisplayString(original),
+            RawJsonLogic.ToDisplayString(modified));
+        Assert.Contains("-", diff);
+        Assert.Contains("+", diff);
+    }
+
+    // --- RawJsonLogic: ComputeCompactDiff ---
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_IdenticalInputs_ReturnsEmptyList()
+    {
+        string json = "{\n  \"key\": \"value\"\n}";
+        var result = RawJsonLogic.ComputeCompactDiff(json, json);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_AddedLine_ShowsAddedType()
+    {
+        string original = "{\n  \"a\": 1\n}";
+        string modified = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+        Assert.Contains(result, dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_RemovedLine_ShowsRemovedType()
+    {
+        string original = "{\n  \"a\": 1,\n  \"b\": 2\n}";
+        string modified = "{\n  \"a\": 1\n}";
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+        Assert.Contains(result, dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_LargeUnchangedRegion_CollapsedWithSeparator()
+    {
+        // Build two documents with a large unchanged region between two changes
+        var sbOld = new System.Text.StringBuilder();
+        var sbNew = new System.Text.StringBuilder();
+        sbOld.AppendLine("CHANGED_OLD_START");
+        sbNew.AppendLine("CHANGED_NEW_START");
+        for (int i = 0; i < 50; i++)
+        {
+            sbOld.AppendLine($"  unchanged line {i}");
+            sbNew.AppendLine($"  unchanged line {i}");
+        }
+        sbOld.AppendLine("CHANGED_OLD_END");
+        sbNew.AppendLine("CHANGED_NEW_END");
+
+        var result = RawJsonLogic.ComputeCompactDiff(sbOld.ToString(), sbNew.ToString(), contextLines: 3);
+
+        // Should have a separator in the middle (the 50 unchanged lines are collapsed)
+        Assert.Contains(result, dl => dl.Type == RawJsonLogic.DiffLineType.Separator);
+
+        // The total lines should be much less than 50 + 4 changes
+        // (3 context before + separator + 3 context after = ~10 lines vs 54)
+        int totalLines = result.Count;
+        Assert.True(totalLines < 20, $"Expected compact output, got {totalLines} lines");
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_ContextLinesPreserved()
+    {
+        // Build: changed line, then 10 unchanged, then changed line
+        var sbOld = new System.Text.StringBuilder();
+        var sbNew = new System.Text.StringBuilder();
+        sbOld.AppendLine("OLD_FIRST");
+        sbNew.AppendLine("NEW_FIRST");
+        for (int i = 0; i < 10; i++)
+        {
+            sbOld.AppendLine($"  same {i}");
+            sbNew.AppendLine($"  same {i}");
+        }
+        sbOld.AppendLine("OLD_LAST");
+        sbNew.AppendLine("NEW_LAST");
+
+        var result = RawJsonLogic.ComputeCompactDiff(sbOld.ToString(), sbNew.ToString(), contextLines: 2);
+
+        // Context lines near the changes should be preserved
+        var contextLines = result.Where(dl => dl.Type == RawJsonLogic.DiffLineType.Context).ToList();
+        Assert.True(contextLines.Count >= 2, $"Expected at least 2 context lines, got {contextLines.Count}");
+    }
+
+    [Fact]
+    public void RawJsonLogic_CollapseContext_NoChanges_ReturnsEmpty()
+    {
+        // All context lines with no changes → should collapse to nothing
+        var raw = new List<(RawJsonLogic.DiffLineType, string)>
+        {
+            (RawJsonLogic.DiffLineType.Context, "line1"),
+            (RawJsonLogic.DiffLineType.Context, "line2"),
+            (RawJsonLogic.DiffLineType.Context, "line3"),
+        };
+        var result = RawJsonLogic.CollapseContext(raw, 1);
+        // No changes, so everything is far from a change — should be empty or just a separator
+        Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+        Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
+    }
+
+    // --- RawJsonLogic: Myers diff correctness (duplicate JSON lines) ---
+
+    [Fact]
+    public void RawJsonLogic_ComputeSimpleDiff_DuplicateJsonLines_MinimalDiff()
+    {
+        // This test reproduces the bug where changing a single value in a JSON array
+        // with duplicate structures (like {, }, ],) caused large phantom add/remove blocks
+        string original = "{\n  \"Array\": [\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    }\n  ]\n}";
+        string modified = "{\n  \"Array\": [\n    {\n      \"Value\": 1\n    },\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    }\n  ]\n}";
+
+        string diff = RawJsonLogic.ComputeSimpleDiff(original, modified);
+
+        // Should have exactly 1 removed and 1 added line (the changed value)
+        var lines = diff.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        int addedCount = lines.Count(l => l.StartsWith("+ "));
+        int removedCount = lines.Count(l => l.StartsWith("- "));
+
+        Assert.Equal(1, addedCount);
+        Assert.Equal(1, removedCount);
+        Assert.Contains("-       \"Value\": 5", diff);
+        Assert.Contains("+       \"Value\": 1", diff);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_DuplicateJsonLines_MinimalDiff()
+    {
+        // Same scenario but via ComputeCompactDiff
+        string original = "{\n  \"Array\": [\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    }\n  ]\n}";
+        string modified = "{\n  \"Array\": [\n    {\n      \"Value\": 1\n    },\n    {\n      \"Value\": 5\n    },\n    {\n      \"Value\": 5\n    }\n  ]\n}";
+
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+
+        int addedCount = result.Count(dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+        int removedCount = result.Count(dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
+
+        Assert.Equal(1, addedCount);
+        Assert.Equal(1, removedCount);
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_NestedDuplicateStructures_MinimalDiff()
+    {
+        // Deep JSON nesting with many duplicate closing braces
+        string original = "{\n  \"PlayerStateData\": {\n    \"Records\": [\n      {\n        \"StatValue\": 0,\n        \"Name\": \"a\"\n      },\n      {\n        \"StatValue\": 0,\n        \"Name\": \"b\"\n      }\n    ]\n  }\n}";
+        string modified = "{\n  \"PlayerStateData\": {\n    \"Records\": [\n      {\n        \"StatValue\": 1,\n        \"Name\": \"a\"\n      },\n      {\n        \"StatValue\": 0,\n        \"Name\": \"b\"\n      }\n    ]\n  }\n}";
+
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+
+        int addedCount = result.Count(dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+        int removedCount = result.Count(dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
+
+        // Only the "StatValue": 0 → "StatValue": 1 change
+        Assert.Equal(1, addedCount);
+        Assert.Equal(1, removedCount);
+        Assert.Contains(result, dl => dl.Type == RawJsonLogic.DiffLineType.Added && dl.Text.Contains("\"StatValue\": 1"));
+        Assert.Contains(result, dl => dl.Type == RawJsonLogic.DiffLineType.Removed && dl.Text.Contains("\"StatValue\": 0"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeRawDiff_EmptyOld_AllAdded()
+    {
+        var result = RawJsonLogic.ComputeRawDiff([], ["a", "b", "c"]);
+        Assert.Equal(3, result.Count);
+        Assert.All(result, dl => Assert.Equal(RawJsonLogic.DiffLineType.Added, dl.Type));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeRawDiff_EmptyNew_AllRemoved()
+    {
+        var result = RawJsonLogic.ComputeRawDiff(["a", "b", "c"], []);
+        Assert.Equal(3, result.Count);
+        Assert.All(result, dl => Assert.Equal(RawJsonLogic.DiffLineType.Removed, dl.Type));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ComputeRawDiff_SingleLineChange_CorrectDiff()
+    {
+        var result = RawJsonLogic.ComputeRawDiff(["a", "b", "c"], ["a", "x", "c"]);
+
+        Assert.Equal(4, result.Count); // a(ctx), -b, +x, c(ctx)
+        Assert.Equal(RawJsonLogic.DiffLineType.Context, result[0].Type);
+        Assert.Equal(RawJsonLogic.DiffLineType.Removed, result[1].Type);
+        Assert.Equal("b", result[1].Text);
+        Assert.Equal(RawJsonLogic.DiffLineType.Added, result[2].Type);
+        Assert.Equal("x", result[2].Text);
+        Assert.Equal(RawJsonLogic.DiffLineType.Context, result[3].Type);
     }
 
     // --- Settlement Production Filtering ---
@@ -8084,5 +8622,417 @@ public class LogicTests
         {
             Assert.Equal(testValues[i], buildArr.GetInt(i));
         }
+    }
+
+    // --- End-to-end corvette verification against reference save ---
+
+    /// <summary>
+    /// Locates a reference path by walking up from the test output directory.
+    /// </summary>
+    private static string? FindRefPath(params string[] parts)
+    {
+        var dir = AppDomain.CurrentDomain.BaseDirectory;
+        for (int i = 0; i < 10; i++)
+        {
+            var candidate = Path.Combine(new[] { dir }.Concat(parts).ToArray());
+            if (File.Exists(candidate) || Directory.Exists(candidate)) return candidate;
+            var parent = Directory.GetParent(dir);
+            if (parent == null) break;
+            dir = parent.FullName;
+        }
+        return null;
+    }
+
+    private static bool _mapperLoaded;
+    private static readonly object _mapperLock = new();
+
+    private static void EnsureMapperLoaded()
+    {
+        if (_mapperLoaded) return;
+        lock (_mapperLock)
+        {
+            if (_mapperLoaded) return;
+            var mapperPath = FindRefPath("Resources", "map", "mapping.json");
+            if (mapperPath == null) return;
+            var mapper = new JsonNameMapper();
+            mapper.Load(mapperPath);
+            JsonParser.SetDefaultMapper(mapper);
+            _mapperLoaded = true;
+        }
+    }
+
+    private static bool _corvDbLoaded;
+    private static readonly object _corvDbLock = new();
+
+    /// <summary>
+    /// Loads the Corvette.json database into <see cref="StarshipDatabase"/> for tests
+    /// that rely on data-driven part categorisation.
+    /// </summary>
+    private static void LoadCorvetteDatabase()
+    {
+        // Check actual state (another test class may have called Clear())
+        if (_corvDbLoaded && StarshipDatabase.IsLoaded) return;
+        lock (_corvDbLock)
+        {
+            if (_corvDbLoaded && StarshipDatabase.IsLoaded) return;
+            var jsonDir = FindResourceJsonDir();
+            if (jsonDir == null) return;
+            var db = new GameItemDatabase();
+            db.LoadItemsFromJsonDirectory(jsonDir);
+            StarshipDatabase.LoadFromDatabase(db);
+            _corvDbLoaded = true;
+        }
+    }
+
+    [Fact]
+    public void CorvetteE2E_ReferenceSave_FindsAll3CorvetteBases()
+    {
+        // Load the reference save and verify FindCorvetteBaseIndex correctly pairs
+        // all 3 corvettes to their bases via UserData matching.
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        if (savePath == null) return; // skip if reference save not available
+
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        Assert.NotNull(psd);
+
+        var shipOwnership = psd!.GetArray("ShipOwnership");
+        var bases = psd.GetArray("PersistentPlayerBases");
+        Assert.NotNull(shipOwnership);
+        Assert.NotNull(bases);
+
+        // The reference save has 3 corvettes at ship indices 5, 7, 8:
+        // Ship 5 = "The Bebop" (seed 0x68BA4883) -> Base with UserData=5
+        // Ship 7 = "USCSS Abraxas" (seed 0x68B31258) -> Base with UserData=7
+        // Ship 8 = "USCSS Solomon" (seed 0x68F8EF8D) -> Base with UserData=8
+        var corvettes = new[]
+        {
+            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883", expectedUserData: 5),
+            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258", expectedUserData: 7),
+            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D", expectedUserData: 8),
+        };
+
+        foreach (var (shipIndex, name, seedHex, expectedUserData) in corvettes)
+        {
+            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
+            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex, seedDecimal);
+
+            Assert.True(baseIdx >= 0, $"FindCorvetteBaseIndex failed for ship '{name}' (index={shipIndex}, seed={seedHex})");
+
+            // Verify the matched base has the correct UserData
+            var matchedBase = bases!.GetObject(baseIdx);
+            long ud = 0;
+            try { ud = (long)matchedBase.GetDouble("UserData"); } catch { }
+            Assert.Equal(expectedUserData, (int)ud);
+
+            // Verify it's a PlayerShipBase
+            var bt = matchedBase.GetObject("BaseType")?.GetString("PersistentBaseTypes");
+            Assert.Equal("PlayerShipBase", bt);
+
+            // Verify it has Objects
+            var objects = matchedBase.GetArray("Objects");
+            Assert.NotNull(objects);
+            Assert.True(objects!.Length > 0, $"Base for '{name}' has no objects");
+        }
+    }
+
+    [Fact]
+    public void CorvetteE2E_ReferenceSave_ReorderProducesCorrectCategoryOrder()
+    {
+        // Load the reference save and optimise each corvette, then verify the result
+        // has correct category ordering.
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        if (savePath == null) return;
+
+        LoadCorvetteDatabase();
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        var bases = psd!.GetArray("PersistentPlayerBases");
+
+        var corvettes = new[]
+        {
+            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883"),
+            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258"),
+            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D"),
+        };
+
+        foreach (var (shipIndex, name, seedHex) in corvettes)
+        {
+            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
+            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex, seedDecimal);
+            Assert.True(baseIdx >= 0, $"Base not found for '{name}'");
+
+            var baseObj = bases!.GetObject(baseIdx);
+            var objects = baseObj.GetArray("Objects")!;
+            int objectCount = objects.Length;
+
+            // Perform the optimise reorder
+            int result = StarshipLogic.ReorderBuildingObjects(objects);
+            Assert.Equal(objectCount, result);
+
+            // Verify priority ordering: each object's priority should be >= the previous
+            int prevPriority = 0;
+            for (int i = 0; i < objects.Length; i++)
+            {
+                var obj = objects.GetObject(i);
+                string objectId = obj.GetString("ObjectID") ?? "";
+                int priority = StarshipLogic.GetPartPriority(objectId);
+
+                Assert.True(priority >= prevPriority,
+                    $"Ship '{name}': object[{i}] '{objectId}' (priority {priority}) " +
+                    $"comes after priority {prevPriority} - wrong order!");
+                prevPriority = priority;
+            }
+
+            // Verify that Reactor parts (priority 0) appear before Engine parts (priority 1)
+            int lastReactorIdx = -1;
+            int firstEngineIdx = -1;
+            for (int i = 0; i < objects.Length; i++)
+            {
+                int p = StarshipLogic.GetPartPriority(objects.GetObject(i).GetString("ObjectID") ?? "");
+                if (p == 0) // Reactor priority
+                    lastReactorIdx = i;
+                if (p == 1 && firstEngineIdx < 0) // Engine priority
+                    firstEngineIdx = i;
+            }
+            if (lastReactorIdx >= 0 && firstEngineIdx >= 0)
+            {
+                Assert.True(lastReactorIdx < firstEngineIdx,
+                    $"Ship '{name}': Reactor at index {lastReactorIdx} should be before engine at {firstEngineIdx}");
+            }
+        }
+    }
+
+    [Fact]
+    public void CorvetteE2E_ReferenceSave_OptimiseCorvetteBase_ReturnsCorrectCount()
+    {
+        // Verify OptimiseCorvetteBase works end-to-end and returns the right object count.
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        if (savePath == null) return;
+
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        var bases = psd!.GetArray("PersistentPlayerBases");
+
+        // Expected object counts from the reference save:
+        // Ship 5 "The Bebop" -> 111 objects
+        // Ship 7 "USCSS Abraxas" -> 316 objects
+        // Ship 8 "USCSS Solomon" -> 148 objects
+        var corvettes = new[]
+        {
+            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883", expectedCount: 111),
+            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258", expectedCount: 316),
+            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D", expectedCount: 148),
+        };
+
+        foreach (var (shipIndex, name, seedHex, expectedCount) in corvettes)
+        {
+            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
+            int result = StarshipLogic.OptimiseCorvetteBase(bases, shipIndex, seedDecimal);
+            Assert.Equal(expectedCount, result);
+        }
+    }
+
+    [Fact]
+    public void CorvetteE2E_TheBebop_MatchesRefOutput()
+    {
+        // Run our optimizer on The Bebop and compare ObjectID ordering against
+        // the reference output in _ref/optimize/ref.json.
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        var refPath = FindRefPath("_ref", "optimize", "ref.json");
+        if (savePath == null || refPath == null) return;
+
+        LoadCorvetteDatabase();
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        var bases = psd!.GetArray("PersistentPlayerBases");
+
+        // Ship 5 = "The Bebop" (seed 0x68BA4883)
+        long seedDecimal = StarshipLogic.SeedToDecimal("0x68BA4883");
+        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5, seedDecimal);
+        Assert.Equal(111, result);
+
+        // Get the optimised objects
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5, seedDecimal);
+        var baseObj = bases!.GetObject(baseIdx);
+        var objects = baseObj.GetArray("Objects")!;
+
+        // Load reference
+        string refJson = System.IO.File.ReadAllText(refPath);
+        var refArray = JsonArray.Parse(refJson);
+
+        Assert.Equal(refArray.Length, objects.Length);
+
+        // Compare every ObjectID in order
+        var mismatches = new List<string>();
+        for (int i = 0; i < objects.Length; i++)
+        {
+            string oursId = objects.GetObject(i).GetString("ObjectID") ?? "";
+            string refId = refArray.GetObject(i).GetString("ObjectID") ?? "";
+            if (!string.Equals(oursId, refId, StringComparison.Ordinal))
+                mismatches.Add($"[{i}] ours={oursId} ref={refId}");
+        }
+
+        Assert.True(mismatches.Count == 0,
+            $"ObjectID order differs from ref in {mismatches.Count}/{objects.Length} positions:\n" +
+            string.Join("\n", mismatches.Take(20)));
+    }
+
+    [Fact]
+    public void CorvetteE2E_TheBebop_FullRefComparison()
+    {
+        // Detailed diagnostic: loads the original .hg save, runs our optimizer on
+        // The Bebop, and produces a full side-by-side comparison against ref.json.
+        // Verifies both ObjectID ordering AND positional data integrity.
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        var refPath = FindRefPath("_ref", "optimize", "ref.json");
+        if (savePath == null || refPath == null) return;
+
+        LoadCorvetteDatabase();
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        var bases = psd!.GetArray("PersistentPlayerBases");
+
+        // Ship 5 = "The Bebop" (seed 0x68BA4883)
+        long seedDecimal = StarshipLogic.SeedToDecimal("0x68BA4883");
+        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5, seedDecimal);
+        Assert.Equal(111, result);
+
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5, seedDecimal);
+        var baseObj = bases!.GetObject(baseIdx);
+        var objects = baseObj.GetArray("Objects")!;
+
+        string refJson = System.IO.File.ReadAllText(refPath);
+        var refArray = JsonArray.Parse(refJson);
+
+        // Count and length must match
+        Assert.Equal(refArray.Length, objects.Length);
+
+        int matchCount = 0;
+        int mismatchCount = 0;
+        var mismatches = new List<string>();
+
+        for (int i = 0; i < objects.Length; i++)
+        {
+            var oursObj = objects.GetObject(i);
+            var refObj = refArray.GetObject(i);
+
+            string oursId = oursObj.GetString("ObjectID") ?? "";
+            string refID = refObj.GetString("ObjectID") ?? "";
+
+            if (string.Equals(oursId, refID, StringComparison.Ordinal))
+            {
+                matchCount++;
+            }
+            else
+            {
+                mismatchCount++;
+                mismatches.Add($"[{i}] ours={oursId} ref={refID}");
+            }
+        }
+
+        // Verify category boundaries are correct
+        var categories = new Dictionary<string, int>();
+        for (int i = 0; i < objects.Length; i++)
+        {
+            string id = objects.GetObject(i).GetString("ObjectID") ?? "";
+            int priority = StarshipLogic.GetPartPriority(id);
+            string catName = priority switch
+            {
+                1 => "Reactor",
+                2 => "Thruster",
+                3 => "Wing",
+                4 => "LandingGear",
+                5 => "Access",
+                6 => "Cockpit",
+                int.MaxValue => "Other",
+                _ => $"Unknown({priority})"
+            };
+            if (!categories.ContainsKey(catName))
+                categories[catName] = 0;
+            categories[catName]++;
+        }
+
+        // Verify same categories in ref output
+        var refCategories = new Dictionary<string, int>();
+        for (int i = 0; i < refArray.Length; i++)
+        {
+            string id = refArray.GetObject(i).GetString("ObjectID") ?? "";
+            int priority = StarshipLogic.GetPartPriority(id);
+            string catName = priority switch
+            {
+                1 => "Reactor",
+                2 => "Thruster",
+                3 => "Wing",
+                4 => "LandingGear",
+                5 => "Access",
+                6 => "Cockpit",
+                int.MaxValue => "Other",
+                _ => $"Unknown({priority})"
+            };
+            if (!refCategories.ContainsKey(catName))
+                refCategories[catName] = 0;
+            refCategories[catName]++;
+        }
+
+        // Both must have same category counts
+        foreach (var kvp in categories)
+        {
+            Assert.True(refCategories.ContainsKey(kvp.Key),
+                $"Ref missing category '{kvp.Key}' that we have with {kvp.Value} objects");
+            Assert.Equal(kvp.Value, refCategories[kvp.Key]);
+        }
+
+        // Assert full match
+        Assert.True(mismatchCount == 0,
+            $"ObjectID mismatch: {matchCount}/{objects.Length} match, {mismatchCount} differ:\n" +
+            string.Join("\n", mismatches));
+    }
+
+    [Fact]
+    public void CorvetteE2E_ReferenceSave_ExportImportRoundtrip()
+    {
+        // Verify a corvette's base data can be exported and the objects JSON can
+        // be re-parsed without loss (simulates the export/import flow).
+        var savePath = FindRefPath("_ref", "saves", "original", "save.hg");
+        if (savePath == null) return;
+
+        EnsureMapperLoaded();
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var psd = save.GetObject("PlayerStateData");
+        var bases = psd!.GetArray("PersistentPlayerBases");
+
+        // Test with "USCSS Abraxas" (largest base, 316 objects)
+        long seedDecimal = StarshipLogic.SeedToDecimal("0x68B31258");
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 7, seedDecimal);
+        Assert.True(baseIdx >= 0);
+
+        var baseObj = bases!.GetObject(baseIdx);
+        var objects = baseObj.GetArray("Objects")!;
+
+        // Serialize all objects to JSON strings, then re-parse to verify round-trip
+        for (int i = 0; i < Math.Min(10, objects.Length); i++) // Spot-check first 10
+        {
+            var obj = objects.GetObject(i);
+            string objectId = obj.GetString("ObjectID") ?? "";
+            Assert.False(string.IsNullOrEmpty(objectId), $"Object[{i}] has empty ObjectID");
+
+            // Verify it can be serialized and deserialized
+            string serialized = obj.ToString();
+            var reparsed = JsonObject.Parse(serialized);
+            Assert.Equal(objectId, reparsed.GetString("ObjectID"));
+        }
+
+        // Also verify the ship ownership entry can round-trip
+        var ships = psd!.GetArray("ShipOwnership")!;
+        var ship = ships.GetObject(7);
+        string shipJson = ship.ToString();
+        var reparsedShip = JsonObject.Parse(shipJson);
+        Assert.Equal("USCSS Abraxas", reparsedShip.GetString("Name"));
     }
 }

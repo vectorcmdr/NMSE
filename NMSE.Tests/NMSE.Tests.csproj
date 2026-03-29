@@ -23,6 +23,7 @@
     <Compile Include="..\Data\TechPackDatabase.cs" Link="Data\TechPackDatabase.cs" />
     <Compile Include="..\Data\GameItem.cs" Link="Data\GameItem.cs" />
     <Compile Include="..\Data\GameItemDatabase.cs" Link="Data\GameItemDatabase.cs" />
+    <Compile Include="..\Data\StarshipDatabase.cs" Link="Data\StarshipDatabase.cs" />
     <Compile Include="..\Data\FrigateTraitDatabase.cs" Link="Data\FrigateTraitDatabase.cs" />
     <Compile Include="..\Data\InventoryStackDatabase.cs" Link="Data\InventoryStackDatabase.cs" />
     <Compile Include="..\Data\SettlementDatabase.cs" Link="Data\SettlementDatabase.cs" />

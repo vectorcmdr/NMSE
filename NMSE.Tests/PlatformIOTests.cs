@@ -966,4 +966,115 @@ public class PlatformIOTests
         }
         finally { Directory.Delete(tmpDir, true); }
     }
+
+    // --- ContainersIndexManager: IsSaveSlot filtering ---
+
+    [Theory]
+    [InlineData("Slot1Auto", true)]
+    [InlineData("Slot1Manual", true)]
+    [InlineData("Slot3Auto", true)]
+    [InlineData("Slot3Manual", true)]
+    [InlineData("AccountData", false)]
+    [InlineData("Settings", false)]
+    [InlineData("accountdata", false)]   // case-insensitive
+    [InlineData("settings", false)]      // case-insensitive
+    [InlineData("ACCOUNTDATA", false)]   // case-insensitive
+    [InlineData("Slot2Auto", true)]
+    public void ContainersIndexManager_IsSaveSlot_FiltersCorrectly(string identifier, bool expected)
+    {
+        Assert.Equal(expected, ContainersIndexManager.IsSaveSlot(identifier));
+    }
+
+    // --- ContainersIndexManager: Real Xbox save parsing ---
+
+    [Fact]
+    public void ContainersIndexManager_ParseContainersIndex_RealXboxSave_IdentifiesAllSlots()
+    {
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(containersPath);
+
+        // The real Xbox save contains 6 entries
+        Assert.Equal(6, slots.Count);
+        Assert.True(slots.ContainsKey("AccountData"));
+        Assert.True(slots.ContainsKey("Settings"));
+        Assert.True(slots.ContainsKey("Slot1Auto"));
+        Assert.True(slots.ContainsKey("Slot1Manual"));
+        Assert.True(slots.ContainsKey("Slot3Auto"));
+        Assert.True(slots.ContainsKey("Slot3Manual"));
+    }
+
+    [Fact]
+    public void ContainersIndexManager_IsSaveSlot_FiltersRealXboxSave()
+    {
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(containersPath);
+
+        // Only save slots (not AccountData/Settings) should pass the filter
+        var saveSlots = slots.Where(s => ContainersIndexManager.IsSaveSlot(s.Key)).ToList();
+        Assert.Equal(4, saveSlots.Count);
+        Assert.DoesNotContain(saveSlots, s => s.Key == "AccountData");
+        Assert.DoesNotContain(saveSlots, s => s.Key == "Settings");
+    }
+
+    [Fact]
+    public void ContainersIndexManager_LoadXboxSave_RealXboxSave_LoadsSaveSlot()
+    {
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(containersPath);
+        Assert.True(slots.ContainsKey("Slot1Auto"));
+
+        var slot = slots["Slot1Auto"];
+        Assert.NotNull(slot.DataFilePath);
+        Assert.True(File.Exists(slot.DataFilePath));
+
+        string? json = ContainersIndexManager.LoadXboxSave(slot);
+        Assert.NotNull(json);
+        Assert.True(json.Length > 100); // Should be substantial JSON data
+
+        // Verify it parses as valid JSON
+        var obj = JsonObject.Parse(json);
+        Assert.True(obj.Size() > 0);
+    }
+
+    [Fact]
+    public void ContainersIndexManager_LoadXboxSave_RealXboxSave_LoadsAccountData()
+    {
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(containersPath);
+        Assert.True(slots.ContainsKey("AccountData"));
+
+        var accountSlot = slots["AccountData"];
+        Assert.NotNull(accountSlot.DataFilePath);
+        Assert.True(File.Exists(accountSlot.DataFilePath));
+
+        string? json = ContainersIndexManager.LoadXboxSave(accountSlot);
+        Assert.NotNull(json);
+
+        // Verify it parses as valid JSON with expected account structure
+        var obj = JsonObject.Parse(json);
+        Assert.True(obj.Size() > 0);
+        // Xbox account data should have UserSettingsData like accountdata.hg
+        var userSettings = obj.GetObject("UserSettingsData");
+        Assert.NotNull(userSettings);
+    }
 }
