@@ -623,6 +623,9 @@ public partial class MainFormResources : Form
             string jsonPath = Path.Combine(basePath, "Resources", "json");
             _database.LoadItemsFromJsonDirectory(jsonPath);
 
+            // Populate corvette part category lookup for the optimizer
+            StarshipDatabase.LoadFromDatabase(_database);
+
             // Register extractor-generated techpacks
             TechPacks.RegisterGeneratedPacks();
 
@@ -777,9 +780,19 @@ public partial class MainFormResources : Form
                     _saveSlotFiles = new List<List<string>>();
                     foreach (var kvp in xboxSlots.OrderBy(s => s.Key))
                     {
+                        // Skip non-save entries (AccountData, Settings)
+                        if (!ContainersIndexManager.IsSaveSlot(kvp.Key))
+                            continue;
+
                         _platformSlotIdentifiers.Add(kvp.Key);
                         _saveSlotFiles.Add(new List<string> { kvp.Value.DataFilePath ?? "" });
                         _saveSlotCombo.Items.Add($"Xbox: {kvp.Key}");
+                    }
+
+                    // Load Xbox AccountData as the platform equivalent of accountdata.hg
+                    if (xboxSlots.TryGetValue(ContainersIndexManager.AccountDataIdentifier, out var accountSlot))
+                    {
+                        _accountPanel.LoadXboxAccountData(accountSlot);
                     }
                 }
                 catch (Exception ex)
@@ -864,8 +877,9 @@ public partial class MainFormResources : Form
             _saveSlotFiles = saveFiles;
         }
 
-        // Load account data (accountdata.hg is in the same directory)
-        _accountPanel.LoadAccountFile(dir);
+        // Load account data (accountdata.hg for Steam/GOG/PS4; Xbox handled above)
+        if (_detectedPlatform != SaveFileManager.Platform.XboxGamePass)
+            _accountPanel.LoadAccountFile(dir);
 
         if (_saveSlotCombo.Items.Count > 0)
         {
@@ -1248,8 +1262,7 @@ public partial class MainFormResources : Form
             SuspendLayout();
             try
             {
-                string? saveDir = Path.GetDirectoryName(containersIndexPath);
-                if (saveDir != null) _accountPanel.LoadAccountFile(saveDir);
+                // Account data for Xbox is already loaded in PopulateSaveSlots via LoadXboxAccountData
                 _rawJsonPanel.SetSaveFilePath(containersIndexPath);
                 _rawJsonPanel.SetAccountData(_accountPanel.AccountData, _accountPanel.AccountFilePath);
                 activeContent?.SuspendLayout();

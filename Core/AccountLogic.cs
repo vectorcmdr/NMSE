@@ -28,6 +28,46 @@ internal static class AccountLogic
     }
 
     /// <summary>
+    /// Loads account data from an Xbox Game Pass containers.index AccountData blob.
+    /// This is the Xbox equivalent of <see cref="LoadAccountData"/> which reads accountdata.hg.
+    /// </summary>
+    /// <param name="accountSlot">The Xbox slot info for the AccountData entry.</param>
+    /// <returns>An <see cref="AccountData"/> with loaded reward sets, or an error message if loading failed.</returns>
+    internal static AccountData LoadXboxAccountData(XboxSlotInfo accountSlot)
+    {
+        try
+        {
+            string? json = ContainersIndexManager.LoadXboxSave(accountSlot);
+            if (json == null)
+                return new AccountData { ErrorMessage = UiStrings.Get("account.not_found") };
+
+            var accountObj = JsonObject.Parse(json);
+
+            var userSettings = accountObj.GetObject("UserSettingsData") ?? accountObj;
+
+            var seasonUnlocked = GetUnlockedSet(userSettings.GetArray("UnlockedSeasonRewards"));
+            var twitchUnlocked = GetUnlockedSet(userSettings.GetArray("UnlockedTwitchRewards"));
+            var platformUnlocked = GetUnlockedSet(userSettings.GetArray("UnlockedPlatformRewards"));
+
+            int total = seasonUnlocked.Count + twitchUnlocked.Count + platformUnlocked.Count;
+
+            return new AccountData
+            {
+                AccountObject = accountObj,
+                AccountFilePath = accountSlot.DataFilePath,
+                SeasonUnlocked = seasonUnlocked,
+                TwitchUnlocked = twitchUnlocked,
+                PlatformUnlocked = platformUnlocked,
+                StatusMessage = UiStrings.Format("account.status_loaded", total),
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AccountData { ErrorMessage = UiStrings.Format("account.load_error", accountSlot.DataFilePath ?? "Xbox AccountData", ex.Message) };
+        }
+    }
+
+    /// <summary>
     /// Loads account data from the accountdata.hg file in the specified save directory.
     /// </summary>
     /// <param name="saveDirectory">The path to the save directory containing accountdata.hg.</param>

@@ -51,6 +51,22 @@ public static class ContainersIndexManager
     private const int BLOBCONTAINER_IDENTIFIER_LENGTH = 128;
     private const int BLOBCONTAINER_TOTAL_LENGTH = 328;
 
+    /// <summary>Xbox containers.index identifier for the account data blob.</summary>
+    public const string AccountDataIdentifier = "AccountData";
+    /// <summary>Xbox containers.index identifier for the settings blob.</summary>
+    public const string SettingsIdentifier = "Settings";
+
+    /// <summary>
+    /// Returns <c>true</c> if the given slot identifier represents an actual save slot
+    /// (e.g. "Slot1Auto", "Slot1Manual") rather than a special entry like "AccountData"
+    /// or "Settings".
+    /// </summary>
+    public static bool IsSaveSlot(string identifier)
+    {
+        return !string.Equals(identifier, AccountDataIdentifier, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(identifier, SettingsIdentifier, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Check if a directory contains Xbox Game Pass saves.
     /// </summary>
@@ -565,9 +581,29 @@ public static class ContainersIndexManager
             read += n;
         }
 
-        // Try single-block LZ4 decompression (Xbox pre-Frontiers format)
-        // If it fails, assume it's uncompressed
-        return latin1.GetString(data, 0, read);
+        // If data looks like plain JSON (starts with '{' or whitespace + '{'), return as-is
+        for (int i = 0; i < read; i++)
+        {
+            byte b = data[i];
+            if (b == '{') return latin1.GetString(data, 0, read);
+            if (b != ' ' && b != '\t' && b != '\r' && b != '\n' && b != 0) break;
+        }
+
+        // Try raw LZ4 block decompression (Xbox AccountData/Settings blobs).
+        // These blobs are stored as raw LZ4 without the NMS streaming header (0xE5A1EDFE).
+        try
+        {
+            using var ms = new MemoryStream(data, 0, read, writable: false);
+            using var decompressor = new Lz4DecompressorStream(ms, uncompressedSize: 0);
+            using var result = new MemoryStream();
+            decompressor.CopyTo(result);
+            return latin1.GetString(result.GetBuffer(), 0, (int)result.Length);
+        }
+        catch
+        {
+            // LZ4 decompression failed — return as uncompressed
+            return latin1.GetString(data, 0, read);
+        }
     }
 
     private static int ReadInt32LE(byte[] data, int offset)

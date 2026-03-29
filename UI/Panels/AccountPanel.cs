@@ -1,6 +1,7 @@
 using NMSE.Data;
 using NMSE.Models;
 using NMSE.Core;
+using NMSE.IO;
 
 namespace NMSE.UI.Panels;
 
@@ -179,6 +180,53 @@ public partial class AccountPanel : UserControl
         {
             var mxmlRewards = MxmlRewardEditor.ReadUnlockedRewards(_mxmlFilePath);
             // Intersect: only keep rewards that are in both accountdata and MXML
+            platformUnlocked = new HashSet<string>(
+                platformUnlocked.Where(id => mxmlRewards.Contains(id)),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        PopulateRewardGrid(_seasonGrid, _seasonRewardsDb, data.SeasonUnlocked);
+        PopulateRewardGrid(_twitchGrid, _twitchRewardsDb, data.TwitchUnlocked);
+        PopulateRewardGrid(_platformGrid, _platformRewardsDb, platformUnlocked);
+
+        _statusLabel.Text = data.StatusMessage ?? "";
+    }
+
+    /// <summary>
+    /// Loads account data from an Xbox Game Pass AccountData blob.
+    /// This is the Xbox equivalent of <see cref="LoadAccountFile"/>.
+    /// </summary>
+    /// <param name="accountSlot">The Xbox slot info for the AccountData entry.</param>
+    public void LoadXboxAccountData(XboxSlotInfo accountSlot)
+    {
+        _seasonGrid.Rows.Clear();
+        _twitchGrid.Rows.Clear();
+        _platformGrid.Rows.Clear();
+        _accountData = null;
+        _accountFilePath = null;
+
+        var data = AccountLogic.LoadXboxAccountData(accountSlot);
+        if (data.ErrorMessage != null)
+        {
+            _statusLabel.Text = data.ErrorMessage;
+            return;
+        }
+
+        _accountData = data.AccountObject;
+        _accountFilePath = data.AccountFilePath;
+
+        // Auto-detect MXML path if not already set
+        if (string.IsNullOrEmpty(_mxmlFilePath))
+        {
+            var detected = MxmlRewardEditor.AutoDetectMxmlPath();
+            if (detected != null)
+                SetMxmlPath(detected);
+        }
+
+        var platformUnlocked = data.PlatformUnlocked;
+        if (!string.IsNullOrEmpty(_mxmlFilePath))
+        {
+            var mxmlRewards = MxmlRewardEditor.ReadUnlockedRewards(_mxmlFilePath);
             platformUnlocked = new HashSet<string>(
                 platformUnlocked.Where(id => mxmlRewards.Contains(id)),
                 StringComparer.OrdinalIgnoreCase);
