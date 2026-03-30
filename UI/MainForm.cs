@@ -82,6 +82,8 @@ public partial class MainFormResources : Form
     private string? _ps4MemoryDatPath;
     /// <summary>For Xbox/PS4 memory.dat: maps combo index to slot identifier or slot index.</summary>
     private List<string>? _platformSlotIdentifiers;
+    /// <summary>For Xbox: maps [slotComboIdx][fileComboIdx] to the Xbox slot identifier (e.g. "Slot1Auto").</summary>
+    private List<List<string>>? _xboxFileIdentifiers;
 
     // Deferred panel loading: track which tabs have had LoadData called
     private readonly HashSet<int> _loadedTabIndices = new();
@@ -760,6 +762,7 @@ public partial class MainFormResources : Form
         _xboxContainersIndexPath = null;
         _ps4MemoryDatPath = null;
         _platformSlotIdentifiers = null;
+        _xboxFileIdentifiers = null;
 
         if (_directoryCombo.SelectedItem is not string dir || !Directory.Exists(dir))
             return;
@@ -782,15 +785,67 @@ public partial class MainFormResources : Form
                     var xboxSlots = ContainersIndexManager.ParseContainersIndex(containersPath);
                     _platformSlotIdentifiers = new List<string>();
                     _saveSlotFiles = new List<List<string>>();
-                    foreach (var kvp in xboxSlots.OrderBy(s => s.Key))
+                    _xboxFileIdentifiers = new List<List<string>>();
+
+                    // Group Xbox slots by slot number (e.g., Slot1Auto + Slot1Manual -> Slot 1)
+                    // to match the Steam save format: slot combo shows "Xbox: Slot N - SaveName - DIFFICULTY"
+                    // and file combo shows "Auto - {GUID}" and "Manual - {GUID}"
+                    var slotGroups = new SortedDictionary<int, List<(string Identifier, XboxSlotInfo Info)>>();
+                    foreach (var kvp in xboxSlots)
                     {
-                        // Skip non-save entries (AccountData, Settings)
                         if (!ContainersIndexManager.IsSaveSlot(kvp.Key))
                             continue;
 
-                        _platformSlotIdentifiers.Add(kvp.Key);
-                        _saveSlotFiles.Add(new List<string> { kvp.Value.DataFilePath ?? "" });
-                        _saveSlotCombo.Items.Add($"Xbox: {kvp.Key}");
+                        int slotNum = ContainersIndexManager.ExtractSlotNumber(kvp.Key);
+                        if (!slotGroups.TryGetValue(slotNum, out var group))
+                        {
+                            group = new List<(string, XboxSlotInfo)>();
+                            slotGroups[slotNum] = group;
+                        }
+                        group.Add((kvp.Key, kvp.Value));
+                    }
+
+                    foreach (var kvp in slotGroups)
+                    {
+                        int slotNum = kvp.Key;
+                        var entries = kvp.Value;
+
+                        // Sort so Manual comes before Auto (matching Steam save convention:
+                        // manual is listed first in the file combo)
+                        entries.Sort((a, b) =>
+                        {
+                            bool aIsAuto = a.Identifier.Contains("Auto", StringComparison.OrdinalIgnoreCase);
+                            bool bIsAuto = b.Identifier.Contains("Auto", StringComparison.OrdinalIgnoreCase);
+                            return aIsAuto.CompareTo(bIsAuto);
+                        });
+
+                        var slotFiles = new List<string>();
+                        var slotIdentifiers = new List<string>();
+                        foreach (var (id, info) in entries)
+                        {
+                            slotFiles.Add(info.DataFilePath ?? "");
+                            slotIdentifiers.Add(id);
+                        }
+
+                        _saveSlotFiles.Add(slotFiles);
+                        _xboxFileIdentifiers.Add(slotIdentifiers);
+                        _platformSlotIdentifiers.Add(slotNum.ToString());
+
+                        // Detect save name and difficulty from the first available data file
+                        string saveName = "";
+                        string difficulty = "";
+                        foreach (var (_, info) in entries)
+                        {
+                            if (info.DataFilePath != null && File.Exists(info.DataFilePath))
+                            {
+                                saveName = DetectSaveName(info.DataFilePath);
+                                difficulty = DetectDifficulty(info.DataFilePath);
+                                if (!string.IsNullOrEmpty(saveName)) break;
+                            }
+                        }
+
+                        string label = BuildSlotLabel($"Xbox: Slot {slotNum}", saveName, difficulty);
+                        _saveSlotCombo.Items.Add(label);
                     }
 
                     // Load Xbox AccountData as the platform equivalent of accountdata.hg
@@ -908,43 +963,86 @@ public partial class MainFormResources : Form
         int newestIndex = 0;
         DateTime newestTime = DateTime.MinValue;
 
+        // Xbox: show "Auto - {DirectoryGUID}" / "Manual - {DirectoryGUID}" labels
+        bool isXbox = _xboxFileIdentifiers != null
+            && slotIndex < _xboxFileIdentifiers.Count;
+
         for (int i = 0; i < files.Count; i++)
         {
             var filePath = files[i];
-            string fileName = Path.GetFileName(filePath);
+            string label;
 
-            // Determine if this is a manual or auto save based on file naming
-            string suffix;
-            if (fileName.StartsWith("savedata", StringComparison.OrdinalIgnoreCase))
-                suffix = "";
-            else if (fileName.Equals("save.hg", StringComparison.OrdinalIgnoreCase))
+            if (isXbox)
             {
-                suffix = " (Manual)";
+                string xboxId = _xboxFileIdentifiers![slotIndex][i];
+                bool isAuto = xboxId.Contains("Auto", StringComparison.OrdinalIgnoreCase);
+                string type = isAuto ? "Auto" : "Manual";
+
+                // Show the blob directory GUID (parent folder of the data blob)
+                string dirName = "";
+                try
+                {
+                    string? parentDir = Path.GetDirectoryName(filePath);
+                    if (parentDir != null)
+                        dirName = Path.GetFileName(parentDir);
+                }
+                catch { }
+
+                // Append file timestamp
+                string timestamp = "";
+                try
+                {
+                    var lastWrite = File.GetLastWriteTime(filePath);
+                    timestamp = $" - {lastWrite:dd/MM/yy h:mmtt}";
+                    if (lastWrite > newestTime)
+                    {
+                        newestTime = lastWrite;
+                        newestIndex = i;
+                    }
+                }
+                catch { }
+
+                label = $"{type} - {dirName}{timestamp}";
             }
             else
             {
-                // Odd-numbered saves are manual; even-numbered are auto
-                string numPart = fileName.Replace("save", "").Replace(".hg", "");
-                bool isAuto = int.TryParse(numPart, System.Globalization.NumberStyles.Integer,
-                    System.Globalization.CultureInfo.InvariantCulture, out int num) && num % 2 == 0;
-                suffix = isAuto ? " (Auto)" : " (Manual)";
-            }
+                string fileName = Path.GetFileName(filePath);
 
-            // Append file timestamp
-            string timestamp = "";
-            try
-            {
-                var lastWrite = File.GetLastWriteTime(filePath);
-                timestamp = $" - {lastWrite:dd/MM/yy h:mmtt}";
-                if (lastWrite > newestTime)
+                // Determine if this is a manual or auto save based on file naming
+                string suffix;
+                if (fileName.StartsWith("savedata", StringComparison.OrdinalIgnoreCase))
+                    suffix = "";
+                else if (fileName.Equals("save.hg", StringComparison.OrdinalIgnoreCase))
                 {
-                    newestTime = lastWrite;
-                    newestIndex = i;
+                    suffix = " (Manual)";
                 }
-            }
-            catch { }
+                else
+                {
+                    // Odd-numbered saves are manual; even-numbered are auto
+                    string numPart = fileName.Replace("save", "").Replace(".hg", "");
+                    bool isAuto = int.TryParse(numPart, System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture, out int num) && num % 2 == 0;
+                    suffix = isAuto ? " (Auto)" : " (Manual)";
+                }
 
-            _saveFileCombo.Items.Add($"{fileName}{suffix}{timestamp}");
+                // Append file timestamp
+                string timestamp = "";
+                try
+                {
+                    var lastWrite = File.GetLastWriteTime(filePath);
+                    timestamp = $" - {lastWrite:dd/MM/yy h:mmtt}";
+                    if (lastWrite > newestTime)
+                    {
+                        newestTime = lastWrite;
+                        newestIndex = i;
+                    }
+                }
+                catch { }
+
+                label = $"{fileName}{suffix}{timestamp}";
+            }
+
+            _saveFileCombo.Items.Add(label);
         }
 
         if (_saveFileCombo.Items.Count > 0)
@@ -1199,11 +1297,15 @@ public partial class MainFormResources : Form
     {
         int slotIndex = _saveSlotCombo.SelectedIndex;
 
-        // Xbox containers.index loading
-        if (_xboxContainersIndexPath != null && _platformSlotIdentifiers != null
-            && slotIndex >= 0 && slotIndex < _platformSlotIdentifiers.Count)
+        // Xbox containers.index loading - use file combo to pick Auto vs Manual
+        if (_xboxContainersIndexPath != null && _xboxFileIdentifiers != null
+            && slotIndex >= 0 && slotIndex < _xboxFileIdentifiers.Count)
         {
-            string slotId = _platformSlotIdentifiers[slotIndex];
+            int fileIndex = _saveFileCombo.SelectedIndex;
+            var identifiers = _xboxFileIdentifiers[slotIndex];
+            if (fileIndex < 0 || fileIndex >= identifiers.Count)
+                fileIndex = 0;
+            string slotId = identifiers[fileIndex];
             LoadXboxSaveData(_xboxContainersIndexPath, slotId);
             return;
         }
@@ -1422,12 +1524,16 @@ public partial class MainFormResources : Form
             // data goes to blob directories, not directly to containers.index.
             if (_detectedPlatform == SaveFileManager.Platform.XboxGamePass
                 && _xboxContainersIndexPath != null
-                && _platformSlotIdentifiers != null)
+                && _xboxFileIdentifiers != null)
             {
                 int slotIdx = _saveSlotCombo.SelectedIndex;
-                if (slotIdx >= 0 && slotIdx < _platformSlotIdentifiers.Count)
+                if (slotIdx >= 0 && slotIdx < _xboxFileIdentifiers.Count)
                 {
-                    string slotId = _platformSlotIdentifiers[slotIdx];
+                    int fileIdx = _saveFileCombo.SelectedIndex;
+                    var identifiers = _xboxFileIdentifiers[slotIdx];
+                    if (fileIdx < 0 || fileIdx >= identifiers.Count)
+                        fileIdx = 0;
+                    string slotId = identifiers[fileIdx];
                     SaveFileManager.SaveXboxSave(_xboxContainersIndexPath, slotId, _currentSaveData);
                 }
 

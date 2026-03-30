@@ -1127,6 +1127,36 @@ public class PlatformIOTests
         Assert.Equal(expected, ContainersIndexManager.IsSaveSlot(identifier));
     }
 
+    // --- ContainersIndexManager: ExtractSlotNumber ---
+
+    [Theory]
+    [InlineData("Slot1Auto", 1)]
+    [InlineData("Slot1Manual", 1)]
+    [InlineData("Slot2Auto", 2)]
+    [InlineData("Slot3Manual", 3)]
+    [InlineData("Slot15Auto", 15)]
+    [InlineData("AccountData", 0)]
+    [InlineData("Settings", 0)]
+    [InlineData("Slot", 0)]
+    [InlineData("SlotAuto", 0)]  // no number
+    [InlineData("", 0)]
+    public void ContainersIndexManager_ExtractSlotNumber_ExtractsCorrectly(string identifier, int expected)
+    {
+        Assert.Equal(expected, ContainersIndexManager.ExtractSlotNumber(identifier));
+    }
+
+    // --- ContainersIndexManager: IsAutoSave ---
+
+    [Theory]
+    [InlineData("Slot1Auto", true)]
+    [InlineData("Slot1Manual", false)]
+    [InlineData("Slot3Auto", true)]
+    [InlineData("AccountData", false)]
+    public void ContainersIndexManager_IsAutoSave_DetectsCorrectly(string identifier, bool expected)
+    {
+        Assert.Equal(expected, ContainersIndexManager.IsAutoSave(identifier));
+    }
+
     // --- ContainersIndexManager: Real Xbox save parsing ---
 
     [Fact]

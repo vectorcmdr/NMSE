@@ -90,6 +90,35 @@ public static class ContainersIndexManager
     }
 
     /// <summary>
+    /// Extract the numeric slot number from an Xbox slot identifier.
+    /// E.g., "Slot1Auto" -> 1, "Slot2Manual" -> 2, "Slot15Auto" -> 15.
+    /// Returns 0 if the identifier does not follow the "Slot{N}..." pattern.
+    /// </summary>
+    public static int ExtractSlotNumber(string identifier)
+    {
+        if (!identifier.StartsWith("Slot", StringComparison.OrdinalIgnoreCase) || identifier.Length <= 4)
+            return 0;
+
+        int numEnd = 4;
+        while (numEnd < identifier.Length && char.IsDigit(identifier[numEnd]))
+            numEnd++;
+
+        if (numEnd == 4) return 0;
+        return int.TryParse(identifier.AsSpan(4, numEnd - 4),
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out int num) ? num : 0;
+    }
+
+    /// <summary>
+    /// Returns <c>true</c> if the slot identifier represents an auto-save slot
+    /// (contains "Auto" in the name, e.g. "Slot1Auto").
+    /// </summary>
+    public static bool IsAutoSave(string identifier)
+    {
+        return identifier.Contains("Auto", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Check if a directory contains Xbox Game Pass saves.
     /// </summary>
     public static bool IsXboxSaveDirectory(string directory)

@@ -1,6 +1,7 @@
 using NMSE.Models;
 using System.Buffers;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 
 namespace NMSE.IO;
@@ -525,6 +526,48 @@ public class SaveFileManager
     }
 
     /// <summary>
+    /// HGSAVEV2 header: "HGSAVEV2\0" (9 bytes), used by post-Omega Xbox/Microsoft saves.
+    /// </summary>
+    private static readonly byte[] Hgsv2Header = new byte[] { 0x48, 0x47, 0x53, 0x41, 0x56, 0x45, 0x56, 0x32, 0x00 }; // "HGSAVEV2\0"
+
+    private static bool IsHgsv2Header(byte[] data, int length)
+    {
+        if (length < Hgsv2Header.Length) return false;
+        for (int i = 0; i < Hgsv2Header.Length; i++)
+            if (data[i] != Hgsv2Header[i]) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Decompress the first HGSAVEV2 frame to get a text prefix for fast scanning.
+    /// HGSAVEV2 format: 9-byte header, then frames of [decompressedSize(4)] [compressedSize(4)] [LZ4 data].
+    /// </summary>
+    private static string? DecompressHgsv2FirstFrame(FileStream fs)
+    {
+        fs.Position = Hgsv2Header.Length;
+        byte[] frameHeader = new byte[8];
+        if (fs.Read(frameHeader, 0, 8) < 8) return null;
+
+        int decompressedLen = frameHeader[0] | (frameHeader[1] << 8) | (frameHeader[2] << 16) | (frameHeader[3] << 24);
+        int compressedLen = frameHeader[4] | (frameHeader[5] << 8) | (frameHeader[6] << 16) | (frameHeader[7] << 24);
+        if (decompressedLen <= 0 || compressedLen <= 0) return null;
+        if (decompressedLen > 256 * 1024 * 1024 || compressedLen > 256 * 1024 * 1024) return null;
+
+        byte[] block = new byte[compressedLen];
+        int totalRead = 0;
+        while (totalRead < compressedLen)
+        {
+            int n = fs.Read(block, totalRead, compressedLen - totalRead);
+            if (n <= 0) break;
+            totalRead += n;
+        }
+
+        byte[] decompressed = new byte[decompressedLen];
+        int written = Lz4Compressor.Decompress(block, 0, totalRead, decompressed, 0, decompressedLen);
+        return Latin1.GetString(decompressed, 0, written);
+    }
+
+    /// <summary>
     /// NOMANSKY magic header for PS4/PS5 save files.
     /// </summary>
     private static readonly byte[] NomanSkyMagic = "NOMANSKY"u8.ToArray();
@@ -762,6 +805,12 @@ public class SaveFileManager
                 }
                 text = Latin1.GetString(decompressed, 0, read);
             }
+            else if (IsHgsv2Header(header, 16))
+            {
+                // HGSAVEV2 format (post-Omega Xbox): decompress first frame
+                text = DecompressHgsv2FirstFrame(fs) ?? "";
+                if (string.IsNullOrEmpty(text)) return 0;
+            }
             else if (IsNomanSkyHeader(header))
             {
                 // PS4/PS5 NOMANSKY header. JSON starts at offset 0x70
@@ -865,6 +914,12 @@ public class SaveFileManager
                     read += n;
                 }
                 text = Encoding.UTF8.GetString(decompressed, 0, read);
+            }
+            else if (IsHgsv2Header(header, 16))
+            {
+                // HGSAVEV2 format (post-Omega Xbox): decompress first frame
+                text = DecompressHgsv2FirstFrame(fs) ?? "";
+                if (string.IsNullOrEmpty(text)) return "";
             }
             else if (IsNomanSkyHeader(header))
             {
