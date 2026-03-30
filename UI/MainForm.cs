@@ -90,7 +90,7 @@ public partial class MainFormResources : Form
     private Task? _iconPreloadTask;
 
     /// <summary>Cached application icon so we can re-apply it after window style changes
-    /// (e.g. the Opacity 0→1 transition that removes WS_EX_LAYERED).</summary>
+    /// (e.g. the Opacity 0 to 1 transition that removes WS_EX_LAYERED).</summary>
     private Icon? _appIcon;
 
     public MainFormResources()
@@ -766,6 +766,10 @@ public partial class MainFormResources : Form
 
         _detectedPlatform = SaveFileManager.DetectPlatform(dir);
 
+        // Inform the account panel which platform is active so it can
+        // show/hide MXML controls (MXML is only relevant for PC platforms).
+        _accountPanel.SetPlatform(_detectedPlatform);
+
         // -- Xbox Game Pass: containers.index --
         if (_detectedPlatform == SaveFileManager.Platform.XboxGamePass)
         {
@@ -1414,12 +1418,39 @@ public partial class MainFormResources : Form
                 }
             }
 
+            // Xbox Game Pass saves use a completely different save pipeline:
+            // data goes to blob directories, not directly to containers.index.
+            if (_detectedPlatform == SaveFileManager.Platform.XboxGamePass
+                && _xboxContainersIndexPath != null
+                && _platformSlotIdentifiers != null)
+            {
+                int slotIdx = _saveSlotCombo.SelectedIndex;
+                if (slotIdx >= 0 && slotIdx < _platformSlotIdentifiers.Count)
+                {
+                    string slotId = _platformSlotIdentifiers[slotIdx];
+                    SaveFileManager.SaveXboxSave(_xboxContainersIndexPath, slotId, _currentSaveData);
+                }
+
+                // Save account data (season rewards, etc.) to the AccountData blob.
+                // Account data uses raw LZ4 block compression, not NMS streaming.
+                if (_accountPanel.AccountData != null)
+                {
+                    SaveFileManager.SaveXboxAccountData(_xboxContainersIndexPath, _accountPanel.AccountData);
+                }
+
+                _statusLabel.Text = UiStrings.Format("status.save_written", Path.GetFileName(_xboxContainersIndexPath));
+                _hasUnsavedChanges = false;
+                MessageBox.Show(UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             // Determine slot index for meta writing
-            int slotIdx = _saveSlotCombo.SelectedIndex >= 0 ? _saveSlotCombo.SelectedIndex : 0;
+            int metaSlotIdx = _saveSlotCombo.SelectedIndex >= 0 ? _saveSlotCombo.SelectedIndex : 0;
 
             // Write save file to disk with platform-appropriate meta
             SaveFileManager.SaveToFile(_currentFilePath, _currentSaveData,
-                compress: true, writeMeta: true, platform: _detectedPlatform, slotIndex: slotIdx);
+                compress: true, writeMeta: true, platform: _detectedPlatform, slotIndex: metaSlotIdx);
 
             // Write account data file to disk (if loaded)
             if (_accountPanel.AccountData != null && _accountPanel.AccountFilePath != null)

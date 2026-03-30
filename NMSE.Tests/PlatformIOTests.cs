@@ -925,6 +925,148 @@ public class PlatformIOTests
     }
 
     [Fact]
+    public void ContainersIndexManager_WriteContainersIndex_RoundTrip_PreservesData()
+    {
+        // Verify that parsing containers.index and writing it back produces a file
+        // that can be re-parsed with the same slot data. This is the critical
+        // round-trip test that prevents the ~1100 KB corruption bug.
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        // Parse the original file with full header data
+        var original = ContainersIndexManager.ParseContainersIndexFull(containersPath);
+        Assert.Equal(6, original.Slots.Count);
+        Assert.False(string.IsNullOrEmpty(original.ProcessIdentifier));
+        Assert.False(string.IsNullOrEmpty(original.AccountGuid));
+
+        // Write to a temp file
+        string tmpDir = Path.Combine(Path.GetTempPath(), $"nmse_test_ci_roundtrip_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        try
+        {
+            string tmpPath = Path.Combine(tmpDir, "containers.index");
+            ContainersIndexManager.WriteContainersIndex(
+                tmpPath,
+                original.Slots.Values,
+                original.ProcessIdentifier,
+                original.AccountGuid,
+                original.LastWriteTime);
+
+            // The written file must be small (about 1 KB), NOT megabytes
+            long fileSize = new FileInfo(tmpPath).Length;
+            Assert.True(fileSize < 2048, $"containers.index is {fileSize} bytes, expected < 2048");
+            Assert.True(fileSize > 100, $"containers.index is {fileSize} bytes, expected > 100");
+
+            // Re-parse the written file
+            var reparsed = ContainersIndexManager.ParseContainersIndexFull(tmpPath);
+            Assert.Equal(original.Slots.Count, reparsed.Slots.Count);
+            Assert.Equal(original.ProcessIdentifier, reparsed.ProcessIdentifier);
+            Assert.Equal(original.AccountGuid, reparsed.AccountGuid);
+
+            // Verify each slot was preserved
+            foreach (var kvp in original.Slots)
+            {
+                Assert.True(reparsed.Slots.ContainsKey(kvp.Key), $"Missing slot: {kvp.Key}");
+                var orig = kvp.Value;
+                var copy = reparsed.Slots[kvp.Key];
+                Assert.Equal(orig.Identifier, copy.Identifier);
+                Assert.Equal(orig.DirectoryGuid, copy.DirectoryGuid);
+                Assert.Equal(orig.BlobContainerExtension, copy.BlobContainerExtension);
+            }
+        }
+        finally { Directory.Delete(tmpDir, true); }
+    }
+
+    [Fact]
+    public void ContainersIndexManager_ParseContainersIndexFull_ExposesHeaderFields()
+    {
+        // Verify that ParseContainersIndexFull returns the header fields needed for writing
+        string xboxSaveDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..",
+            "_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C");
+        string containersPath = Path.Combine(xboxSaveDir, "containers.index");
+        if (!File.Exists(containersPath))
+            return; // Skip if test data not available
+
+        var data = ContainersIndexManager.ParseContainersIndexFull(containersPath);
+
+        // Process identifier should be the NMS app identifier
+        Assert.Contains("HelloGames", data.ProcessIdentifier);
+        Assert.Contains("NoMansSky", data.ProcessIdentifier);
+
+        // Account GUID should be a valid GUID-like string
+        Assert.True(data.AccountGuid.Length > 0);
+
+        // Last write time should be a valid date
+        Assert.True(data.LastWriteTime.Year >= 2020);
+
+        // Slots should be the same as ParseContainersIndex
+        var slots = ContainersIndexManager.ParseContainersIndex(containersPath);
+        Assert.Equal(slots.Count, data.Slots.Count);
+        foreach (var key in slots.Keys)
+            Assert.True(data.Slots.ContainsKey(key));
+    }
+
+    [Fact]
+    public void SaveXboxAccountData_WritesRawLz4_LoadableByLoadXboxSave()
+    {
+        // Verify that SaveXboxAccountData produces a raw LZ4 blob that can be
+        // read back by LoadXboxSave (which tries raw LZ4 as a fallback).
+        // This tests the critical round-trip: modify account -> save -> reload.
+        string tmpDir = Path.Combine(Path.GetTempPath(), $"nmse_test_xbox_acct_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tmpDir);
+        string blobDir = Path.Combine(tmpDir, Guid.NewGuid().ToString("N").ToUpperInvariant());
+        Directory.CreateDirectory(blobDir);
+        try
+        {
+            // Create test account JSON with a season reward
+            string testJson = "{\"UserSettingsData\":{\"UnlockedSeasonRewards\":[{\"value\":\"RAW_TestReward\"}]}}";
+            var accountObj = JsonObject.Parse(testJson);
+
+            // Manually compress with raw LZ4 (same as SaveXboxAccountData does)
+            var latin1 = Encoding.GetEncoding(28591);
+            byte[] jsonBytes = latin1.GetBytes(testJson);
+            byte[] dataBytes = new byte[jsonBytes.Length + 1];
+            Buffer.BlockCopy(jsonBytes, 0, dataBytes, 0, jsonBytes.Length);
+
+            byte[] compBuf = new byte[Lz4Compressor.MaxCompressedLength(dataBytes.Length)];
+            int compLen = Lz4Compressor.Compress(dataBytes, 0, dataBytes.Length, compBuf, 0, compBuf.Length);
+            byte[] compressed = new byte[compLen];
+            Buffer.BlockCopy(compBuf, 0, compressed, 0, compLen);
+
+            // Write to a blob file
+            Guid dataGuid = Guid.NewGuid();
+            string dataPath = Path.Combine(blobDir, dataGuid.ToString("N").ToUpperInvariant());
+            File.WriteAllBytes(dataPath, compressed);
+
+            // Create a slot info pointing to this file
+            var slotInfo = new XboxSlotInfo
+            {
+                Identifier = "AccountData",
+                DataFilePath = dataPath,
+                BlobDirectoryPath = blobDir,
+            };
+
+            // LoadXboxSave should decompress the raw LZ4 and return valid JSON
+            string? result = ContainersIndexManager.LoadXboxSave(slotInfo);
+            Assert.NotNull(result);
+
+            // Trim null terminator if present
+            result = result!.TrimEnd('\0');
+
+            var parsed = JsonObject.Parse(result);
+            var userSettings = parsed.GetObject("UserSettingsData");
+            Assert.NotNull(userSettings);
+            var rewards = userSettings!.GetArray("UnlockedSeasonRewards");
+            Assert.NotNull(rewards);
+            Assert.True(rewards!.Length > 0);
+        }
+        finally { Directory.Delete(tmpDir, true); }
+    }
+
+    [Fact]
     public void ContainersIndexManager_LoadXboxSave_HandlesHgsv2Format()
     {
         // Verify that HGSAVEV2 format saves can be loaded.

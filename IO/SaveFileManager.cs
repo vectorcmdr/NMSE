@@ -331,6 +331,124 @@ public class SaveFileManager
     }
 
     /// <summary>
+    /// Save JSON data back to an Xbox Game Pass save slot.
+    /// Writes the compressed save data and meta to the blob directory,
+    /// then updates the containers.index file.
+    /// </summary>
+    /// <param name="containersIndexPath">Path to the containers.index file.</param>
+    /// <param name="slotIdentifier">Slot identifier (e.g., "Slot1Auto").</param>
+    /// <param name="data">The JSON save data to write.</param>
+    public static void SaveXboxSave(string containersIndexPath, string slotIdentifier, JsonObject data)
+    {
+        // Parse the full containers.index to get header info and all slots
+        var indexData = ContainersIndexManager.ParseContainersIndexFull(containersIndexPath);
+        if (!indexData.Slots.TryGetValue(slotIdentifier, out var slotInfo))
+            throw new InvalidOperationException($"Xbox slot '{slotIdentifier}' not found in containers.index");
+
+        // Serialize JSON to bytes with null terminator
+        string json = data.ToString();
+        byte[] jsonBytes = Latin1.GetBytes(json);
+        byte[] dataBytes = new byte[jsonBytes.Length + 1];
+        Buffer.BlockCopy(jsonBytes, 0, dataBytes, 0, jsonBytes.Length);
+
+        // Compress save data using NMS LZ4 streaming format
+        byte[] compressedData;
+        using (var ms = new MemoryStream())
+        using (var compressor = new Lz4CompressorStream(ms))
+        {
+            compressor.Write(dataBytes, 0, dataBytes.Length);
+            compressor.Flush();
+            compressedData = ms.ToArray();
+        }
+
+        // Read existing meta or create minimal placeholder
+        byte[] metaData = ContainersIndexManager.LoadXboxMeta(slotInfo) ?? new byte[24];
+
+        // Write save data blob, meta blob, and blob container
+        ContainersIndexManager.WriteXboxSave(slotInfo, compressedData, metaData);
+
+        // Update the slot's last modified time
+        slotInfo.LastModified = DateTimeOffset.UtcNow;
+
+        // Rewrite the containers.index file with all slots
+        ContainersIndexManager.WriteContainersIndex(
+            containersIndexPath,
+            indexData.Slots.Values,
+            indexData.ProcessIdentifier,
+            indexData.AccountGuid,
+            DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Save account data back to the Xbox Game Pass AccountData blob.
+    /// Uses raw LZ4 block compression (not NMS streaming), matching the format
+    /// the game uses for AccountData and Settings blobs.
+    /// </summary>
+    /// <param name="containersIndexPath">Path to the containers.index file.</param>
+    /// <param name="accountData">The account data JSON object to write.</param>
+    public static void SaveXboxAccountData(string containersIndexPath, JsonObject accountData)
+    {
+        // Parse the full containers.index to get header info and all slots
+        var indexData = ContainersIndexManager.ParseContainersIndexFull(containersIndexPath);
+        if (!indexData.Slots.TryGetValue(ContainersIndexManager.AccountDataIdentifier, out var accountSlot))
+            throw new InvalidOperationException("Xbox AccountData slot not found in containers.index");
+
+        // Serialize JSON to bytes with null terminator
+        string json = accountData.ToString();
+        byte[] jsonBytes = Latin1.GetBytes(json);
+        byte[] dataBytes = new byte[jsonBytes.Length + 1];
+        Buffer.BlockCopy(jsonBytes, 0, dataBytes, 0, jsonBytes.Length);
+
+        // Compress account data using raw LZ4 block compression.
+        // AccountData/Settings use raw LZ4, not NMS streaming (0xE5A1EDFE).
+        byte[] compressedBuffer = new byte[Lz4Compressor.MaxCompressedLength(dataBytes.Length)];
+        int compressedLen = Lz4Compressor.Compress(dataBytes, 0, dataBytes.Length,
+            compressedBuffer, 0, compressedBuffer.Length);
+        byte[] compressedData = new byte[compressedLen];
+        Buffer.BlockCopy(compressedBuffer, 0, compressedData, 0, compressedLen);
+
+        // Read existing meta or create minimal account meta placeholder.
+        // Account meta is 20 bytes: version(4) + padding(12) + decompressedSize(4)
+        byte[] metaData = ContainersIndexManager.LoadXboxMeta(accountSlot) ?? CreateAccountMeta((uint)dataBytes.Length);
+
+        // Update the decompressed size in the meta if we have existing meta
+        if (metaData.Length >= 20)
+        {
+            byte[] sizeBytes = BitConverter.GetBytes((uint)dataBytes.Length);
+            Buffer.BlockCopy(sizeBytes, 0, metaData, 16, 4);
+        }
+
+        // Write account data blob, meta blob, and blob container
+        ContainersIndexManager.WriteXboxSave(accountSlot, compressedData, metaData);
+
+        // Update the slot's last modified time
+        accountSlot.LastModified = DateTimeOffset.UtcNow;
+
+        // Rewrite the containers.index file with all slots
+        ContainersIndexManager.WriteContainersIndex(
+            containersIndexPath,
+            indexData.Slots.Values,
+            indexData.ProcessIdentifier,
+            indexData.AccountGuid,
+            DateTimeOffset.UtcNow);
+    }
+
+    /// <summary>
+    /// Creates a minimal Xbox account meta blob (20 bytes).
+    /// Format: version(4, always 1) + padding(12, zeros) + decompressedSize(4).
+    /// </summary>
+    private static byte[] CreateAccountMeta(uint decompressedSize)
+    {
+        byte[] meta = new byte[20];
+        // Version = 1
+        meta[0] = 1;
+        // Decompressed size at offset 16
+        byte[] sizeBytes = BitConverter.GetBytes(decompressedSize);
+        Buffer.BlockCopy(sizeBytes, 0, meta, 16, 4);
+        return meta;
+    }
+
+    /// <summary>
     /// Load a save from an Xbox Game Pass containers.index directory.
     /// </summary>
     /// <param name="containersIndexPath">Path to the containers.index file.</param>

@@ -27,6 +27,28 @@ public class XboxSlotInfo
     public string? DataFilePath { get; set; }
     /// <summary>Gets or sets the resolved file path to the metadata blob.</summary>
     public string? MetaFilePath { get; set; }
+    /// <summary>Gets or sets the cloud/sync GUID for the data blob (preserved for round-trip fidelity).</summary>
+    public Guid? DataSyncGuid { get; set; }
+    /// <summary>Gets or sets the cloud/sync GUID for the meta blob (preserved for round-trip fidelity).</summary>
+    public Guid? MetaSyncGuid { get; set; }
+}
+
+/// <summary>
+/// Holds the full parsed contents of a containers.index file, including
+/// the global header fields needed to write the file back to disk.
+/// </summary>
+public class ContainersIndexData
+{
+    /// <summary>The process identifier string from the global header (e.g., "HelloGames.NoMansSky_...").</summary>
+    public string ProcessIdentifier { get; set; } = "";
+    /// <summary>The account GUID string from the global header.</summary>
+    public string AccountGuid { get; set; } = "";
+    /// <summary>The last-write timestamp from the global header.</summary>
+    public DateTimeOffset LastWriteTime { get; set; }
+    /// <summary>The sync state from the global header.</summary>
+    public int SyncState { get; set; }
+    /// <summary>All parsed slot entries, keyed by primary identifier.</summary>
+    public Dictionary<string, XboxSlotInfo> Slots { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -82,23 +104,42 @@ public static class ContainersIndexManager
     /// <returns>Dictionary of save identifier to slot info.</returns>
     public static Dictionary<string, XboxSlotInfo> ParseContainersIndex(string containersIndexPath)
     {
-        var result = new Dictionary<string, XboxSlotInfo>(StringComparer.OrdinalIgnoreCase);
+        return ParseContainersIndexFull(containersIndexPath).Slots;
+    }
+
+    /// <summary>
+    /// Parse the containers.index file and return all data including the global header
+    /// fields needed to write the file back (process identifier, account GUID, timestamps).
+    /// </summary>
+    /// <param name="containersIndexPath">Path to containers.index</param>
+    /// <returns>Full parsed contents including header fields and all slot entries.</returns>
+    public static ContainersIndexData ParseContainersIndexFull(string containersIndexPath)
+    {
+        var data = new ContainersIndexData();
         byte[] bytes = File.ReadAllBytes(containersIndexPath);
         string baseDir = Path.GetDirectoryName(containersIndexPath)!;
 
-        if (bytes.Length < 200) return result;
+        if (bytes.Length < 200) return data;
 
         // Validate header
         int header = ReadInt32LE(bytes, 0);
-        if (header != CONTAINERSINDEX_HEADER) return result;
+        if (header != CONTAINERSINDEX_HEADER) return data;
 
         long containerCount = ReadInt64LE(bytes, 4);
 
-        // Skip global header: header(4) + count(8) + processIdentifierLen(4) + processIdentifier(var) + lastModifiedTime(8) + syncState(4) + accountGuidLen(4) + accountGuid(var) + footer(8)
+        // Parse global header: header(4) + count(8) + processIdentifierLen(4) + processIdentifier(var) + lastModifiedTime(8) + syncState(4) + accountGuidLen(4) + accountGuid(var) + footer(8)
         int offset = 12;
-        offset += ReadDynamicString(bytes, offset, out _); // process identifier
+        offset += ReadDynamicString(bytes, offset, out string processIdentifier);
+        data.ProcessIdentifier = processIdentifier;
+
+        long lastWriteFileTime = ReadInt64LE(bytes, offset);
+        data.LastWriteTime = DateTimeOffset.FromFileTime(lastWriteFileTime);
+        int syncState = ReadInt32LE(bytes, offset + 8);
+        data.SyncState = syncState;
         offset += 12; // lastModifiedTime(8) + syncState(4)
-        offset += ReadDynamicString(bytes, offset, out _); // account guid
+
+        offset += ReadDynamicString(bytes, offset, out string accountGuid);
+        data.AccountGuid = accountGuid;
         offset += 8; // footer
 
         // Parse each blob container entry
@@ -114,7 +155,7 @@ public static class ContainersIndexManager
             // Read remaining fixed fields
             if (offset + 45 > bytes.Length) break;
             byte blobExtension = bytes[offset]; // 1
-            int syncState = ReadInt32LE(bytes, offset + 1); // 4
+            int slotSyncState = ReadInt32LE(bytes, offset + 1); // 4
             byte[] guidBytes = new byte[16];
             Buffer.BlockCopy(bytes, offset + 5, guidBytes, 0, 16);
             Guid directoryGuid = new Guid(guidBytes);
@@ -131,7 +172,7 @@ public static class ContainersIndexManager
                 SecondIdentifier = identifier2,
                 SyncTime = syncTime,
                 BlobContainerExtension = blobExtension,
-                SyncState = syncState,
+                SyncState = slotSyncState,
                 DirectoryGuid = directoryGuid,
                 BlobDirectoryPath = blobDirPath,
                 LastModified = DateTimeOffset.FromFileTime(lastModified),
@@ -143,10 +184,10 @@ public static class ContainersIndexManager
                 ParseBlobContainer(slotInfo);
             }
 
-            result[identifier1] = slotInfo;
+            data.Slots[identifier1] = slotInfo;
         }
 
-        return result;
+        return data;
     }
 
     /// <summary>
@@ -355,12 +396,16 @@ public static class ContainersIndexManager
 
             for (int j = 0; j < blobCount && offset + BLOBCONTAINER_IDENTIFIER_LENGTH + 32 <= bytes.Length; j++)
             {
-                // Read identifier (UTF-16, up to 80 bytes)
+                // Read identifier (UTF-16, fixed 128 bytes)
                 string blobId = Encoding.Unicode.GetString(bytes, offset, BLOBCONTAINER_IDENTIFIER_LENGTH).TrimEnd('\0');
                 offset += BLOBCONTAINER_IDENTIFIER_LENGTH;
 
-                // Skip cloud GUID (16 bytes), read local GUID (16 bytes)
-                offset += 16; // cloud guid
+                // Read cloud/sync GUID (16 bytes) and local GUID (16 bytes)
+                byte[] syncGuidBytes = new byte[16];
+                Buffer.BlockCopy(bytes, offset, syncGuidBytes, 0, 16);
+                Guid syncGuid = new Guid(syncGuidBytes);
+                offset += 16; // cloud/sync guid
+
                 byte[] localGuidBytes = new byte[16];
                 Buffer.BlockCopy(bytes, offset, localGuidBytes, 0, 16);
                 Guid localGuid = new Guid(localGuidBytes);
@@ -369,9 +414,15 @@ public static class ContainersIndexManager
                 string blobPath = GetBlobFilePath(slotInfo.BlobDirectoryPath, localGuid);
 
                 if (blobId.StartsWith("data", StringComparison.OrdinalIgnoreCase))
+                {
                     slotInfo.DataFilePath = blobPath;
+                    slotInfo.DataSyncGuid = syncGuid;
+                }
                 else if (blobId.StartsWith("meta", StringComparison.OrdinalIgnoreCase))
+                {
                     slotInfo.MetaFilePath = blobPath;
+                    slotInfo.MetaSyncGuid = syncGuid;
+                }
             }
 
             // If we found data file, we're done
@@ -401,14 +452,14 @@ public static class ContainersIndexManager
         byte[] dataIdBytes = Encoding.Unicode.GetBytes("data");
         writer.Write(dataIdBytes);
         ms.Position = 8 + BLOBCONTAINER_IDENTIFIER_LENGTH; // skip rest of identifier padding
-        writer.Write(new byte[16]); // cloud GUID (empty)
+        writer.Write(slotInfo.DataSyncGuid?.ToByteArray() ?? new byte[16]); // cloud/sync GUID (preserved)
         writer.Write(dataGuid.ToByteArray()); // local GUID
 
         // Meta blob entry
         byte[] metaIdBytes = Encoding.Unicode.GetBytes("meta");
         writer.Write(metaIdBytes);
         ms.Position = 8 + BLOBCONTAINER_IDENTIFIER_LENGTH + 32 + BLOBCONTAINER_IDENTIFIER_LENGTH;
-        writer.Write(new byte[16]); // cloud GUID (empty)
+        writer.Write(slotInfo.MetaSyncGuid?.ToByteArray() ?? new byte[16]); // cloud/sync GUID (preserved)
         writer.Write(metaGuid.ToByteArray()); // local GUID
 
         // Delete old container files
@@ -601,7 +652,7 @@ public static class ContainersIndexManager
         }
         catch
         {
-            // LZ4 decompression failed — return as uncompressed
+            // LZ4 decompression failed - return as uncompressed
             return latin1.GetString(data, 0, read);
         }
     }

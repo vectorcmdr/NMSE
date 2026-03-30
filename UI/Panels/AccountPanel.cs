@@ -12,6 +12,7 @@ public partial class AccountPanel : UserControl
     private string? _mxmlFilePath;
     private GameItemDatabase? _database;
     private IconManager? _iconManager;
+    private SaveFileManager.Platform _currentPlatform = SaveFileManager.Platform.Unknown;
 
     /// <summary>The loaded account data object, or null if not loaded.</summary>
     public JsonObject? AccountData => _accountData;
@@ -19,6 +20,14 @@ public partial class AccountPanel : UserControl
     public string? AccountFilePath => _accountFilePath;
     /// <summary>The file path of the MXML settings file for platform rewards, or null if not set.</summary>
     public string? MxmlFilePath => _mxmlFilePath;
+
+    /// <summary>
+    /// Returns true if the current platform uses MXML files for platform rewards.
+    /// Only Steam and GOG (PC) use MXML; console platforms (Xbox, PS4, Switch) do not.
+    /// </summary>
+    private bool UsesMxml => _currentPlatform is SaveFileManager.Platform.Steam
+                                               or SaveFileManager.Platform.GOG
+                                               or SaveFileManager.Platform.Unknown;
 
     // Rewards database from rewards.xml
     private readonly List<(string Id, string Name)> _seasonRewardsDb = new();
@@ -35,6 +44,28 @@ public partial class AccountPanel : UserControl
 
     public void SetDatabase(GameItemDatabase db) => _database = db;
     public void SetIconManager(IconManager? mgr) => _iconManager = mgr;
+
+    /// <summary>
+    /// Sets the detected platform for the currently loaded save.
+    /// Controls whether MXML-related UI and logic is active (PC-only).
+    /// </summary>
+    public void SetPlatform(SaveFileManager.Platform platform)
+    {
+        _currentPlatform = platform;
+
+        // MXML controls are only relevant for PC platforms (Steam/GOG)
+        bool showMxml = UsesMxml;
+        _platformMxmlInfoLabel.Visible = showMxml;
+        _platformMxmlFilePanel.Visible = showMxml;
+
+        // Clear MXML state when switching to a console platform
+        if (!showMxml)
+        {
+            _mxmlFilePath = null;
+            _platformMxmlPathBox.Text = "";
+            _platformMxmlStatusLabel.Text = "";
+        }
+    }
 
     /// <summary>
     /// Load the rewards database. Tries to load from Rewards.json in the database directory
@@ -165,18 +196,19 @@ public partial class AccountPanel : UserControl
         _accountData = data.AccountObject;
         _accountFilePath = data.AccountFilePath;
 
-        // Auto-detect MXML path if not already set
-        if (string.IsNullOrEmpty(_mxmlFilePath))
+        // Auto-detect MXML path if not already set (PC platforms only).
+        // Console platforms (Xbox, PS4, Switch) do not use MXML files.
+        if (UsesMxml && string.IsNullOrEmpty(_mxmlFilePath))
         {
             var detected = MxmlRewardEditor.AutoDetectMxmlPath();
             if (detected != null)
                 SetMxmlPath(detected);
         }
 
-        // Platform rewards require BOTH accountdata AND MXML to be present.
+        // Platform rewards require BOTH accountdata AND MXML to be present (PC only).
         // Only show as unlocked if the reward exists in both sources.
         var platformUnlocked = data.PlatformUnlocked;
-        if (!string.IsNullOrEmpty(_mxmlFilePath))
+        if (UsesMxml && !string.IsNullOrEmpty(_mxmlFilePath))
         {
             var mxmlRewards = MxmlRewardEditor.ReadUnlockedRewards(_mxmlFilePath);
             // Intersect: only keep rewards that are in both accountdata and MXML
@@ -195,6 +227,7 @@ public partial class AccountPanel : UserControl
     /// <summary>
     /// Loads account data from an Xbox Game Pass AccountData blob.
     /// This is the Xbox equivalent of <see cref="LoadAccountFile"/>.
+    /// Xbox is a console platform so MXML is never used.
     /// </summary>
     /// <param name="accountSlot">The Xbox slot info for the AccountData entry.</param>
     public void LoadXboxAccountData(XboxSlotInfo accountSlot)
@@ -215,26 +248,12 @@ public partial class AccountPanel : UserControl
         _accountData = data.AccountObject;
         _accountFilePath = data.AccountFilePath;
 
-        // Auto-detect MXML path if not already set
-        if (string.IsNullOrEmpty(_mxmlFilePath))
-        {
-            var detected = MxmlRewardEditor.AutoDetectMxmlPath();
-            if (detected != null)
-                SetMxmlPath(detected);
-        }
-
-        var platformUnlocked = data.PlatformUnlocked;
-        if (!string.IsNullOrEmpty(_mxmlFilePath))
-        {
-            var mxmlRewards = MxmlRewardEditor.ReadUnlockedRewards(_mxmlFilePath);
-            platformUnlocked = new HashSet<string>(
-                platformUnlocked.Where(id => mxmlRewards.Contains(id)),
-                StringComparer.OrdinalIgnoreCase);
-        }
+        // Xbox is a console platform - do NOT auto-detect or use MXML files.
+        // Platform rewards for Xbox are stored in the AccountData blob only.
 
         PopulateRewardGrid(_seasonGrid, _seasonRewardsDb, data.SeasonUnlocked);
         PopulateRewardGrid(_twitchGrid, _twitchRewardsDb, data.TwitchUnlocked);
-        PopulateRewardGrid(_platformGrid, _platformRewardsDb, platformUnlocked);
+        PopulateRewardGrid(_platformGrid, _platformRewardsDb, data.PlatformUnlocked);
 
         _statusLabel.Text = data.StatusMessage ?? "";
     }
@@ -317,8 +336,10 @@ public partial class AccountPanel : UserControl
         // Sync redeemed rewards to the game save (required by game alongside account unlock)
         AccountLogic.SyncRedeemedRewards(saveData, seasonRows, twitchRows);
 
-        // Additionally write platform rewards to MXML file (if configured)
-        MxmlRewardEditor.SyncPlatformRewards(_mxmlFilePath, platformRows);
+        // Additionally write platform rewards to MXML file (PC platforms only).
+        // Console platforms (Xbox, PS4, Switch) do not use MXML files.
+        if (UsesMxml)
+            MxmlRewardEditor.SyncPlatformRewards(_mxmlFilePath, platformRows);
     }
 
     private static List<(string Id, bool Unlocked)> CollectRewardRows(DataGridView grid)
@@ -348,9 +369,12 @@ public partial class AccountPanel : UserControl
 
     /// <summary>
     /// Opens a file dialog to select the GCUSERSETTINGSDATA.MXML file.
+    /// Only available for PC platforms (Steam/GOG).
     /// </summary>
     private void OnBrowseMxml(object? sender, EventArgs e)
     {
+        if (!UsesMxml) return;
+
         using var dlg = new OpenFileDialog
         {
             Title = "Select GCUSERSETTINGSDATA.MXML",

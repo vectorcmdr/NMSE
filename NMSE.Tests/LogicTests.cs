@@ -2929,6 +2929,88 @@ public class LogicTests
     }
 
     [Fact]
+    public void Xbox_ParseContainersIndex_FindsAllSlots()
+    {
+        var ciPath = FindRefPath("_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C", "containers.index");
+        if (ciPath == null) return; // skip if reference save not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(ciPath);
+        Assert.True(slots.Count >= 6, $"Expected at least 6 slots, got {slots.Count}");
+        Assert.True(slots.ContainsKey("AccountData"));
+        Assert.True(slots.ContainsKey("Settings"));
+        Assert.True(slots.ContainsKey("Slot1Auto"));
+        Assert.True(slots.ContainsKey("Slot1Manual"));
+        Assert.True(slots.ContainsKey("Slot3Auto"));
+        Assert.True(slots.ContainsKey("Slot3Manual"));
+
+        Assert.False(ContainersIndexManager.IsSaveSlot("AccountData"));
+        Assert.False(ContainersIndexManager.IsSaveSlot("Settings"));
+        Assert.True(ContainersIndexManager.IsSaveSlot("Slot1Auto"));
+    }
+
+    [Fact]
+    public void Xbox_LoadAccountData_DecompressesRawLz4AndParsesJson()
+    {
+        var ciPath = FindRefPath("_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C", "containers.index");
+        if (ciPath == null) return; // skip if reference save not available
+
+        var slots = ContainersIndexManager.ParseContainersIndex(ciPath);
+        Assert.True(slots.TryGetValue("AccountData", out var accountSlot));
+        Assert.NotNull(accountSlot!.DataFilePath);
+        Assert.True(File.Exists(accountSlot.DataFilePath));
+
+        // LoadXboxSave must decompress the raw LZ4 blob and return valid JSON
+        string? json = ContainersIndexManager.LoadXboxSave(accountSlot);
+        Assert.NotNull(json);
+        Assert.True(json!.Length > 0);
+        Assert.StartsWith("{", json);
+
+        // Parse as JsonObject to confirm it's valid JSON with expected structure
+        var obj = JsonObject.Parse(json);
+        Assert.NotNull(obj);
+        Assert.True(obj.Length > 0);
+    }
+
+    [Fact]
+    public void Xbox_LoadAccountData_ViaAccountLogic_LoadsRewards()
+    {
+        var ciPath = FindRefPath("_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C", "containers.index");
+        if (ciPath == null) return; // skip if reference save not available
+
+        EnsureMapperLoaded();
+        var slots = ContainersIndexManager.ParseContainersIndex(ciPath);
+        Assert.True(slots.TryGetValue("AccountData", out var accountSlot));
+
+        var data = AccountLogic.LoadXboxAccountData(accountSlot!);
+        Assert.Null(data.ErrorMessage);
+        Assert.NotNull(data.AccountObject);
+        Assert.NotNull(data.StatusMessage);
+
+        // The account data should have a UserSettingsData key
+        var userSettings = data.AccountObject!.GetObject("UserSettingsData");
+        Assert.NotNull(userSettings);
+    }
+
+    [Fact]
+    public void Xbox_LoadSaveSlot_LoadsNmsLz4StreamingFormat()
+    {
+        var ciPath = FindRefPath("_ref", "xbox_save", "000900000150C65A_29070100B936489ABCE8B9AF3980429C", "containers.index");
+        if (ciPath == null) return; // skip if reference save not available
+
+        EnsureMapperLoaded();
+        var slots = ContainersIndexManager.ParseContainersIndex(ciPath);
+        Assert.True(slots.TryGetValue("Slot1Auto", out var slotInfo));
+        Assert.NotNull(slotInfo!.DataFilePath);
+
+        string? json = ContainersIndexManager.LoadXboxSave(slotInfo);
+        Assert.NotNull(json);
+        Assert.StartsWith("{", json!);
+
+        var obj = JsonObject.Parse(json);
+        Assert.NotNull(obj);
+    }
+
+    [Fact]
     public void DetectPlatform_Switch_DetectedByManifestDat()
     {
         var dir = Path.Combine(Path.GetTempPath(), "nmse_test_switch_" + Guid.NewGuid().ToString("N"));

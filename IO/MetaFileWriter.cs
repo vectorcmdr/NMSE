@@ -357,7 +357,7 @@ public static class MetaFileWriter
             using var ms = new MemoryStream(buffer);
             using var writer = new BinaryWriter(ms);
             writer.Write(META_HEADER_SWITCH_PS);
-            writer.Write(META_FORMAT_2);
+            writer.Write(metaFormat);
             writer.Write(decompressedSize);
             File.WriteAllBytes(metaPath, buffer);
             return;
