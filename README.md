@@ -185,12 +185,14 @@ dotnet test NMSE.Extractor.Tests/
 - [x] Full save file support (Steam, GOG, Xbox, PS4, Switch)
 - [x] 16-language UI localisation
 - [x] Wine compatibility scripts (Linux & macOS)
+- [X] Corvette build order optimizer
+- [X] Import support for NMS Model IO Tool
 - [ ] Native cross-platform UI (AvaloniaUI migration)
 - [ ] Base teleport reordering
 - [ ] Support for in-game archives
 - [ ] Starship/Multi-tool/etc. collection system
 - [ ] Community seeds library
-- [ ] Corvette build order optimizer
+
 - [ ] Integrations with NMS Optimizer app
 
 ---
