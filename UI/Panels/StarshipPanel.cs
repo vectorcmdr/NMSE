@@ -100,6 +100,7 @@ public partial class StarshipPanel : UserControl
         _importBtn.Text = UiStrings.Get("starship.import");
         _exportCorvetteBtn.Text = UiStrings.Get("starship.export_corvette");
         _importCorvetteBtn.Text = UiStrings.Get("starship.import_corvette");
+        _importEmptySlotBtn.Text = UiStrings.Get("starship.import_empty_slot");
         _makePrimaryBtn.Text = UiStrings.Get("starship.make_primary");
         _snapshotTechBtn.Text = UiStrings.Get("starship.export_snapshot");
         _importSnapshotBtn.Text = UiStrings.Get("starship.import_snapshot");
@@ -328,10 +329,12 @@ public partial class StarshipPanel : UserControl
             _importBtn.Visible = !isCorvette;
             _exportCorvetteBtn.Visible = isCorvette;
             _importCorvetteBtn.Visible = isCorvette;
-            _snapshotTechBtn.Visible = isCorvette;
-            _importSnapshotBtn.Visible = isCorvette;
-            _optimiseBtn.Visible = isCorvette;
+            _corvetteExtrasPanel.Visible = isCorvette;
             _corvetteWarningLabel.Visible = isCorvette;
+
+            // Update optimise indicator for corvettes
+            if (isCorvette)
+                UpdateOptimiseIndicator(idx);
         }
         catch { }
         finally
@@ -632,6 +635,163 @@ public partial class StarshipPanel : UserControl
         }
     }
 
+    private void OnImportToEmptySlot(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_shipOwnership == null || _playerState == null || _saveData == null) return;
+
+            int emptyIdx = StarshipLogic.FindEmptySlot(_shipOwnership);
+            if (emptyIdx < 0)
+            {
+                MessageBox.Show(
+                    UiStrings.Get("starship.no_empty_slots"),
+                    UiStrings.Get("starship.import_ship_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var cfg = ExportConfig.Instance;
+
+            // Accept both starship and corvette file formats
+            string filter = ExportConfig.BuildImportFilter(cfg.StarshipExt, "Starship files",
+                cfg.CorvetteExt, cfg.CorvetteSnapshotExt, ".nmsship");
+
+            using var dialog = new OpenFileDialog { Filter = filter };
+            if (dialog.ShowDialog() != DialogResult.OK) return;
+
+            // Try ZIP format first (other editor's .nmsship format)
+            var zipResult = StarshipLogic.TryReadNmsshipZip(dialog.FileName);
+
+            JsonObject? importedShip;
+            JsonObject? importedBase = null;
+            JsonObject? zipCcd = null;
+
+            if (zipResult != null)
+            {
+                importedShip = zipResult.Value.ship;
+                zipCcd = zipResult.Value.ccd;
+                if (zipResult.Value.objects != null)
+                {
+                    importedBase = new JsonObject();
+                    importedBase.Set("Objects", zipResult.Value.objects);
+                }
+            }
+            else
+            {
+                var imported = JsonObject.ImportFromFile(dialog.FileName);
+
+                // Check for corvette format (Ship + Base wrapper)
+                importedShip = imported.GetObject("Ship");
+                if (importedShip != null)
+                {
+                    importedBase = imported.GetObject("Base");
+                }
+                else
+                {
+                    // Plain ship file or NomNom wrapper
+                    if (InventoryImportHelper.IsNomNomWrapper(imported))
+                    {
+                        var data = imported.GetObject("Data");
+                        if (data != null)
+                        {
+                            var entity = data.GetObject("Starship") ?? data.GetObject("Ship");
+                            if (entity != null) importedShip = entity;
+                        }
+                    }
+                    else
+                    {
+                        importedShip = imported;
+                    }
+                }
+            }
+
+            if (importedShip == null)
+            {
+                MessageBox.Show(
+                    UiStrings.Get("starship.no_valid_ship"),
+                    UiStrings.Get("common.error"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var ship = _shipOwnership.GetObject(emptyIdx);
+
+            // Extract the embedded CharacterCustomisationData before copying
+            var importedCcd = importedShip.GetObject("__ShipCustomisation");
+
+            // Copy all properties from imported ship to the empty slot
+            foreach (var name in importedShip.Names())
+            {
+                if (name == "__ShipCustomisation") continue;
+                ship.Set(name, importedShip.Get(name));
+            }
+
+            // Remove the transient key from the live ship object if it leaked
+            ship.Remove("__ShipCustomisation");
+
+            // Determine CCD source: prefer ZIP CCD if present and non-default
+            JsonObject? ccdToApply = importedCcd;
+            if (zipCcd != null && !StarshipLogic.IsCcdDefault(zipCcd))
+                ccdToApply = zipCcd;
+
+            var ccdArray = _playerState.GetArray("CharacterCustomisationData");
+            StarshipLogic.SetShipCustomisation(ccdArray, emptyIdx, ccdToApply);
+
+            // Import base building objects for corvette ships
+            if (importedBase != null)
+            {
+                var importedResource = importedShip.GetObject("Resource");
+                string importedFilename = importedResource?.GetString("Filename") ?? "";
+                if (StarshipLogic.IsCorvette(importedFilename))
+                {
+                    string seed = "";
+                    try
+                    {
+                        var res = ship.GetObject("Resource");
+                        seed = res?.GetArray("Seed")?.Get(1)?.ToString() ?? "";
+                    }
+                    catch { }
+
+                    long seedDecimal = StarshipLogic.SeedToDecimal(seed);
+                    if (seedDecimal > 0)
+                    {
+                        var bases = _playerState.GetArray("PersistentPlayerBases");
+                        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, emptyIdx, seedDecimal);
+                        if (baseIdx >= 0)
+                        {
+                            var existingBase = bases!.GetObject(baseIdx);
+                            foreach (var name in importedBase.Names())
+                                existingBase.Set(name, importedBase.Get(name));
+                        }
+                    }
+                }
+            }
+
+            // Rebuild the ship list and select the newly imported ship
+            _shipSelector.Items.Clear();
+            var shipList = StarshipLogic.BuildShipList(_shipOwnership);
+            foreach (var shipItem in shipList)
+                _shipSelector.Items.Add(shipItem);
+
+            // Find and select the newly imported slot
+            for (int i = 0; i < _shipSelector.Items.Count; i++)
+            {
+                if (((StarshipLogic.ShipListItem)_shipSelector.Items[i]!).DataIndex == emptyIdx)
+                {
+                    _shipSelector.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            DataModified?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     private static void SetInventoryClass(JsonObject? inventory, string cls)
     {
         if (inventory == null) return;
@@ -914,7 +1074,7 @@ public partial class StarshipPanel : UserControl
 
             using var dialog = new OpenFileDialog
             {
-                Filter = ExportConfig.BuildImportFilter(cfg.CorvetteExt, "Corvette files", cfg.StarshipExt)
+                Filter = ExportConfig.BuildOpenFilter(cfg.CorvetteExt, "Corvette files")
             };
             if (dialog.ShowDialog() != DialogResult.OK) return;
 
@@ -1034,6 +1194,9 @@ public partial class StarshipPanel : UserControl
                 return;
             }
 
+            // After optimising, update indicator to green
+            SetOptimiseIndicator(true);
+
             MessageBox.Show(
                 UiStrings.Format("starship.optimise_done", result),
                 UiStrings.Get("starship.optimise"),
@@ -1044,6 +1207,47 @@ public partial class StarshipPanel : UserControl
         catch (Exception ex)
         {
             MessageBox.Show(string.Format("Optimisation failed: {0}", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Sets the optimise indicator: green tick if optimised, orangered cross if not.
+    /// </summary>
+    private void SetOptimiseIndicator(bool isOptimised)
+    {
+        _optimiseIndicator.Text = isOptimised ? "\u2714" : "\u2718";
+        _optimiseIndicator.ForeColor = isOptimised
+            ? Color.Green
+            : Color.OrangeRed;
+    }
+
+    /// <summary>
+    /// Checks whether the corvette at the given ship index is already in
+    /// optimised order and updates the indicator accordingly.
+    /// </summary>
+    private void UpdateOptimiseIndicator(int shipIndex)
+    {
+        if (_saveData == null || _shipOwnership == null) return;
+        try
+        {
+            var ship = _shipOwnership.GetObject(shipIndex);
+            string seed = "";
+            try
+            {
+                var resource = ship.GetObject("Resource");
+                seed = resource?.GetArray("Seed")?.Get(1)?.ToString() ?? "";
+            }
+            catch { }
+
+            long seedDecimal = StarshipLogic.SeedToDecimal(seed);
+            var playerState = _saveData.GetObject("PlayerStateData");
+            var bases = playerState?.GetArray("PersistentPlayerBases");
+            bool optimised = StarshipLogic.IsCorvetteOptimised(bases, shipIndex, seedDecimal);
+            SetOptimiseIndicator(optimised);
+        }
+        catch
+        {
+            SetOptimiseIndicator(false);
         }
     }
 

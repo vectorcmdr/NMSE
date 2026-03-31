@@ -418,4 +418,75 @@ public class StarshipLogicTests
         Assert.Equal("^B_GEN_0", objects.GetObject(1).GetString("ObjectID")); // subOrder 1
         Assert.Equal("^B_GEN_2", objects.GetObject(2).GetString("ObjectID")); // subOrder 2
     }
+
+    // --- IsCorvetteOptimised tests ---
+
+    [Fact]
+    public void IsCorvetteOptimised_AlreadySorted_ReturnsTrue()
+    {
+        StarshipDatabase.Clear();
+        var bases = BuildBaseArray(0, 0x123,
+            ("^B_GEN_1", 1), ("^B_TRU_C", 2), ("^B_LND_A", 3), ("^BUILDTABLE", 0));
+
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+    }
+
+    [Fact]
+    public void IsCorvetteOptimised_Unsorted_ReturnsFalse()
+    {
+        StarshipDatabase.Clear();
+        var bases = BuildBaseArray(0, 0x123,
+            ("^BUILDTABLE", 0), ("^B_GEN_1", 1), ("^B_TRU_C", 2));
+
+        Assert.False(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+    }
+
+    [Fact]
+    public void IsCorvetteOptimised_NullBases_ReturnsTrue()
+    {
+        Assert.True(StarshipLogic.IsCorvetteOptimised(null, 0, 0x123));
+    }
+
+    [Fact]
+    public void IsCorvetteOptimised_SingleObject_ReturnsTrue()
+    {
+        StarshipDatabase.Clear();
+        var bases = BuildBaseArray(0, 0x123, ("^B_GEN_0", 0));
+
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+    }
+
+    [Fact]
+    public void IsCorvetteOptimised_NoMatchingBase_ReturnsTrue()
+    {
+        StarshipDatabase.Clear();
+        var bases = BuildBaseArray(0, 0x123,
+            ("^B_GEN_1", 1), ("^B_TRU_C", 2));
+
+        // Different seed, so base is not found -> returns true (nothing to optimise)
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x999));
+    }
+
+    /// <summary>
+    /// Builds a PersistentPlayerBases array with a single corvette base entry
+    /// for use in IsCorvetteOptimised tests.
+    /// </summary>
+    private static JsonArray BuildBaseArray(int shipIndex, long seed, params (string objectId, long userData)[] parts)
+    {
+        var objects = new JsonArray();
+        foreach (var (objectId, userData) in parts)
+            AddBuildingObject(objects, objectId, userData);
+
+        // Build a base object matching FindCorvetteBaseIndex expectations:
+        // Strategy 1 matches by UserData == shipIndex and BaseType == "PlayerShipBase"
+        var baseObj = new JsonObject();
+        baseObj.Set("BaseType", new JsonObject());
+        baseObj.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
+        baseObj.Set("Objects", objects);
+        baseObj.Set("UserData", (double)shipIndex);
+
+        var bases = new JsonArray();
+        bases.Add(baseObj);
+        return bases;
+    }
 }

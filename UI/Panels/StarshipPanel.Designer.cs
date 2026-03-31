@@ -82,18 +82,19 @@ partial class StarshipPanel
         titlePanel.Controls.Add(_primaryShipLabel);
         mainLayout.Controls.Add(titlePanel, 0, 0);
 
-        // Details+Stats layout: 2 columns, 2 rows (details/stats, buttons)
+        // Details+Stats layout: 2 columns, 3 rows (details/stats, buttons, corvette row)
         var detailsStatsLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             ColumnCount = 2,
-            RowCount = 2,
+            RowCount = 3,
             AutoSize = true
         };
         detailsStatsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         detailsStatsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         detailsStatsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // details/stats
         detailsStatsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // buttons
+        detailsStatsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // corvette extras row
 
         // Left panel for selection and properties
         var leftPanel = new TableLayoutPanel
@@ -193,7 +194,7 @@ partial class StarshipPanel
         detailsStatsLayout.Controls.Add(leftPanel, 0, 0);
         detailsStatsLayout.Controls.Add(rightPanel, 1, 0);
 
-        // Buttons panel
+        // Buttons panel (row 1: common buttons)
         var buttonPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -210,14 +211,10 @@ partial class StarshipPanel
         _exportCorvetteBtn.Click += OnExportCorvette;
         _importCorvetteBtn = new Button { Text = "Import Corvette", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0), Visible = false };
         _importCorvetteBtn.Click += OnImportCorvette;
+        _importEmptySlotBtn = new Button { Text = "Import to Empty Slot", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0) };
+        _importEmptySlotBtn.Click += OnImportToEmptySlot;
         _makePrimaryBtn = new Button { Text = "Make Primary", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(88, 0) };
         _makePrimaryBtn.Click += OnMakePrimary;
-        _snapshotTechBtn = new Button { Text = "Snapshot Tech", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0), Visible = false };
-        _snapshotTechBtn.Click += OnSnapshotTech;
-        _importSnapshotBtn = new Button { Text = "Import Snapshot", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0), Visible = false };
-        _importSnapshotBtn.Click += OnImportSnapshot;
-        _optimiseBtn = new Button { Text = "Optimise", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0), Visible = false };
-        _optimiseBtn.Click += OnOptimiseCorvette;
         _corvetteWarningLabel = new ColorEmojiLabel
         {
             Text = "\u26A0 Saves only store full Technology slots for your last active Corvette.",
@@ -232,13 +229,41 @@ partial class StarshipPanel
         buttonPanel.Controls.Add(_importBtn);
         buttonPanel.Controls.Add(_exportCorvetteBtn);
         buttonPanel.Controls.Add(_importCorvetteBtn);
+        buttonPanel.Controls.Add(_importEmptySlotBtn);
         buttonPanel.Controls.Add(_makePrimaryBtn);
-        buttonPanel.Controls.Add(_snapshotTechBtn);
-        buttonPanel.Controls.Add(_importSnapshotBtn);
-        buttonPanel.Controls.Add(_optimiseBtn);
         buttonPanel.Controls.Add(_corvetteWarningLabel);
         detailsStatsLayout.Controls.Add(buttonPanel, 0, 1);
         detailsStatsLayout.SetColumnSpan(buttonPanel, 2);
+
+        // Corvette extras panel (row 2: Snapshot, Import Snapshot, Optimise + indicator)
+        _corvetteExtrasPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
+            Visible = false,
+        };
+        _snapshotTechBtn = new Button { Text = "Snapshot Tech", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0) };
+        _snapshotTechBtn.Click += OnSnapshotTech;
+        _importSnapshotBtn = new Button { Text = "Import Snapshot", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0) };
+        _importSnapshotBtn.Click += OnImportSnapshot;
+        _optimiseBtn = new Button { Text = "Optimise", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(100, 0) };
+        _optimiseBtn.Click += OnOptimiseCorvette;
+        _optimiseIndicator = new Label
+        {
+            AutoSize = true,
+            Font = new Font("Segoe UI", 10, FontStyle.Bold),
+            Margin = new Padding(0, 4, 0, 0),
+        };
+        SetOptimiseIndicator(false);
+        _corvetteExtrasPanel.Controls.Add(_snapshotTechBtn);
+        _corvetteExtrasPanel.Controls.Add(_importSnapshotBtn);
+        _corvetteExtrasPanel.Controls.Add(_optimiseBtn);
+        _corvetteExtrasPanel.Controls.Add(_optimiseIndicator);
+        detailsStatsLayout.Controls.Add(_corvetteExtrasPanel, 0, 2);
+        detailsStatsLayout.SetColumnSpan(_corvetteExtrasPanel, 2);
 
         mainLayout.Controls.Add(detailsStatsLayout, 0, 1);
 
@@ -289,14 +314,17 @@ partial class StarshipPanel
     private Button _deleteBtn = null!;
     private Button _exportBtn = null!;
     private Button _importBtn = null!;
+    private Button _importEmptySlotBtn = null!;
     private Button _makePrimaryBtn = null!;
     private Label _primaryShipLabel = null!;
     private ColorEmojiLabel _corvetteWarningLabel = null!;
     private Button _exportCorvetteBtn = null!;
     private Button _importCorvetteBtn = null!;
+    private FlowLayoutPanel _corvetteExtrasPanel = null!;
     private Button _snapshotTechBtn = null!;
     private Button _importSnapshotBtn = null!;
     private Button _optimiseBtn = null!;
+    private Label _optimiseIndicator = null!;
     private DoubleBufferedTabControl _invTabs = null!;
     private InventoryGridPanel _inventoryGrid = null!;
     private InventoryGridPanel _techGrid = null!;

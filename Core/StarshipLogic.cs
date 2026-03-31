@@ -548,6 +548,31 @@ internal static class StarshipLogic
     }
 
     /// <summary>
+    /// Finds the first empty (invalidated) ship slot in the ownership array.
+    /// A slot is empty when its Seed[0] is false.
+    /// </summary>
+    /// <param name="shipOwnership">The JSON array of ship ownership entries.</param>
+    /// <returns>The index of the first empty slot, or -1 if all slots are occupied.</returns>
+    internal static int FindEmptySlot(JsonArray shipOwnership)
+    {
+        for (int i = 0; i < shipOwnership.Length; i++)
+        {
+            try
+            {
+                var ship = shipOwnership.GetObject(i);
+                var resource = ship.GetObject("Resource");
+                var seedArr = resource?.GetArray("Seed");
+                bool hasSeed = false;
+                try { hasSeed = seedArr != null && seedArr.Length > 0 && seedArr.GetBool(0); }
+                catch { }
+                if (!hasSeed) return i;
+            }
+            catch { }
+        }
+        return -1;
+    }
+
+    /// <summary>
     /// Returns the array index of the first valid (non-invalidated) ship, or -1 if none.
     /// </summary>
     internal static int FindFirstValidShipIndex(JsonArray shipOwnership)
@@ -999,6 +1024,72 @@ internal static class StarshipLogic
     internal static int OptimiseCorvetteBase(JsonArray? bases, long seedDecimal)
     {
         return OptimiseCorvetteBase(bases, -1, seedDecimal);
+    }
+
+    /// <summary>
+    /// Checks whether a corvette's building objects are already in the order
+    /// that <see cref="OptimiseCorvetteBase"/> would produce. This is a
+    /// non-destructive read-only check used to display an indicator dot.
+    /// </summary>
+    /// <param name="bases">The PersistentPlayerBases array.</param>
+    /// <param name="shipIndex">The ship's slot index in ShipOwnership.</param>
+    /// <param name="seedDecimal">The ship's seed as a decimal long.</param>
+    /// <returns>
+    /// <c>true</c> if the objects are already in optimised order (or the base
+    /// has 0-1 objects); <c>false</c> if they would be reordered; also
+    /// <c>true</c> if the base cannot be found (nothing to optimise).
+    /// </returns>
+    internal static bool IsCorvetteOptimised(JsonArray? bases, int shipIndex, long seedDecimal)
+    {
+        if (bases == null) return true;
+
+        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex, seedDecimal);
+        if (baseIdx < 0) return true;
+
+        var baseObj = bases.GetObject(baseIdx);
+        var objectsArr = baseObj.GetArray("Objects");
+        if (objectsArr == null || objectsArr.Length <= 1) return true;
+
+        // Build the expected order by extracting priorities and sort keys,
+        // then comparing against the current order without mutating anything.
+        int count = objectsArr.Length;
+        var items = new List<(int origIndex, int priority, string objectId)>(count);
+        for (int i = 0; i < count; i++)
+        {
+            var obj = objectsArr.GetObject(i);
+            string objectId = "";
+            try { objectId = obj.GetString("ObjectID") ?? ""; } catch { }
+            int priority = GetPartPriority(objectId);
+            items.Add((i, priority, objectId));
+        }
+
+        // Create a sorted copy of indices using the same comparator as ReorderBuildingObjects
+        var sortedIndices = new List<int>(count);
+        for (int i = 0; i < count; i++) sortedIndices.Add(i);
+
+        sortedIndices.Sort((a, b) =>
+        {
+            var ia = items[a];
+            var ib = items[b];
+
+            int cmp = ia.priority.CompareTo(ib.priority);
+            if (cmp != 0) return cmp;
+
+            string keyA = GetSortKey(ia.priority, ia.objectId, ia.origIndex);
+            string keyB = GetSortKey(ib.priority, ib.objectId, ib.origIndex);
+            cmp = string.Compare(keyA, keyB, StringComparison.OrdinalIgnoreCase);
+            if (cmp != 0) return cmp;
+
+            return ia.origIndex.CompareTo(ib.origIndex);
+        });
+
+        // If the sorted order matches the original order, the array is already optimised
+        for (int i = 0; i < count; i++)
+        {
+            if (sortedIndices[i] != i) return false;
+        }
+
+        return true;
     }
 
     /// <summary>
