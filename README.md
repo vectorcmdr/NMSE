@@ -3,6 +3,8 @@
 > Preview builds are now live! 🎉 <br>
 > Expect some bugs while in preview.
 
+> The user guide may lag behind builds during preview.
+
 # NMSE (No Man's Save Editor)
 
 [![Build Status][badge-build]][workflow-build]
