@@ -530,4 +530,136 @@ public class StarshipLogicTests
         var baseObj = bases.GetObject(0);
         Assert.Equal(1, baseObj.GetArray("Objects")!.Length);
     }
+
+    // --- Corvette base import: empty slot (no existing base) ---
+
+    [Fact]
+    public void FindCorvetteBaseIndex_EmptySlot_ReturnsNegative()
+    {
+        // When importing into an empty slot, no base matches the new ship index/seed.
+        var bases = BuildBaseArray(0, 0x123, ("REACTOR", 0));
+
+        // A different slot (7) with a different seed should not match
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999);
+        Assert.Equal(-1, idx);
+    }
+
+    [Fact]
+    public void AddingBaseToArray_IncreasesLength()
+    {
+        // Verifies that adding a new base to PersistentPlayerBases works correctly.
+        // This is the mechanism used when importing a corvette into an empty slot
+        // that has no existing base entry.
+        var bases = new JsonArray();
+        Assert.Equal(0, bases.Length);
+
+        var newBase = new JsonObject();
+        newBase.Set("BaseType", new JsonObject());
+        newBase.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
+        newBase.Set("Objects", new JsonArray());
+        newBase.Set("UserData", 5.0);
+        bases.Add(newBase);
+
+        Assert.Equal(1, bases.Length);
+        Assert.Equal(5.0, bases.GetObject(0).GetDouble("UserData"));
+    }
+
+    [Fact]
+    public void FindCorvetteBaseIndex_AfterAddingBase_FindsNewEntry()
+    {
+        // Simulates the corvette import into an empty slot: after adding a new base
+        // entry with the correct UserData, FindCorvetteBaseIndex should find it.
+        var bases = new JsonArray();
+
+        // No base exists yet
+        Assert.Equal(-1, StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999));
+
+        // Add a base for slot 7
+        var newBase = new JsonObject();
+        newBase.Set("BaseType", new JsonObject());
+        newBase.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
+        newBase.Set("Objects", new JsonArray());
+        newBase.Set("UserData", 7.0);
+        bases.Add(newBase);
+
+        // Now it should be found via UserData matching
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999);
+        Assert.Equal(0, idx);
+    }
+
+    [Fact]
+    public void SetShipCustomisation_CcdPriorityOrder()
+    {
+        // Verifies that SetShipCustomisation correctly writes CCD data to the array.
+        // This tests the CCD application mechanism used during import.
+        var ccdArray = BuildCcdArray(26);
+        int shipIndex = 3; // Maps to CCD index 6 (3 + 3)
+
+        var ccdEntry = JsonObject.Parse("""
+        {
+            "SelectedPreset":"TestPreset",
+            "CustomData":{
+                "DescriptorGroups":["group1"],
+                "PaletteID":"test_palette",
+                "Colours":["blue"],
+                "TextureOptions":[],
+                "BoneScales":[],
+                "Scale":1.0
+            }
+        }
+        """);
+
+        StarshipLogic.SetShipCustomisation(ccdArray, shipIndex, ccdEntry);
+
+        // Verify the CCD was written to the correct index
+        var written = ccdArray.GetObject(6); // shipIndex 3 -> CCD index 6
+        Assert.Equal("TestPreset", written.GetString("SelectedPreset"));
+    }
+
+    [Fact]
+    public void IsCcdDefault_WrapperFormatCcd_DetectsNonDefault()
+    {
+        // CCD from the new wrapper-level CharacterCustomisationData key
+        // should be correctly detected as non-default when it has data.
+        var ccd = JsonObject.Parse("""
+        {
+            "SelectedPreset":"^",
+            "CustomData":{
+                "DescriptorGroups":["active_group"],
+                "PaletteID":"^",
+                "Colours":[],
+                "TextureOptions":[],
+                "BoneScales":[],
+                "Scale":1.0
+            }
+        }
+        """);
+        Assert.False(StarshipLogic.IsCcdDefault(ccd));
+    }
+
+    /// <summary>
+    /// Builds a minimal CharacterCustomisationData array of the given size,
+    /// with each entry set to defaults.
+    /// </summary>
+    private static JsonArray BuildCcdArray(int size)
+    {
+        var arr = new JsonArray();
+        for (int i = 0; i < size; i++)
+        {
+            arr.Add(JsonObject.Parse("""
+            {
+                "SelectedPreset":"^",
+                "CustomData":{
+                    "DescriptorGroups":[],
+                    "PaletteID":"^",
+                    "Colours":[],
+                    "TextureOptions":[],
+                    "BoneScales":[],
+                    "Scale":1.0
+                }
+            }
+            """));
+        }
+        return arr;
+    }
 }

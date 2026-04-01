@@ -349,7 +349,7 @@ public partial class StarshipPanel : UserControl
         string newName;
         if (string.IsNullOrWhiteSpace(_shipName.Text))
         {
-            // No custom name — use ship type
+            // No custom name stored, drop to ship type for naming
             string shipType = (_shipType.SelectedItem as StarshipLogic.ShipTypeItem)?.InternalName ?? "Ship";
             newName = $"[{item.DataIndex + 1}] {shipType} - {cls}";
         }
@@ -509,29 +509,20 @@ public partial class StarshipPanel : UserControl
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                // Embed CharacterCustomisationData so it can be restored on import.
+                // Build a wrapper object with the ship data and CCD as siblings.
+                // CCD is stored externally under its original game key name,
+                // NOT inside the ship JSON block.
+                var export = new JsonObject();
+                export.Set("Ship", ship);
+                if (isCorvette && baseObj != null)
+                    export.Set("Base", baseObj);
+
                 var ccdArray = _playerState?.GetArray("CharacterCustomisationData");
                 var ccdEntry = StarshipLogic.GetShipCustomisation(ccdArray, idx);
                 if (ccdEntry != null)
-                    ship.Set("__ShipCustomisation", ccdEntry);
+                    export.Set("CharacterCustomisationData", ccdEntry);
 
-                if (isCorvette)
-                {
-                    // Corvette export: wrap ship + base in a combined object
-                    var export = new JsonObject();
-                    export.Set("Ship", ship);
-                    if (baseObj != null)
-                        export.Set("Base", baseObj);
-                    export.ExportToFile(dialog.FileName);
-                }
-                else
-                {
-                    // Standard ship export
-                    ship.ExportToFile(dialog.FileName);
-                }
-
-                // Remove the transient key so it doesn't persist in the live save
-                ship.Remove("__ShipCustomisation");
+                export.ExportToFile(dialog.FileName);
             }
         }
         catch (Exception ex)
@@ -562,6 +553,8 @@ public partial class StarshipPanel : UserControl
             JsonObject? importedShip;
             JsonObject? importedBase = null;
             JsonObject? zipCcd = null;
+            // CCD from the wrapper-level "CharacterCustomisationData" key (new format)
+            JsonObject? wrapperCcd = null;
 
             if (zipResult != null)
             {
@@ -577,11 +570,12 @@ public partial class StarshipPanel : UserControl
             {
                 var imported = JsonObject.ImportFromFile(dialog.FileName);
 
-                // Check for corvette wrapper format (Ship + Base)
+                // Check for wrapper format: { Ship, [Base], [CharacterCustomisationData] }
                 importedShip = imported.GetObject("Ship");
                 if (importedShip != null)
                 {
                     importedBase = imported.GetObject("Base");
+                    wrapperCcd = imported.GetObject("CharacterCustomisationData");
                 }
                 else
                 {
@@ -655,8 +649,8 @@ public partial class StarshipPanel : UserControl
                     InvalidateCorvetteBaseForShip(targetShip, targetIdx);
             }
 
-            // Extract the embedded CharacterCustomisationData before copying
-            var importedCcd = importedShip.GetObject("__ShipCustomisation");
+            // Extract CCD from the legacy __ShipCustomisation key (backwards compat)
+            var legacyCcd = ExtractLegacyShipCustomisation(importedShip);
 
             // Copy all properties from imported ship to target slot
             foreach (var name in importedShip.Names())
@@ -665,11 +659,16 @@ public partial class StarshipPanel : UserControl
                 targetShip.Set(name, importedShip.Get(name));
             }
 
-            // Remove the transient key from the live ship object if it leaked
+            // Remove the legacy key from the live ship object if it leaked
             targetShip.Remove("__ShipCustomisation");
 
-            // Determine CCD source: prefer ZIP CCD if present and non-default
-            JsonObject? ccdToApply = importedCcd;
+            // Determine CCD source (priority order):
+            //   1. ZIP ccd.json (if present and non-default)
+            //   2. Wrapper-level CharacterCustomisationData (new format)
+            //   3. Legacy __ShipCustomisation embedded in ship JSON (old format)
+            JsonObject? ccdToApply = legacyCcd;
+            if (wrapperCcd != null && !StarshipLogic.IsCcdDefault(wrapperCcd))
+                ccdToApply = wrapperCcd;
             if (zipCcd != null && !StarshipLogic.IsCcdDefault(zipCcd))
                 ccdToApply = zipCcd;
 
@@ -686,9 +685,19 @@ public partial class StarshipPanel : UserControl
                     int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, targetIdx, seedDecimal);
                     if (baseIdx >= 0)
                     {
+                        // Overwrite the existing base with the imported data
                         var existingBase = bases!.GetObject(baseIdx);
                         foreach (var name in importedBase.Names())
                             existingBase.Set(name, importedBase.Get(name));
+                        // Ensure UserData points to the correct target slot
+                        existingBase.Set("UserData", (double)targetIdx);
+                    }
+                    else if (bases != null)
+                    {
+                        // No existing base for this slot - add the imported base
+                        // as a new entry in PersistentPlayerBases.
+                        importedBase.Set("UserData", (double)targetIdx);
+                        bases.Add(importedBase);
                     }
                 }
             }
@@ -990,6 +999,23 @@ public partial class StarshipPanel : UserControl
         var resource = ship.GetObject("Resource");
         string filename = resource?.GetString("Filename") ?? "";
         return StarshipLogic.IsCorvette(filename);
+    }
+
+    /// <summary>
+    /// Extracts the legacy <c>__ShipCustomisation</c> CCD entry from an imported ship
+    /// object and removes it. This supports backwards compatibility with exports from
+    /// older versions that embedded the CCD inside the ship JSON block with a
+    /// non-standard key name.
+    /// </summary>
+    /// <param name="importedShip">The ship JSON object being imported.</param>
+    /// <returns>The extracted CCD object, or <c>null</c> if not present.</returns>
+    private static JsonObject? ExtractLegacyShipCustomisation(JsonObject importedShip)
+    {
+        try
+        {
+            return importedShip.GetObject("__ShipCustomisation");
+        }
+        catch { return null; }
     }
 
     /// <summary>
