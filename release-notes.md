@@ -1,8 +1,25 @@
-## NMSE — No Man's Save Editor v1.0.380 (preview)
+## NMSE — No Man's Save Editor v1.0.381 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Features:
+
+- Starship panel now support importing ships with modified model resource filenames (like Orb Explorers). They will display with a "Modified" tag in the list.
+- Export container for starships has been modified for better cross-compatibility (it is backwards compatible with older versions).
+
+#### Bug Fixes:
+
+- Fix for issues with importing corvettes into empty slots.
+
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.380 (preview)
 
 #### Features:
 
@@ -15,9 +32,6 @@
 
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.379 (preview)
 
