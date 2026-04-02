@@ -1,4 +1,4 @@
-## NMSE — No Man's Save Editor v1.0.382 (preview)
+## NMSE — No Man's Save Editor v1.0.383 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
@@ -6,12 +6,20 @@
 
 #### Bug Fixes:
 
-- Small fix for corvette tech inventories visual bug, where they lost the override information from internal parts to construction part IDs when resized.
+- Critical fix for corvette import edge cases where import could fall back to Seed<->TS lookup and collide base data, causing the import to steal another corvettes base data, invalidating the other corvette in the process.
 
 <br />
 
 <details>
 <summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.382 (preview)
+
+#### Bug Fixes:
+
+- Small fix for corvette tech inventories visual bug, where they lost the override information from internal parts to construction part IDs when resized.
+
+<br />
 
 ### Previous Changelog 1.0.381 (preview)
 
