@@ -325,22 +325,22 @@ public class LogicTests
     }
 
     [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_FindsMatchingBase()
+    public void StarshipLogic_FindCorvetteBaseIndex_FindsByUserData()
     {
         var json = JsonObject.Parse(@"{
             ""Bases"": [
                 {
-                    ""Owner"": { ""TS"": 999 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }
+                    ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" },
+                    ""UserData"": 1
                 },
                 {
-                    ""Owner"": { ""TS"": 1756566104 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
+                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" },
+                    ""UserData"": 5
                 }
             ]
         }");
         var bases = json.GetArray("Bases")!;
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 5);
         Assert.Equal(1, idx);
     }
 
@@ -350,13 +350,13 @@ public class LogicTests
         var json = JsonObject.Parse(@"{
             ""Bases"": [
                 {
-                    ""Owner"": { ""TS"": 999 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }
+                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" },
+                    ""UserData"": 3
                 }
             ]
         }");
         var bases = json.GetArray("Bases")!;
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 5);
         Assert.Equal(-1, idx);
     }
 
@@ -366,170 +366,36 @@ public class LogicTests
         var json = JsonObject.Parse(@"{
             ""Bases"": [
                 {
-                    ""Owner"": { ""TS"": 1756566104 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }
+                    ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" },
+                    ""UserData"": 5
                 }
             ]
         }");
         var bases = json.GetArray("Bases")!;
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 5);
         Assert.Equal(-1, idx);
     }
 
     [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_MatchesWithinOneSec()
+    public void StarshipLogic_FindCorvetteBaseIndex_RealSaveScenario()
     {
+        // Simulates the real save scenario with UserData matching:
+        //   Ship 7 "USCSS Abraxas"  -> Base UserData 7
+        //   Ship 8 "USCSS Solomon"  -> Base UserData 8
+        //   Ship 5 "The Bebop"      -> Base UserData 5
         var json = JsonObject.Parse(@"{
             ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566105 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // TS is 1756566105 but seed is 1756566104 => delta = 1, within ±1 s tier
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(0, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_MatchesWithin60Sec()
-    {
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566150 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // delta = 46, beyond ±1 s but within ±60 s tier
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(0, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_MatchesWithin120Sec()
-    {
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566220 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // delta = 116, beyond ±60 s but within ±120 s tier
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(0, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_RejectsOver120Sec()
-    {
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566300 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // delta = 196, beyond ±120 s tier
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(-1, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_PrefersSmallestDeltaInTier()
-    {
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566160 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                },
-                {
-                    ""Owner"": { ""TS"": 1756566110 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // Both within ±60 s tier (deltas 56 and 6).
-        // Index 1 has smaller delta (6) so it should be preferred.
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(1, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_PrefersExactOverTolerance()
-    {
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                {
-                    ""Owner"": { ""TS"": 1756566105 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                },
-                {
-                    ""Owner"": { ""TS"": 1756566104 },
-                    ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }
-                }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-        // Index 0 is off by 1, index 1 is exact match.  Exact match tier runs first.
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104);
-        Assert.Equal(1, idx);
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_RealSaveScenario_DriftedTS()
-    {
-        // Simulates the real save scenario where ship seeds and base TS values drift by 1 second:
-        //   Ship 7 "USCSS Abraxas"  seed 0x68B31258 = 1756566104 -> Base TS 1756566104 (exact)
-        //   Ship 8 "USCSS Solomon"  seed 0x68F8EF8D = 1761144717 -> Base TS 1761144718 (off by 1)
-        //   Ship 5 "The Bebop"      seed 0x68BA4883 = 1757038723 -> Base TS 1757038724 (off by 1)
-        // The bases also carry UserData matching the ShipOwnership index.
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                { ""Owner"": { ""TS"": 999 }, ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }, ""UserData"": 0 },
-                { ""Owner"": { ""TS"": 1756566104 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 7 },
-                { ""Owner"": { ""TS"": 1761144718 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 8 },
-                { ""Owner"": { ""TS"": 1757038724 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 5 }
+                { ""BaseType"": { ""PersistentBaseTypes"": ""HomePlanetBase"" }, ""UserData"": 0 },
+                { ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 7 },
+                { ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 8 },
+                { ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 5 }
             ]
         }");
         var bases = json.GetArray("Bases")!;
 
-        // UserData-based matching (primary strategy)
-        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 7, 1756566104));
-        Assert.Equal(2, StarshipLogic.FindCorvetteBaseIndex(bases, 8, 1761144717));
-        Assert.Equal(3, StarshipLogic.FindCorvetteBaseIndex(bases, 5, 1757038723));
-
-        // TS fallback still works when shipIndex is -1
-        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 1756566104));
-        Assert.Equal(2, StarshipLogic.FindCorvetteBaseIndex(bases, 1761144717));
-        Assert.Equal(3, StarshipLogic.FindCorvetteBaseIndex(bases, 1757038723));
-    }
-
-    [Fact]
-    public void StarshipLogic_FindCorvetteBaseIndex_UserDataMatchPreferred()
-    {
-        // When both UserData and TS could match different bases, UserData wins.
-        var json = JsonObject.Parse(@"{
-            ""Bases"": [
-                { ""Owner"": { ""TS"": 1756566104 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 99 },
-                { ""Owner"": { ""TS"": 999 }, ""BaseType"": { ""PersistentBaseTypes"": ""PlayerShipBase"" }, ""UserData"": 5 }
-            ]
-        }");
-        var bases = json.GetArray("Bases")!;
-
-        // Ship index 5 matches base 1 by UserData, even though base 0 has exact TS match
-        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 5, 1756566104));
+        Assert.Equal(1, StarshipLogic.FindCorvetteBaseIndex(bases, 7));
+        Assert.Equal(2, StarshipLogic.FindCorvetteBaseIndex(bases, 8));
+        Assert.Equal(3, StarshipLogic.FindCorvetteBaseIndex(bases, 5));
     }
 
     [Fact]
@@ -9016,17 +8882,16 @@ public class LogicTests
         // Ship 8 = "USCSS Solomon" (seed 0x68F8EF8D) -> Base with UserData=8
         var corvettes = new[]
         {
-            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883", expectedUserData: 5),
-            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258", expectedUserData: 7),
-            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D", expectedUserData: 8),
+            (shipIndex: 5, name: "The Bebop", expectedUserData: 5),
+            (shipIndex: 7, name: "USCSS Abraxas", expectedUserData: 7),
+            (shipIndex: 8, name: "USCSS Solomon", expectedUserData: 8),
         };
 
-        foreach (var (shipIndex, name, seedHex, expectedUserData) in corvettes)
+        foreach (var (shipIndex, name, expectedUserData) in corvettes)
         {
-            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
-            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex, seedDecimal);
+            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex);
 
-            Assert.True(baseIdx >= 0, $"FindCorvetteBaseIndex failed for ship '{name}' (index={shipIndex}, seed={seedHex})");
+            Assert.True(baseIdx >= 0, $"FindCorvetteBaseIndex failed for ship '{name}' (index={shipIndex})");
 
             // Verify the matched base has the correct UserData
             var matchedBase = bases!.GetObject(baseIdx);
@@ -9061,15 +8926,14 @@ public class LogicTests
 
         var corvettes = new[]
         {
-            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883"),
-            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258"),
-            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D"),
+            (shipIndex: 5, name: "The Bebop"),
+            (shipIndex: 7, name: "USCSS Abraxas"),
+            (shipIndex: 8, name: "USCSS Solomon"),
         };
 
-        foreach (var (shipIndex, name, seedHex) in corvettes)
+        foreach (var (shipIndex, name) in corvettes)
         {
-            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
-            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex, seedDecimal);
+            int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, shipIndex);
             Assert.True(baseIdx >= 0, $"Base not found for '{name}'");
 
             var baseObj = bases!.GetObject(baseIdx);
@@ -9131,15 +8995,14 @@ public class LogicTests
         // Ship 8 "USCSS Solomon" -> 148 objects
         var corvettes = new[]
         {
-            (shipIndex: 5, name: "The Bebop", seedHex: "0x68BA4883", expectedCount: 111),
-            (shipIndex: 7, name: "USCSS Abraxas", seedHex: "0x68B31258", expectedCount: 316),
-            (shipIndex: 8, name: "USCSS Solomon", seedHex: "0x68F8EF8D", expectedCount: 148),
+            (shipIndex: 5, name: "The Bebop", expectedCount: 111),
+            (shipIndex: 7, name: "USCSS Abraxas", expectedCount: 316),
+            (shipIndex: 8, name: "USCSS Solomon", expectedCount: 148),
         };
 
-        foreach (var (shipIndex, name, seedHex, expectedCount) in corvettes)
+        foreach (var (shipIndex, name, expectedCount) in corvettes)
         {
-            long seedDecimal = StarshipLogic.SeedToDecimal(seedHex);
-            int result = StarshipLogic.OptimiseCorvetteBase(bases, shipIndex, seedDecimal);
+            int result = StarshipLogic.OptimiseCorvetteBase(bases, shipIndex);
             Assert.Equal(expectedCount, result);
         }
     }
@@ -9159,13 +9022,12 @@ public class LogicTests
         var psd = save.GetObject("PlayerStateData");
         var bases = psd!.GetArray("PersistentPlayerBases");
 
-        // Ship 5 = "The Bebop" (seed 0x68BA4883)
-        long seedDecimal = StarshipLogic.SeedToDecimal("0x68BA4883");
-        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5, seedDecimal);
+        // Ship 5 = "The Bebop"
+        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5);
         Assert.Equal(111, result);
 
         // Get the optimised objects
-        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5, seedDecimal);
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5);
         var baseObj = bases!.GetObject(baseIdx);
         var objects = baseObj.GetArray("Objects")!;
 
@@ -9206,12 +9068,11 @@ public class LogicTests
         var psd = save.GetObject("PlayerStateData");
         var bases = psd!.GetArray("PersistentPlayerBases");
 
-        // Ship 5 = "The Bebop" (seed 0x68BA4883)
-        long seedDecimal = StarshipLogic.SeedToDecimal("0x68BA4883");
-        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5, seedDecimal);
+        // Ship 5 = "The Bebop"
+        int result = StarshipLogic.OptimiseCorvetteBase(bases, 5);
         Assert.Equal(111, result);
 
-        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5, seedDecimal);
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 5);
         var baseObj = bases!.GetObject(baseIdx);
         var objects = baseObj.GetArray("Objects")!;
 
@@ -9316,8 +9177,7 @@ public class LogicTests
         var bases = psd!.GetArray("PersistentPlayerBases");
 
         // Test with "USCSS Abraxas" (largest base, 316 objects)
-        long seedDecimal = StarshipLogic.SeedToDecimal("0x68B31258");
-        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 7, seedDecimal);
+        int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases!, 7);
         Assert.True(baseIdx >= 0);
 
         var baseObj = bases!.GetObject(baseIdx);

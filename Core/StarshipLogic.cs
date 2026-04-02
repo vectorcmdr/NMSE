@@ -449,11 +449,10 @@ internal static class StarshipLogic
     /// </summary>
     /// <param name="bases">The PersistentPlayerBases JSON array.</param>
     /// <param name="shipIndex">The ship's index in the ShipOwnership array.</param>
-    /// <param name="seedDecimal">The decimal seed value for base matching.</param>
-    internal static void InvalidateCorvetteBase(JsonArray? bases, int shipIndex, long seedDecimal)
+    internal static void InvalidateCorvetteBase(JsonArray? bases, int shipIndex)
     {
         if (bases == null) return;
-        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex, seedDecimal);
+        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex);
         if (baseIdx < 0) return;
 
         var baseObj = bases.GetObject(baseIdx);
@@ -691,23 +690,16 @@ internal static class StarshipLogic
 
     /// <summary>
     /// Finds the index of a corvette's player ship base entry in the PersistentPlayerBases array.
-    /// Uses two strategies in order:
-    ///   1. UserData matching - the base's UserData field stores the ShipOwnership index directly.
-    ///      This is a more reliable method than the previous community TS understanding.
-    ///   2. TS/seed matching - falls back to matching the base Owner.TS against the ship seed
-    ///      with tolerance tiers (exact, +/-1s, +/-60s, +/-120s) for saves where UserData
-    ///      may not align. Effectively obsolete.
+    /// Matches by the base's UserData field, which stores the ShipOwnership index directly.
     /// Only bases with BaseType "PlayerShipBase" are considered.
     /// </summary>
     /// <param name="bases">The persistent player bases JSON array.</param>
     /// <param name="shipIndex">The ship's index in the ShipOwnership array.</param>
-    /// <param name="seedDecimal">The decimal seed value for TS fallback matching.</param>
     /// <returns>The base index, or -1 if not found.</returns>
-    internal static int FindCorvetteBaseIndex(JsonArray? bases, int shipIndex, long seedDecimal)
+    internal static int FindCorvetteBaseIndex(JsonArray? bases, int shipIndex)
     {
         if (bases == null) return -1;
 
-        // Strategy 1: match by base UserData == shipIndex
         for (int i = 0; i < bases.Length; i++)
         {
             try
@@ -727,57 +719,7 @@ internal static class StarshipLogic
             catch { }
         }
 
-        // Strategy 2: TS/seed matching with tolerance tiers (obsolete).
-        if (seedDecimal == 0) return -1;
-
-        ReadOnlySpan<long> tolerances = [0, 1, 60, 120];
-
-        foreach (long tol in tolerances)
-        {
-            int bestIndex = -1;
-            long bestDelta = long.MaxValue;
-
-            for (int i = 0; i < bases.Length; i++)
-            {
-                try
-                {
-                    var b = bases.GetObject(i);
-                    var baseType = b.GetObject("BaseType");
-                    if (baseType == null) continue;
-                    string bt = baseType.GetString("PersistentBaseTypes") ?? "";
-                    if (!bt.Equals("PlayerShipBase", StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    var owner = b.GetObject("Owner");
-                    if (owner == null) continue;
-                    long ts = 0;
-                    try { ts = (long)owner.GetDouble("TS"); } catch { }
-
-                    long delta = Math.Abs(ts - seedDecimal);
-                    if (delta > tol) continue;
-
-                    if (delta < bestDelta)
-                    {
-                        bestDelta = delta;
-                        bestIndex = i;
-                    }
-                }
-                catch { }
-            }
-
-            if (bestIndex >= 0) return bestIndex;
-        }
-
         return -1;
-    }
-
-    /// <summary>
-    /// Legacy overload that uses seed-only matching.
-    /// Retained for backwards compatibility with callers that do not have the ship index.
-    /// </summary>
-    internal static int FindCorvetteBaseIndex(JsonArray? bases, long seedDecimal)
-    {
-        return FindCorvetteBaseIndex(bases, -1, seedDecimal);
     }
 
     /// <summary>
@@ -1068,13 +1010,12 @@ internal static class StarshipLogic
     /// </summary>
     /// <param name="bases">The PersistentPlayerBases array from the save.</param>
     /// <param name="shipIndex">The ship's index in the ShipOwnership array.</param>
-    /// <param name="seedDecimal">Decimal seed value of the corvette (used for TS fallback).</param>
     /// <returns>The number of objects reordered, or -1 if the base was not found.</returns>
-    internal static int OptimiseCorvetteBase(JsonArray? bases, int shipIndex, long seedDecimal)
+    internal static int OptimiseCorvetteBase(JsonArray? bases, int shipIndex)
     {
         if (bases == null) return -1;
 
-        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex, seedDecimal);
+        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex);
         if (baseIdx < 0) return -1;
 
         var baseObj = bases.GetObject(baseIdx);
@@ -1085,31 +1026,22 @@ internal static class StarshipLogic
     }
 
     /// <summary>
-    /// Legacy overload for callers that only have the seed (no ship index).
-    /// </summary>
-    internal static int OptimiseCorvetteBase(JsonArray? bases, long seedDecimal)
-    {
-        return OptimiseCorvetteBase(bases, -1, seedDecimal);
-    }
-
-    /// <summary>
     /// Checks whether a corvette's building objects are already in the order
     /// that <see cref="OptimiseCorvetteBase"/> would produce. This is a
     /// non-destructive read-only check used to display an indicator dot.
     /// </summary>
     /// <param name="bases">The PersistentPlayerBases array.</param>
     /// <param name="shipIndex">The ship's slot index in ShipOwnership.</param>
-    /// <param name="seedDecimal">The ship's seed as a decimal long.</param>
     /// <returns>
     /// <c>true</c> if the objects are already in optimised order (or the base
     /// has 0-1 objects); <c>false</c> if they would be reordered; also
     /// <c>true</c> if the base cannot be found (nothing to optimise).
     /// </returns>
-    internal static bool IsCorvetteOptimised(JsonArray? bases, int shipIndex, long seedDecimal)
+    internal static bool IsCorvetteOptimised(JsonArray? bases, int shipIndex)
     {
         if (bases == null) return true;
 
-        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex, seedDecimal);
+        int baseIdx = FindCorvetteBaseIndex(bases, shipIndex);
         if (baseIdx < 0) return true;
 
         var baseObj = bases.GetObject(baseIdx);

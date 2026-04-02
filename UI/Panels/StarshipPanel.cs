@@ -525,11 +525,9 @@ public partial class StarshipPanel : UserControl
             JsonObject? baseObj = null;
             if (isCorvette && _saveData != null)
             {
-                long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
-
                 var playerState = _saveData.GetObject("PlayerStateData");
                 var bases = playerState?.GetArray("PersistentPlayerBases");
-                int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx, seedDecimal);
+                int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx);
                 if (baseIdx < 0)
                 {
                     MessageBox.Show(UiStrings.Get("starship.corvette_no_base"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -716,27 +714,23 @@ public partial class StarshipPanel : UserControl
             // Import base building objects for corvette ships
             if (importedBase != null && importedIsCorvette)
             {
-                long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(targetShip));
-                if (seedDecimal > 0)
+                var bases = _playerState.GetArray("PersistentPlayerBases");
+                int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, targetIdx);
+                if (baseIdx >= 0)
                 {
-                    var bases = _playerState.GetArray("PersistentPlayerBases");
-                    int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, targetIdx, seedDecimal);
-                    if (baseIdx >= 0)
-                    {
-                        // Overwrite the existing base with the imported data
-                        var existingBase = bases!.GetObject(baseIdx);
-                        foreach (var name in importedBase.Names())
-                            existingBase.Set(name, importedBase.Get(name));
-                        // Ensure UserData points to the correct target slot
-                        existingBase.Set("UserData", (double)targetIdx);
-                    }
-                    else if (bases != null)
-                    {
-                        // No existing base for this slot - add the imported base
-                        // as a new entry in PersistentPlayerBases.
-                        importedBase.Set("UserData", (double)targetIdx);
-                        bases.Add(importedBase);
-                    }
+                    // Overwrite the existing base with the imported data
+                    var existingBase = bases!.GetObject(baseIdx);
+                    foreach (var name in importedBase.Names())
+                        existingBase.Set(name, importedBase.Get(name));
+                    // Ensure UserData points to the correct target slot
+                    existingBase.Set("UserData", targetIdx);
+                }
+                else if (bases != null)
+                {
+                    // No existing base for this slot - add the imported base
+                    // as a new entry in PersistentPlayerBases.
+                    importedBase.Set("UserData", targetIdx);
+                    bases.Add(importedBase);
                 }
             }
 
@@ -831,12 +825,11 @@ public partial class StarshipPanel : UserControl
             }
 
             // Find the corvette's matching PlayerShipBase (same as export)
-            long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
             JsonObject? baseObj = null;
             {
                 var playerState = _saveData.GetObject("PlayerStateData");
                 var bases = playerState?.GetArray("PersistentPlayerBases");
-                int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx, seedDecimal);
+                int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx);
                 if (baseIdx >= 0)
                     baseObj = bases!.GetObject(baseIdx);
             }
@@ -918,11 +911,10 @@ public partial class StarshipPanel : UserControl
             var importedBase = imported.GetObject("Base");
             if (importedBase != null)
             {
-                long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
                 {
                     var playerState = _saveData.GetObject("PlayerStateData");
                     var bases = playerState?.GetArray("PersistentPlayerBases");
-                    int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx, seedDecimal);
+                    int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx);
                     if (baseIdx >= 0)
                     {
                         var existingBase = bases!.GetObject(baseIdx);
@@ -968,11 +960,10 @@ public partial class StarshipPanel : UserControl
             if (idx >= _shipOwnership.Length) return;
 
             var ship = _shipOwnership.GetObject(idx);
-            long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
 
             var playerState = _saveData.GetObject("PlayerStateData");
             var bases = playerState?.GetArray("PersistentPlayerBases");
-            int result = StarshipLogic.OptimiseCorvetteBase(bases, idx, seedDecimal);
+            int result = StarshipLogic.OptimiseCorvetteBase(bases, idx);
 
             if (result < 0)
             {
@@ -1017,10 +1008,9 @@ public partial class StarshipPanel : UserControl
         try
         {
             var ship = _shipOwnership.GetObject(shipIndex);
-            long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
             var playerState = _saveData.GetObject("PlayerStateData");
             var bases = playerState?.GetArray("PersistentPlayerBases");
-            bool optimised = StarshipLogic.IsCorvetteOptimised(bases, shipIndex, seedDecimal);
+            bool optimised = StarshipLogic.IsCorvetteOptimised(bases, shipIndex);
             SetOptimiseIndicator(optimised);
         }
         catch
@@ -1077,9 +1067,8 @@ public partial class StarshipPanel : UserControl
     private void InvalidateCorvetteBaseForShip(JsonObject ship, int shipIndex)
     {
         if (_playerState == null) return;
-        long seedDecimal = StarshipLogic.SeedToDecimal(GetShipSeed(ship));
         var bases = _playerState.GetArray("PersistentPlayerBases");
-        StarshipLogic.InvalidateCorvetteBase(bases, shipIndex, seedDecimal);
+        StarshipLogic.InvalidateCorvetteBase(bases, shipIndex);
     }
 
 }

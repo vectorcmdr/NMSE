@@ -428,7 +428,7 @@ public class StarshipLogicTests
         var bases = BuildBaseArray(0, 0x123,
             ("^B_GEN_1", 1), ("^B_TRU_C", 2), ("^B_LND_A", 3), ("^BUILDTABLE", 0));
 
-        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0));
     }
 
     [Fact]
@@ -438,13 +438,13 @@ public class StarshipLogicTests
         var bases = BuildBaseArray(0, 0x123,
             ("^BUILDTABLE", 0), ("^B_GEN_1", 1), ("^B_TRU_C", 2));
 
-        Assert.False(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+        Assert.False(StarshipLogic.IsCorvetteOptimised(bases, 0));
     }
 
     [Fact]
     public void IsCorvetteOptimised_NullBases_ReturnsTrue()
     {
-        Assert.True(StarshipLogic.IsCorvetteOptimised(null, 0, 0x123));
+        Assert.True(StarshipLogic.IsCorvetteOptimised(null, 0));
     }
 
     [Fact]
@@ -453,7 +453,7 @@ public class StarshipLogicTests
         StarshipDatabase.Clear();
         var bases = BuildBaseArray(0, 0x123, ("^B_GEN_0", 0));
 
-        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x123));
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0));
     }
 
     [Fact]
@@ -463,8 +463,8 @@ public class StarshipLogicTests
         var bases = BuildBaseArray(0, 0x123,
             ("^B_GEN_1", 1), ("^B_TRU_C", 2));
 
-        // Different seed, so base is not found -> returns true (nothing to optimise)
-        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 0, 0x999));
+        // Different ship index, so base is not found -> returns true (nothing to optimise)
+        Assert.True(StarshipLogic.IsCorvetteOptimised(bases, 99));
     }
 
     /// <summary>
@@ -483,7 +483,7 @@ public class StarshipLogicTests
         baseObj.Set("BaseType", new JsonObject());
         baseObj.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
         baseObj.Set("Objects", objects);
-        baseObj.Set("UserData", (double)shipIndex);
+        baseObj.Set("UserData", shipIndex);
 
         var bases = new JsonArray();
         bases.Add(baseObj);
@@ -504,7 +504,7 @@ public class StarshipLogicTests
         var baseObj = bases.GetObject(0);
         Assert.Equal(3, baseObj.GetArray("Objects")!.Length);
 
-        StarshipLogic.InvalidateCorvetteBase(bases, 0, 0x123);
+        StarshipLogic.InvalidateCorvetteBase(bases, 0);
 
         // After invalidation, the Objects array should be empty
         Assert.Equal(0, baseObj.GetArray("Objects")!.Length);
@@ -514,7 +514,7 @@ public class StarshipLogicTests
     public void InvalidateCorvetteBase_NullBases_DoesNotThrow()
     {
         // Should not throw when bases is null
-        StarshipLogic.InvalidateCorvetteBase(null, 0, 0x123);
+        StarshipLogic.InvalidateCorvetteBase(null, 0);
     }
 
     [Fact]
@@ -524,7 +524,7 @@ public class StarshipLogicTests
             ("YOURSHIP_REACTOR", 0));
 
         // Try to invalidate with a non-matching ship index
-        StarshipLogic.InvalidateCorvetteBase(bases, 5, 0x999);
+        StarshipLogic.InvalidateCorvetteBase(bases, 5);
 
         // Objects should remain intact since no base matched
         var baseObj = bases.GetObject(0);
@@ -536,12 +536,40 @@ public class StarshipLogicTests
     [Fact]
     public void FindCorvetteBaseIndex_EmptySlot_ReturnsNegative()
     {
-        // When importing into an empty slot, no base matches the new ship index/seed.
+        // When importing into an empty slot, no base matches the new ship index.
         var bases = BuildBaseArray(0, 0x123, ("REACTOR", 0));
 
-        // A different slot (7) with a different seed should not match
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999);
+        // A different slot (7) should not match
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7);
         Assert.Equal(-1, idx);
+    }
+
+    [Fact]
+    public void FindCorvetteBaseIndex_SameSeedDifferentSlot_DoesNotStealBase()
+    {
+        // Reproduces the reported corvette import bug: importing a corvette with the
+        // same seed as an existing corvette into a new empty slot should NOT find (and
+        // thus steal) the existing corvette's base.
+        var json = JsonObject.Parse("""
+        {
+            "Bases": [
+                {
+                    "Owner": { "TS": 1774919312 },
+                    "BaseType": { "PersistentBaseTypes": "PlayerShipBase" },
+                    "UserData": 5
+                }
+            ]
+        }
+        """);
+        var bases = json.GetArray("Bases")!;
+
+        // Looking for slot 7 — must NOT find slot 5's base
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7);
+        Assert.Equal(-1, idx);
+
+        // Slot 5 should still find its own base via UserData match
+        int idx5 = StarshipLogic.FindCorvetteBaseIndex(bases, 5);
+        Assert.Equal(0, idx5);
     }
 
     [Fact]
@@ -557,11 +585,11 @@ public class StarshipLogicTests
         newBase.Set("BaseType", new JsonObject());
         newBase.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
         newBase.Set("Objects", new JsonArray());
-        newBase.Set("UserData", 5.0);
+        newBase.Set("UserData", 5);
         bases.Add(newBase);
 
         Assert.Equal(1, bases.Length);
-        Assert.Equal(5.0, bases.GetObject(0).GetDouble("UserData"));
+        Assert.Equal(5, bases.GetObject(0).GetInt("UserData"));
     }
 
     [Fact]
@@ -572,18 +600,18 @@ public class StarshipLogicTests
         var bases = new JsonArray();
 
         // No base exists yet
-        Assert.Equal(-1, StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999));
+        Assert.Equal(-1, StarshipLogic.FindCorvetteBaseIndex(bases, 7));
 
         // Add a base for slot 7
         var newBase = new JsonObject();
         newBase.Set("BaseType", new JsonObject());
         newBase.GetObject("BaseType")!.Set("PersistentBaseTypes", "PlayerShipBase");
         newBase.Set("Objects", new JsonArray());
-        newBase.Set("UserData", 7.0);
+        newBase.Set("UserData", 7);
         bases.Add(newBase);
 
         // Now it should be found via UserData matching
-        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7, 0x999);
+        int idx = StarshipLogic.FindCorvetteBaseIndex(bases, 7);
         Assert.Equal(0, idx);
     }
 
