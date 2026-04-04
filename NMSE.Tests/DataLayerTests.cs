@@ -194,14 +194,14 @@ public class DataLayerTests
     [Fact]
     public void GalaxyDatabase_Has256Galaxies()
     {
-        Assert.Equal(256, GalaxyDatabase.Galaxies.Length);
+        Assert.Equal(257, GalaxyDatabase.Galaxies.Length);
     }
 
     [Theory]
     [InlineData(0, "Euclid")]
     [InlineData(1, "Hilbert Dimension")]
     [InlineData(9, "Eissentam")]
-    [InlineData(255, "Amedarir")]
+    [InlineData(255, "Odyalutai")]
     public void GalaxyDatabase_GetGalaxyName_ReturnsCorrectName(int index, string expected)
     {
         Assert.Equal(expected, GalaxyDatabase.GetGalaxyName(index));
@@ -209,7 +209,7 @@ public class DataLayerTests
 
     [Theory]
     [InlineData(-1, "Unknown")]
-    [InlineData(256, "Unknown")]
+    [InlineData(257, "Unknown")]
     [InlineData(999, "Unknown")]
     public void GalaxyDatabase_GetGalaxyName_OutOfRange_ReturnsUnknown(int index, string expected)
     {
@@ -230,7 +230,7 @@ public class DataLayerTests
     public void GalaxyDatabase_GetGalaxyType_OutOfRange_ReturnsNormal()
     {
         Assert.Equal("Normal", GalaxyDatabase.GetGalaxyType(-1));
-        Assert.Equal("Normal", GalaxyDatabase.GetGalaxyType(256));
+        Assert.Equal("Normal", GalaxyDatabase.GetGalaxyType(257));
     }
 
     [Theory]
