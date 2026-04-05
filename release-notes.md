@@ -1,8 +1,19 @@
-## NMSE — No Man's Save Editor v1.0.389 (preview)
+## NMSE — No Man's Save Editor v1.0.390 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Bug Fixes:
+
+- Fix regression for some ship technology item filter causing incorrect values for the items charge/amount (resulting in corrupted parts in slots).
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.389 (preview)
 
 #### Features:
 
@@ -13,9 +24,6 @@
 - Fix galaxy 256 name (Odyalutai) in galaxy list. (Issue #33)
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.385 (preview)
 
