@@ -1,0 +1,24 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:semi="https://irihi.tech/semi"
+             x:Class="NMSE.App"
+             RequestedThemeVariant="Dark">
+    <Application.Styles>
+        <semi:SemiTheme Locale="zh-CN" />
+        <StyleInclude Source="avares://Semi.Avalonia.DataGrid/Index.axaml" />
+        <StyleInclude Source="avares://NMSE/UI/Styles/AppStyles.axaml" />
+    </Application.Styles>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="SemiColorNavBackground" Color="#F0F0F0" />
+                    <SolidColorBrush x:Key="SemiColorBackground1" Color="#F5F5F5" />
+                    <SolidColorBrush x:Key="SemiColorBackground2" Color="#EAEAEA" />
+                    <SolidColorBrush x:Key="SemiColorFill0" Color="#E0E0E0" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

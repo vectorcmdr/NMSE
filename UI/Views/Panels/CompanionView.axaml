@@ -1,0 +1,133 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.CompanionView"
+             x:DataType="vm:CompanionViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale companion.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,4" />
+            <TextBlock Text="{Binding CountLabel}" DockPanel.Dock="Top" Margin="0,0,0,12"
+                       Foreground="{DynamicResource SemiColorText2}" />
+
+            <Grid ColumnDefinitions="220,*">
+                <!-- Companion List -->
+                <Border Grid.Column="0" Classes="card" Padding="4" Margin="0,0,8,0">
+                    <ListBox ItemsSource="{Binding Companions}" SelectedItem="{Binding SelectedCompanion}"
+                             SelectionMode="Single">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CompanionEntryViewModel">
+                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <!-- Companion Details -->
+                <ScrollViewer Grid.Column="1" IsVisible="{Binding HasSelection}">
+                    <StackPanel Spacing="12" Margin="8">
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale companion.identity}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale companion.name}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CompanionName}" Watermark="Procedural - No Name Set" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale companion.creature_id}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CreatureId}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale companion.biome}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Biome}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale companion.type}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CreatureType}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale companion.custom_species_name}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding CustomSpeciesName}" Margin="0,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale companion.seeds}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale companion.creature_seed}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding CreatureSeed}" />
+                                    <Button Grid.Row="0" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="Creature" Margin="4,0,0,0" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale companion.secondary_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SecondarySeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="1" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="Secondary" Margin="4,4,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale companion.species_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SpeciesSeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="2" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="Species" Margin="4,4,0,0" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale companion.genus_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding GenusSeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="3" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="Genus" Margin="4,4,0,0" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale companion.bone_scale_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding BoneScaleSeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="4" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="BoneScale" Margin="4,4,0,0" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale companion.colour_base_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding ColourBaseSeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="5" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateSeedCommand}" CommandParameter="ColourBase" Margin="4,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale companion.attributes}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="140,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale companion.scale}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Scale}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale companion.trust}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Trust}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale companion.predator}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding Predator}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale companion.has_fur}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <CheckBox Grid.Row="3" Grid.Column="1" IsChecked="{Binding HasFur}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale companion.helpfulness}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Helpfulness}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale companion.aggression}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding Aggression}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Locale companion.independence}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding Independence}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{loc:Locale companion.hungry}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Hungry}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{loc:Locale companion.lonely}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding Lonely}" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="9" Grid.Column="0" Text="{loc:Locale companion.egg_modified}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <CheckBox Grid.Row="9" Grid.Column="1" IsChecked="{Binding EggModified}" Margin="0,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="{loc:Locale common.apply}" Command="{Binding SaveCompanionChangesCommand}" />
+                            <Button Content="{loc:Locale companion.reset_accessory}" Command="{Binding ResetAccessoryCommand}" />
+                            <Button Content="{loc:Locale companion.delete}" Command="{Binding DeleteCompanionCommand}" />
+                            <Button Content="{loc:Locale common.export}" Command="{Binding ExportCompanionCommand}" />
+                            <Button Content="{loc:Locale common.import}" Command="{Binding ImportCompanionCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

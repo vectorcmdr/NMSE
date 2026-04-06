@@ -1,5 +1,4 @@
 using System.Text.Json;
-using NMSE.Core;
 
 namespace NMSE.Data;
 
@@ -211,7 +210,14 @@ public static class UiStrings
         try
         {
             string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize(json, AppJsonContext.Default.DictionaryStringString);
+            using var doc = JsonDocument.Parse(json);
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.String)
+                    dict[prop.Name] = prop.Value.GetString()!;
+            }
+            return dict;
         }
         catch
         {

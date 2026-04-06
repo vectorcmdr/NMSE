@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:controls="using:NMSE.UI.Views.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.MultitoolView"
+             x:DataType="vm:MultitoolViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.multitools}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <Grid ColumnDefinitions="300,16,*">
+                <!-- Left: Selection and Details -->
+                <StackPanel Grid.Column="0" Spacing="8">
+                    <TextBlock Text="{loc:Locale multitool.select}" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding ToolList}"
+                              SelectedIndex="{Binding SelectedToolIndex}"
+                              HorizontalAlignment="Stretch" />
+
+                    <TextBlock Text="{Binding PrimaryToolLabel, StringFormat='Primary: {0}'}"
+                               FontStyle="Italic" Opacity="0.7" Margin="0,4,0,8" />
+
+                    <TextBlock Text="{loc:Locale multitool.details}" FontWeight="SemiBold" Margin="0,4,0,4" />
+
+                    <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale multitool.name}" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ToolName}"
+                                 Watermark="Procedural - No Name Set" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale common.type}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ToolTypes}"
+                                  SelectedIndex="{Binding SelectedTypeIndex}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale common.class}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ToolClasses}"
+                                  SelectedIndex="{Binding SelectedClassIndex}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale multitool.seed}" VerticalAlignment="Center" />
+                        <DockPanel Grid.Row="3" Grid.Column="1">
+                            <Button Content="{loc:Locale common.generate}" DockPanel.Dock="Right" Margin="4,0,0,0"
+                                    Command="{Binding GenerateSeedCommand}" />
+                            <TextBox Text="{Binding ToolSeed}" />
+                        </DockPanel>
+                    </Grid>
+
+                    <TextBlock Text="{loc:Locale multitool.base_stats}" FontWeight="SemiBold" Margin="0,12,0,4" />
+
+                    <Grid ColumnDefinitions="90,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale multitool.damage}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Damage}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale multitool.mining}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Mining}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale multitool.scan}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Scan}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+                    </Grid>
+
+                    <Button Content="{loc:Locale multitool.make_primary}" Margin="0,12,0,0"
+                            Command="{Binding MakePrimaryCommand}"
+                            HorizontalAlignment="Stretch" />
+
+                    <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportToolCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportToolCommand}" />
+                        <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteToolCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: Inventory -->
+                <DockPanel Grid.Column="2">
+                    <TextBlock Text="{loc:Locale multitool.inventory}" FontWeight="SemiBold"
+                               DockPanel.Dock="Top" Margin="0,0,0,8" />
+                    <controls:InventoryGridControl DataContext="{Binding StoreGrid}" />
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

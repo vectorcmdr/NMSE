@@ -1,5 +1,4 @@
 using System.Text.Json;
-using NMSE.Core;
 
 namespace NMSE.Data;
 
@@ -82,9 +81,16 @@ public class LocalisationService
         try
         {
             string json = File.ReadAllText(jsonPath);
-            _translations = JsonSerializer.Deserialize(json, AppJsonContext.Default.DictionaryStringString);
+            using var doc = JsonDocument.Parse(json);
+            var dict = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var prop in doc.RootElement.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.String)
+                    dict[prop.Name] = prop.Value.GetString()!;
+            }
+            _translations = dict;
             _activeTag = bcp47Tag;
-            return _translations != null && _translations.Count > 0;
+            return _translations.Count > 0;
         }
         catch
         {

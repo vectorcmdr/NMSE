@@ -240,7 +240,7 @@ public class JsonArray
     {
         if (value is null or bool or int or long or float or double or decimal or string or JsonObject or JsonArray or BinaryData)
             return;
-        throw new ArgumentException($"Unsupported JSON value type: {value.GetType().Name}");
+        throw new ArgumentException("Unsupported JSON value type");
     }
 
     private static void SetParent(object? value, object parent)

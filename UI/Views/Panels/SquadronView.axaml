@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.SquadronView"
+             x:DataType="vm:SquadronViewModel">
+
+    <Grid ColumnDefinitions="220,*">
+        <!-- Left: Pilot List -->
+        <DockPanel Grid.Column="0" Margin="0,0,8,0">
+            <TextBlock Text="{loc:Locale squadron.pilots_title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,4" />
+            <TextBlock Text="{Binding CountLabel}" DockPanel.Dock="Top" Margin="0,0,0,8"
+                       Foreground="{DynamicResource SemiColorText2}" />
+
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                <Button Content="{loc:Locale common.export}" Command="{Binding ExportCommand}" />
+                <Button Content="{loc:Locale common.import}" Command="{Binding ImportCommand}" />
+                <Button Content="{loc:Locale common.delete}" Command="{Binding DeletePilotCommand}" />
+            </StackPanel>
+
+            <Border Classes="card" Padding="4">
+                <ListBox ItemsSource="{Binding PilotList}" SelectedItem="{Binding SelectedPilot}"
+                         SelectionMode="Single">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:SquadronPilotViewModel">
+                            <TextBlock Text="{Binding DisplayText}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </DockPanel>
+
+        <!-- Right: Pilot Details -->
+        <ScrollViewer Grid.Column="1" IsVisible="{Binding HasSelection}">
+            <StackPanel Spacing="12" Margin="8">
+                <!-- Identity -->
+                <Border Classes="card" Padding="12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{loc:Locale squadron.pilot_info}" Classes="sectionHeader" />
+                        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto" Margin="0,8,0,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale squadron.race}" VerticalAlignment="Center" />
+                            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding RaceItems}"
+                                      SelectedIndex="{Binding RaceIndex}" HorizontalAlignment="Stretch" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale squadron.rank}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding RankItems}"
+                                      SelectedIndex="{Binding RankIndex}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale squadron.ship_type}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ShipTypeItems}"
+                                      SelectedIndex="{Binding ShipTypeIndex}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Seeds -->
+                <Border Classes="card" Padding="12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{loc:Locale squadron.seeds}" Classes="sectionHeader" />
+                        <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,8,0,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale squadron.npc_seed}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding NpcSeed}" />
+                            <Button Grid.Row="0" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateNpcSeedCommand}" Margin="4,0,0,0" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale squadron.ship_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ShipSeed}" Margin="0,4,0,0" />
+                            <Button Grid.Row="1" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateShipSeedCommand}" Margin="4,4,0,0" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale squadron.traits_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding TraitsSeed}" Margin="0,4,0,0" />
+                            <Button Grid.Row="2" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateTraitsSeedCommand}" Margin="4,4,0,0" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Resources (read-only) -->
+                <Border Classes="card" Padding="12">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="{loc:Locale squadron.resources}" Classes="sectionHeader" />
+                        <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale squadron.npc_resource}" VerticalAlignment="Center" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding NpcResource}" IsReadOnly="True" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale squadron.ship_resource}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ShipResource}" IsReadOnly="True" Margin="0,4,0,0" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Slot Unlocked -->
+                <Border Classes="card" Padding="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{loc:Locale squadron.slot_unlocked}" VerticalAlignment="Center" />
+                        <CheckBox IsChecked="{Binding SlotUnlocked}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

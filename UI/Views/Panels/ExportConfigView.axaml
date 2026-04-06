@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.ExportConfigView"
+             x:DataType="vm:ExportConfigViewModel">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="ConfigFieldTemplate" x:DataType="vm:ConfigFieldViewModel">
+            <Grid ColumnDefinitions="160,*" Margin="0,3">
+                <TextBlock Grid.Column="0" Text="{Binding Label, StringFormat='{}{0}:'}"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource SemiColorText2}" />
+                <TextBox Grid.Column="1" Text="{Binding Value}" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <!-- Description -->
+            <TextBlock DockPanel.Dock="Top"
+                       Text="{loc:Locale export_config.header}"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource SemiColorText2}"
+                       Margin="0,0,0,12" />
+
+            <!-- Buttons + Status -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="{DynamicResource SemiColorBackground2}"
+                    CornerRadius="6" Padding="12,8" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Button Content="{loc:Locale export_config.save_settings}" Command="{Binding SaveSettingsCommand}" />
+                    <Button Content="{loc:Locale export_config.reset_defaults}" Command="{Binding ResetDefaultsCommand}" />
+                    <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"
+                               FontSize="12" Margin="8,0,0,0"
+                               Foreground="{DynamicResource SemiColorPrimary}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Tabs -->
+            <TabControl>
+                <!-- Extensions Tab -->
+                <TabItem Header="{loc:Locale export_config.tab_extensions}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                        <ItemsControl ItemsSource="{Binding ExtensionFields}"
+                                      ItemTemplate="{StaticResource ConfigFieldTemplate}" />
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Templates Tab -->
+                <TabItem Header="{loc:Locale export_config.tab_templates}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                        <ItemsControl ItemsSource="{Binding TemplateFields}"
+                                      ItemTemplate="{StaticResource ConfigFieldTemplate}" />
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Help Tab -->
+                <TabItem Header="{loc:Locale export_config.tab_help}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="{loc:Locale export_config.help_heading}" FontWeight="Bold" FontSize="14"
+                                       Foreground="{DynamicResource SemiColorPrimary}" />
+                            <TextBlock Text="{x:Static vm:ExportConfigViewModel.HelpText}"
+                                       FontFamily="Consolas, Courier New, monospace"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SemiColorText2}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

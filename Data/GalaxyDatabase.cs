@@ -293,11 +293,11 @@ public static class GalaxyDatabase
     /// UI display colour for each galaxy type.
     /// Lush=green, Harsh=red, Empty=cyan, Normal=blue.
     /// </summary>
-    public static System.Drawing.Color GetGalaxyTypeColor(string galaxyType) => galaxyType switch
+    public static Avalonia.Media.Color GetGalaxyTypeColor(string galaxyType) => galaxyType switch
     {
-        "Lush" => System.Drawing.Color.FromArgb(0x55, 0xCC, 0x55),    // Green
-        "Harsh" => System.Drawing.Color.FromArgb(0xCC, 0x55, 0x55),   // Red
-        "Empty" => System.Drawing.Color.FromArgb(0x55, 0xCC, 0xCC),   // Cyan
-        _ => System.Drawing.Color.FromArgb(0x55, 0x88, 0xCC),         // Blue (Normal)
+        "Lush" => Avalonia.Media.Color.FromRgb(0x55, 0xCC, 0x55),    // Green
+        "Harsh" => Avalonia.Media.Color.FromRgb(0xCC, 0x55, 0x55),   // Red
+        "Empty" => Avalonia.Media.Color.FromRgb(0x55, 0xCC, 0xCC),   // Cyan
+        _ => Avalonia.Media.Color.FromRgb(0x55, 0x88, 0xCC),         // Blue (Normal)
     };
 }

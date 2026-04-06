@@ -1,6 +1,7 @@
 namespace NMSE.Core;
 
 using System.Text.Json;
+using NMSE.Models;
 
 /// <summary>
 /// Configuration for import/export file extensions and naming templates.
@@ -154,13 +155,113 @@ public class ExportConfig
 
     // --- Persistence -----------------------------------------------
 
+    private static readonly Dictionary<string, Action<ExportConfig, string>> PropertySetters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ExosuitExt"] = (c, v) => c.ExosuitExt = v,
+        ["MultitoolExt"] = (c, v) => c.MultitoolExt = v,
+        ["StarshipExt"] = (c, v) => c.StarshipExt = v,
+        ["CorvetteExt"] = (c, v) => c.CorvetteExt = v,
+        ["CorvetteSnapshotExt"] = (c, v) => c.CorvetteSnapshotExt = v,
+        ["StarshipCargoExt"] = (c, v) => c.StarshipCargoExt = v,
+        ["StarshipTechExt"] = (c, v) => c.StarshipTechExt = v,
+        ["FreighterExt"] = (c, v) => c.FreighterExt = v,
+        ["FreighterCargoExt"] = (c, v) => c.FreighterCargoExt = v,
+        ["FreighterTechExt"] = (c, v) => c.FreighterTechExt = v,
+        ["FrigateExt"] = (c, v) => c.FrigateExt = v,
+        ["SquadronExt"] = (c, v) => c.SquadronExt = v,
+        ["ExocraftExt"] = (c, v) => c.ExocraftExt = v,
+        ["ExocraftCargoExt"] = (c, v) => c.ExocraftCargoExt = v,
+        ["ExocraftTechExt"] = (c, v) => c.ExocraftTechExt = v,
+        ["CompanionExt"] = (c, v) => c.CompanionExt = v,
+        ["BaseExt"] = (c, v) => c.BaseExt = v,
+        ["ChestExt"] = (c, v) => c.ChestExt = v,
+        ["StorageExt"] = (c, v) => c.StorageExt = v,
+        ["DiscoveryExt"] = (c, v) => c.DiscoveryExt = v,
+        ["SettlementExt"] = (c, v) => c.SettlementExt = v,
+        ["ByteBeatExt"] = (c, v) => c.ByteBeatExt = v,
+        ["ExosuitCargoTemplate"] = (c, v) => c.ExosuitCargoTemplate = v,
+        ["ExosuitTechTemplate"] = (c, v) => c.ExosuitTechTemplate = v,
+        ["MultitoolTemplate"] = (c, v) => c.MultitoolTemplate = v,
+        ["StarshipTemplate"] = (c, v) => c.StarshipTemplate = v,
+        ["CorvetteTemplate"] = (c, v) => c.CorvetteTemplate = v,
+        ["CorvetteSnapshotTemplate"] = (c, v) => c.CorvetteSnapshotTemplate = v,
+        ["StarshipCargoTemplate"] = (c, v) => c.StarshipCargoTemplate = v,
+        ["StarshipTechTemplate"] = (c, v) => c.StarshipTechTemplate = v,
+        ["FreighterTemplate"] = (c, v) => c.FreighterTemplate = v,
+        ["FreighterCargoTemplate"] = (c, v) => c.FreighterCargoTemplate = v,
+        ["FreighterTechTemplate"] = (c, v) => c.FreighterTechTemplate = v,
+        ["FrigateTemplate"] = (c, v) => c.FrigateTemplate = v,
+        ["SquadronTemplate"] = (c, v) => c.SquadronTemplate = v,
+        ["ExocraftTemplate"] = (c, v) => c.ExocraftTemplate = v,
+        ["ExocraftCargoTemplate"] = (c, v) => c.ExocraftCargoTemplate = v,
+        ["ExocraftTechTemplate"] = (c, v) => c.ExocraftTechTemplate = v,
+        ["CompanionTemplate"] = (c, v) => c.CompanionTemplate = v,
+        ["BaseTemplate"] = (c, v) => c.BaseTemplate = v,
+        ["ChestTemplate"] = (c, v) => c.ChestTemplate = v,
+        ["StorageTemplate"] = (c, v) => c.StorageTemplate = v,
+        ["DiscoveryTemplate"] = (c, v) => c.DiscoveryTemplate = v,
+        ["SettlementTemplate"] = (c, v) => c.SettlementTemplate = v,
+        ["ByteBeatTemplate"] = (c, v) => c.ByteBeatTemplate = v,
+    };
+
+    private static readonly Dictionary<string, Func<ExportConfig, string>> PropertyGetters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ExosuitExt"] = c => c.ExosuitExt,
+        ["MultitoolExt"] = c => c.MultitoolExt,
+        ["StarshipExt"] = c => c.StarshipExt,
+        ["CorvetteExt"] = c => c.CorvetteExt,
+        ["CorvetteSnapshotExt"] = c => c.CorvetteSnapshotExt,
+        ["StarshipCargoExt"] = c => c.StarshipCargoExt,
+        ["StarshipTechExt"] = c => c.StarshipTechExt,
+        ["FreighterExt"] = c => c.FreighterExt,
+        ["FreighterCargoExt"] = c => c.FreighterCargoExt,
+        ["FreighterTechExt"] = c => c.FreighterTechExt,
+        ["FrigateExt"] = c => c.FrigateExt,
+        ["SquadronExt"] = c => c.SquadronExt,
+        ["ExocraftExt"] = c => c.ExocraftExt,
+        ["ExocraftCargoExt"] = c => c.ExocraftCargoExt,
+        ["ExocraftTechExt"] = c => c.ExocraftTechExt,
+        ["CompanionExt"] = c => c.CompanionExt,
+        ["BaseExt"] = c => c.BaseExt,
+        ["ChestExt"] = c => c.ChestExt,
+        ["StorageExt"] = c => c.StorageExt,
+        ["DiscoveryExt"] = c => c.DiscoveryExt,
+        ["SettlementExt"] = c => c.SettlementExt,
+        ["ByteBeatExt"] = c => c.ByteBeatExt,
+        ["ExosuitCargoTemplate"] = c => c.ExosuitCargoTemplate,
+        ["ExosuitTechTemplate"] = c => c.ExosuitTechTemplate,
+        ["MultitoolTemplate"] = c => c.MultitoolTemplate,
+        ["StarshipTemplate"] = c => c.StarshipTemplate,
+        ["CorvetteTemplate"] = c => c.CorvetteTemplate,
+        ["CorvetteSnapshotTemplate"] = c => c.CorvetteSnapshotTemplate,
+        ["StarshipCargoTemplate"] = c => c.StarshipCargoTemplate,
+        ["StarshipTechTemplate"] = c => c.StarshipTechTemplate,
+        ["FreighterTemplate"] = c => c.FreighterTemplate,
+        ["FreighterCargoTemplate"] = c => c.FreighterCargoTemplate,
+        ["FreighterTechTemplate"] = c => c.FreighterTechTemplate,
+        ["FrigateTemplate"] = c => c.FrigateTemplate,
+        ["SquadronTemplate"] = c => c.SquadronTemplate,
+        ["ExocraftTemplate"] = c => c.ExocraftTemplate,
+        ["ExocraftCargoTemplate"] = c => c.ExocraftCargoTemplate,
+        ["ExocraftTechTemplate"] = c => c.ExocraftTechTemplate,
+        ["CompanionTemplate"] = c => c.CompanionTemplate,
+        ["BaseTemplate"] = c => c.BaseTemplate,
+        ["ChestTemplate"] = c => c.ChestTemplate,
+        ["StorageTemplate"] = c => c.StorageTemplate,
+        ["DiscoveryTemplate"] = c => c.DiscoveryTemplate,
+        ["SettlementTemplate"] = c => c.SettlementTemplate,
+        ["ByteBeatTemplate"] = c => c.ByteBeatTemplate,
+    };
+
     /// <summary>
-    /// Saves the current configuration to a JSON file.
+    /// Saves the current configuration to a JSON file using JsonObject (AOT-safe).
     /// </summary>
     public void SaveToFile(string filePath)
     {
-        var json = JsonSerializer.Serialize(this, AppJsonContext.Default.ExportConfig);
-        File.WriteAllText(filePath, json);
+        var obj = new JsonObject();
+        foreach (var (key, getter) in PropertyGetters)
+            obj.Add(key, getter(this));
+        File.WriteAllText(filePath, obj.ToFormattedString());
     }
 
     /// <summary>
@@ -173,12 +274,18 @@ public class ExportConfig
             if (File.Exists(filePath))
             {
                 var json = File.ReadAllText(filePath);
-                var config = JsonSerializer.Deserialize(json, AppJsonContext.Default.ExportConfig);
-                if (config != null)
+                using var doc = JsonDocument.Parse(json);
+                var config = new ExportConfig();
+                foreach (var prop in doc.RootElement.EnumerateObject())
                 {
-                    SetInstance(config);
-                    return config;
+                    if (prop.Value.ValueKind == JsonValueKind.String &&
+                        PropertySetters.TryGetValue(prop.Name, out var setter))
+                    {
+                        setter(config, prop.Value.GetString()!);
+                    }
                 }
+                SetInstance(config);
+                return config;
             }
         }
         catch { /* fall through to defaults */ }

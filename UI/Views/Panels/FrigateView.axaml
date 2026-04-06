@@ -1,0 +1,144 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.FrigateView"
+             x:DataType="vm:FrigateViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale frigate.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,4" />
+            <TextBlock Text="{Binding CountLabel}" DockPanel.Dock="Top" Margin="0,0,0,12"
+                       Foreground="{DynamicResource SemiColorText2}" />
+
+            <Grid ColumnDefinitions="200,*">
+                <!-- Frigate List -->
+                <Border Grid.Column="0" Classes="card" Padding="4" Margin="0,0,8,0">
+                    <ListBox ItemsSource="{Binding FrigateList}" SelectedItem="{Binding SelectedFrigate}"
+                             SelectionMode="Single">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FrigateListItemViewModel">
+                                <TextBlock Text="{Binding DisplayText}" TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <!-- Frigate Details -->
+                <ScrollViewer Grid.Column="1" IsVisible="{Binding HasSelection}">
+                    <StackPanel Spacing="12" Margin="8">
+                        <!-- Identity -->
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale frigate.info_header}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale frigate.name}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FrigateName}" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale common.type}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TypeItems}"
+                                              SelectedIndex="{Binding TypeIndex}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale frigate.class}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ClassItems}"
+                                              SelectedIndex="{Binding ClassIndex}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale frigate.npc_race}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding RaceItems}"
+                                              SelectedIndex="{Binding RaceIndex}" HorizontalAlignment="Stretch" Margin="0,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Seeds -->
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale frigate.home_seed}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="140,*,Auto" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale frigate.home_seed}" VerticalAlignment="Center" />
+                                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding HomeSeed}" />
+                                    <Button Grid.Row="0" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateHomeSeedCommand}" Margin="4,0,0,0" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale frigate.model_seed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ModelSeed}" Margin="0,4,0,0" />
+                                    <Button Grid.Row="1" Grid.Column="2" Content="{loc:Locale common.gen}" Command="{Binding GenerateModelSeedCommand}" Margin="4,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Stats -->
+                        <Border Classes="card" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="{loc:Locale frigate.stats_header}" Classes="sectionHeader" />
+                                <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale frigate.stat_combat}" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding StatCombat}" Minimum="0" Maximum="100" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale frigate.stat_exploration}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding StatExploration}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale frigate.stat_industry}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding StatIndustry}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale frigate.stat_trading}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding StatTrading}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale frigate.stat_cost_per_warp}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding StatCostPerWarp}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale frigate.stat_fuel_cost}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding StatFuelCost}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Locale frigate.stat_duration}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding StatDuration}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{loc:Locale frigate.stat_loot}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding StatLoot}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{loc:Locale frigate.stat_repair}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding StatRepair}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="9" Grid.Column="0" Text="{loc:Locale frigate.stat_damage_reduction}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="9" Grid.Column="1" Value="{Binding StatDamageReduction}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="10" Grid.Column="0" Text="{loc:Locale frigate.stat_stealth}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="10" Grid.Column="1" Value="{Binding StatStealth}" Minimum="0" Maximum="100" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="11" Grid.Column="0" Text="{loc:Locale frigate.damage_format}" VerticalAlignment="Center" Margin="0,8,0,0" />
+                                    <TextBlock Grid.Row="11" Grid.Column="1" Text="{Binding DamageText}" VerticalAlignment="Center" Margin="0,8,0,0" />
+
+                                    <TextBlock Grid.Row="12" Grid.Column="0" Text="{loc:Locale frigate.expeditions}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="12" Grid.Column="1" Value="{Binding TotalExpeditions}" Minimum="0" Maximum="999" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="13" Grid.Column="0" Text="{loc:Locale frigate.successful}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="13" Grid.Column="1" Value="{Binding TotalSuccessful}" Minimum="0" Maximum="999" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="14" Grid.Column="0" Text="{loc:Locale frigate.failed}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="14" Grid.Column="1" Value="{Binding TotalFailed}" Minimum="0" Maximum="999" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="15" Grid.Column="0" Text="{loc:Locale frigate.times_damaged}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <NumericUpDown Grid.Row="15" Grid.Column="1" Value="{Binding TimesDamaged}" Minimum="0" Maximum="999" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="16" Grid.Column="0" Text="{loc:Locale frigate.level_up_in}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBlock Grid.Row="16" Grid.Column="1" Text="{Binding LevelUpIn}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                    <TextBlock Grid.Row="17" Grid.Column="0" Text="{loc:Locale frigate.state}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    <TextBlock Grid.Row="17" Grid.Column="1" Text="{Binding StateText}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Actions -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Content="{loc:Locale common.apply}" Command="{Binding SaveFrigateChangesCommand}" />
+                            <Button Content="{loc:Locale frigate.repair}" Command="{Binding RepairFrigateCommand}" />
+                            <Button Content="{loc:Locale frigate.copy}" Command="{Binding CopyFrigateCommand}" />
+                            <Button Content="{loc:Locale frigate.delete}" Command="{Binding DeleteFrigateCommand}" />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

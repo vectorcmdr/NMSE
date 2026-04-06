@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.MilestoneView"
+             x:DataType="vm:MilestoneViewModel">
+
+    <UserControl.Resources>
+        <DataTemplate x:Key="MilestoneSectionTemplate" x:DataType="vm:MilestoneSection">
+            <StackPanel Margin="0,0,0,12">
+                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="13"
+                           Foreground="{DynamicResource SemiColorPrimary}"
+                           Margin="0,0,0,6"
+                           IsVisible="{Binding Title, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <ItemsControl ItemsSource="{Binding Fields}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MilestoneStatField">
+                            <Grid ColumnDefinitions="160,120" Margin="0,2">
+                                <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource SemiColorText2}" />
+                                <NumericUpDown Grid.Column="1"
+                                               Value="{Binding Value}"
+                                               Minimum="-2147483648"
+                                               Maximum="2147483647"
+                                               FormatString="0"
+                                               Height="28" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale milestone.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl>
+                <!-- Tab 1: Main Stats -->
+                <TabItem Header="{loc:Locale milestone.tab_main}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Grid ColumnDefinitions="*,*,*" Margin="8">
+                            <ItemsControl Grid.Column="0" ItemsSource="{Binding Tab1Column1}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}"
+                                          Margin="0,0,16,0" />
+                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Tab1Column2}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}"
+                                          Margin="0,0,16,0" />
+                            <ItemsControl Grid.Column="2" ItemsSource="{Binding Tab1Column3}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}" />
+                        </Grid>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Tab 2: Other Stats -->
+                <TabItem Header="{loc:Locale milestone.tab_other}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <Grid ColumnDefinitions="*,*,*" Margin="8">
+                            <ItemsControl Grid.Column="0" ItemsSource="{Binding Tab2Column1}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}"
+                                          Margin="0,0,16,0" />
+                            <ItemsControl Grid.Column="1" ItemsSource="{Binding Tab2Column2}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}"
+                                          Margin="0,0,16,0" />
+                            <ItemsControl Grid.Column="2" ItemsSource="{Binding Tab2Column3}"
+                                          ItemTemplate="{StaticResource MilestoneSectionTemplate}" />
+                        </Grid>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:controls="using:NMSE.UI.Views.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.ExosuitView"
+             x:DataType="vm:ExosuitViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.exosuit}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl>
+                <TabItem Header="{loc:Locale common.cargo}">
+                    <controls:InventoryGridControl DataContext="{Binding CargoGrid}" />
+                </TabItem>
+                <TabItem Header="{loc:Locale common.technology}">
+                    <controls:InventoryGridControl DataContext="{Binding TechGrid}" />
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

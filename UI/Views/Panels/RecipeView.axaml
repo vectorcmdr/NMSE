@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.RecipeView"
+             x:DataType="vm:RecipeViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale recipe.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <!-- Filter / Search Bar -->
+            <Border DockPanel.Dock="Top"
+                    Background="{DynamicResource SemiColorBackground2}"
+                    CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:Locale recipe.type_filter}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SemiColorText2}" />
+                    <ComboBox ItemsSource="{Binding FilterOptions}"
+                              SelectedIndex="{Binding SelectedFilterIndex}"
+                              Width="120" />
+
+                    <TextBlock Text="{loc:Locale recipe.search_label}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource SemiColorText2}" />
+                    <TextBox Text="{Binding SearchText}" Width="200" Watermark="{loc:Locale recipe.filter_placeholder}" />
+
+                    <Button Content="{loc:Locale recipe.clear}" Command="{Binding ClearFiltersCommand}" />
+
+                    <Rectangle Width="1" Height="20"
+                               Fill="{DynamicResource SemiColorBorder}" />
+
+                    <Button Content="{loc:Locale recipe.nms_recipes_web}" Command="{Binding OpenNmsRecipesCommand}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Detail bar -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="{DynamicResource SemiColorBackground2}"
+                    CornerRadius="6" Padding="12,8" Margin="0,8,0,0">
+                <TextBlock Text="{Binding DetailText}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource SemiColorText2}"
+                           FontSize="12" />
+            </Border>
+
+            <!-- Recipe DataGrid -->
+            <DataGrid ItemsSource="{Binding Recipes}"
+                      SelectedItem="{Binding SelectedRecipe}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserSortColumns="True"
+                      CanUserResizeColumns="True"
+                      SelectionMode="Single"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="1"
+                      BorderBrush="{DynamicResource SemiColorBorder}"
+                      CornerRadius="6">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{loc:Locale recipe.col_ingredients}" Binding="{Binding Inputs}" Width="3*" />
+                    <DataGridTextColumn Header="{loc:Locale recipe.col_result}" Binding="{Binding Output}" Width="2*" />
+                    <DataGridTextColumn Header="{loc:Locale recipe.col_time}" Binding="{Binding Time}" Width="80" />
+                    <DataGridTextColumn Header="{loc:Locale recipe.col_type}" Binding="{Binding Type}" Width="100" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Border>
+</UserControl>

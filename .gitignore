@@ -33,7 +33,8 @@ bld/
 [Oo]ut/
 [Ll]og/
 [Ll]ogs/
-Build/
+Build/*
+!Build/NativeAOT.props
 
 # Build results on 'Bin' directories
 **/[Bb]in/*
@@ -113,6 +114,7 @@ StyleCopReport.xml
 *.pidb
 *.svclog
 *.scc
+*.lib
 
 # Chutzpah Test files
 _Chutzpah*

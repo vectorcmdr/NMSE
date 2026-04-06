@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:controls="using:NMSE.UI.Views.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.StarshipView"
+             x:DataType="vm:StarshipViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.starships}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <Grid ColumnDefinitions="320,16,*">
+                <!-- Left: Selection and Details -->
+                <StackPanel Grid.Column="0" Spacing="8">
+                    <TextBlock Text="{loc:Locale starship.select}" FontWeight="SemiBold" />
+                    <ComboBox ItemsSource="{Binding ShipList}"
+                              SelectedIndex="{Binding SelectedShipIndex}"
+                              HorizontalAlignment="Stretch" />
+
+                    <TextBlock Text="{Binding PrimaryShipLabel, StringFormat='Primary: {0}'}"
+                               FontStyle="Italic" Opacity="0.7" Margin="0,4,0,8" />
+
+                    <TextBlock Text="{loc:Locale starship.details}" FontWeight="SemiBold" Margin="0,4,0,4" />
+
+                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale starship.name}" VerticalAlignment="Center" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ShipName}"
+                                 Watermark="Procedural - No Name Set" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale common.type}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ShipTypes}"
+                                  SelectedIndex="{Binding SelectedTypeIndex}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale common.class}" VerticalAlignment="Center" />
+                        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ShipClasses}"
+                                  SelectedIndex="{Binding SelectedClassIndex}"
+                                  HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale starship.seed}" VerticalAlignment="Center" />
+                        <DockPanel Grid.Row="3" Grid.Column="1">
+                            <Button Content="{loc:Locale common.generate}" DockPanel.Dock="Right" Margin="4,0,0,0"
+                                    Command="{Binding GenerateSeedCommand}" />
+                            <TextBox Text="{Binding ShipSeed}" />
+                        </DockPanel>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="" />
+                        <CheckBox Grid.Row="4" Grid.Column="1" Content="{loc:Locale starship.use_old_colour}"
+                                  IsChecked="{Binding UseOldColours}" />
+                    </Grid>
+
+                    <TextBlock Text="{loc:Locale starship.base_stats}" FontWeight="SemiBold" Margin="0,12,0,4" />
+
+                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale starship.damage}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Damage}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale starship.shield}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Shield}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale starship.hyperdrive}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Hyperdrive}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale starship.maneuverability}" VerticalAlignment="Center" />
+                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding Maneuver}"
+                                       FormatString="F1" Minimum="0" Maximum="99999"
+                                       HorizontalAlignment="Stretch" />
+                    </Grid>
+
+                    <Button Content="{loc:Locale starship.make_primary}" Margin="0,12,0,0"
+                            Command="{Binding MakePrimaryCommand}"
+                            HorizontalAlignment="Stretch" />
+
+                    <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportShipCommand}" />
+                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportShipCommand}" />
+                        <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteShipCommand}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Right: Inventories -->
+                <DockPanel Grid.Column="2">
+                    <TabControl>
+                        <TabItem Header="{loc:Locale common.cargo}">
+                            <controls:InventoryGridControl DataContext="{Binding CargoGrid}" />
+                        </TabItem>
+                        <TabItem Header="{loc:Locale common.technology}">
+                            <controls:InventoryGridControl DataContext="{Binding TechGrid}" />
+                        </TabItem>
+                    </TabControl>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

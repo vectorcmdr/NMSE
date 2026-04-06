@@ -1,0 +1,108 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Card-style grouping border -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SemiBorderRadiusMedium}" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="Margin" Value="4" />
+    </Style>
+
+    <!-- Section header text -->
+    <Style Selector="TextBlock.sectionHeader">
+        <Setter Property="FontSize" Value="{DynamicResource SemiFontSizeHeader5}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Margin" Value="0,0,0,8" />
+        <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}" />
+    </Style>
+
+    <!-- Subtle label text -->
+    <Style Selector="TextBlock.label">
+        <Setter Property="FontSize" Value="{DynamicResource SemiFontSizeSmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Status bar panel -->
+    <Style Selector="Border.statusBar">
+        <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}" />
+        <Setter Property="Padding" Value="8,4" />
+    </Style>
+
+    <!-- Toolbar panel -->
+    <Style Selector="Border.toolbar">
+        <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}" />
+        <Setter Property="Padding" Value="8,4" />
+        <Setter Property="BorderThickness" Value="0,0,0,1" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+    </Style>
+
+    <!-- Inventory slot base style -->
+    <Style Selector="Border.inventorySlot">
+        <Setter Property="Width" Value="72" />
+        <Setter Property="Height" Value="72" />
+        <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SemiBorderRadiusSmall}" />
+        <Setter Property="Margin" Value="2" />
+    </Style>
+
+    <Style Selector="Border.inventorySlot:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+        <Setter Property="BorderThickness" Value="2" />
+    </Style>
+
+    <!-- Inventory slot button: transparent wrapper, semi-themed border via inner content -->
+    <Style Selector="Button.slotButton">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="Width" Value="80" />
+        <Setter Property="Height" Value="80" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SemiBorderRadiusSmall}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="Button.slotButton /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SemiBorderRadiusSmall}" />
+    </Style>
+
+    <Style Selector="Button.slotButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Button.slotButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource SemiColorFill0}" />
+    </Style>
+
+    <!-- Nav item selector style -->
+    <Style Selector="ListBoxItem">
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="CornerRadius" Value="{DynamicResource SemiBorderRadiusSmall}" />
+    </Style>
+
+    <!-- Sidebar toggle button -->
+    <Style Selector="Button.navToggle">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.navToggle.expanded">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+
+</Styles>

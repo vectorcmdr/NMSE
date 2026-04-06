@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <PropertyGroup Label="PublishConfiguration" Condition="'$(Configuration)'=='Release'">
+        <PublishAot>true</PublishAot>
+    </PropertyGroup>
+
+    <PropertyGroup Label="PublishAotConfiguration" Condition="'$(PublishAot)' == 'true'">
+        <TrimMode>full</TrimMode>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <StaticExecutable>true</StaticExecutable>
+        <IlcTrimMetadata>true</IlcTrimMetadata>
+        <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+        <TrimmerRemoveSymbols>true</TrimmerRemoveSymbols>
+        <StackTraceSupport>false</StackTraceSupport>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+        <ReferenceStaticNativeDir>$(MSBuildThisFileDirectory)..\runtimes\$(RuntimeIdentifier)\native</ReferenceStaticNativeDir>
+    </PropertyGroup>
+
+    <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+        <DirectPInvoke Include="libHarfBuzzSharp" />
+        <NativeLibrary Include="$(ReferenceStaticNativeDir)\libHarfBuzzSharp.lib" />
+        <DirectPInvoke Include="libSkiaSharp" />
+        <NativeLibrary Include="$(ReferenceStaticNativeDir)\libSkiaSharp.lib" />
+        <DirectPInvoke Include="av_libglesv2" />
+        <NativeLibrary Include="$(ReferenceStaticNativeDir)\av_libglesv2.lib" />
+        <LinkerArg Include="gdi32.lib;synchronization.lib;d3d9.lib;dxgi.lib;dxguid.lib" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <LinkerArg Include="/MAP:$(PublishDir)$(AssemblyName).map" />
+    </ItemGroup>
+
+</Project>

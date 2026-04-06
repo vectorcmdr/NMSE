@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             xmlns:views="using:NMSE.UI.Views.Panels"
+             x:Class="NMSE.UI.Views.Panels.DiscoveryView"
+             x:DataType="vm:DiscoveryViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.discoveries}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl SelectedIndex="{Binding SelectedTabIndex}">
+                <!-- Known Technologies -->
+                <TabItem Header="{loc:Locale discovery.tab_tech}">
+                    <DockPanel Margin="8">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <TextBox Text="{Binding TechFilter}" Watermark="{loc:Locale discovery.filter_items}" Width="250" />
+                            <Button Content="X" Command="{Binding ClearTechFilterCommand}"
+                                    ToolTip.Tip="Clear filter" Width="30" />
+                            <Button Content="{loc:Locale discovery.remove_selected}" Command="{Binding RemoveTechCommand}" />
+                            <Button Content="Add" Command="{Binding AddTechCommand}" />
+                            <Button Content="{loc:Locale common.export}" Command="{Binding ExportTechCommand}" />
+                            <Button Content="{loc:Locale common.import}" Command="{Binding ImportTechCommand}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding KnownTechs}" SelectionMode="Single"
+                                 SelectedItem="{Binding SelectedTech}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiscoveryItemViewModel">
+                                    <Grid ColumnDefinitions="*,120,180">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Category}" Foreground="{DynamicResource SemiColorText2}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Id}" Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Known Products -->
+                <TabItem Header="{loc:Locale discovery.tab_products}">
+                    <DockPanel Margin="8">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <TextBox Text="{Binding ProductFilter}" Watermark="{loc:Locale discovery.filter_items}" Width="250" />
+                            <Button Content="X" Command="{Binding ClearProductFilterCommand}"
+                                    ToolTip.Tip="Clear filter" Width="30" />
+                            <Button Content="{loc:Locale discovery.remove_selected}" Command="{Binding RemoveProductCommand}" />
+                            <Button Content="Add" Command="{Binding AddProductCommand}" />
+                            <Button Content="{loc:Locale common.export}" Command="{Binding ExportProductCommand}" />
+                            <Button Content="{loc:Locale common.import}" Command="{Binding ImportProductCommand}" />
+                        </StackPanel>
+                        <ListBox ItemsSource="{Binding KnownProducts}" SelectionMode="Single"
+                                 SelectedItem="{Binding SelectedProduct}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DiscoveryItemViewModel">
+                                    <Grid ColumnDefinitions="*,120,180">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Category}" Foreground="{DynamicResource SemiColorText2}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Id}" Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Glyphs -->
+                <TabItem Header="{loc:Locale discovery.tab_glyphs}">
+                    <ScrollViewer>
+                        <StackPanel Spacing="12" Margin="8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="{loc:Locale discovery.learn_all}" Command="{Binding LearnAllGlyphsCommand}" />
+                                <Button Content="{loc:Locale discovery.unlearn_all}" Command="{Binding UnlearnAllGlyphsCommand}" />
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Glyphs}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:GlyphViewModel">
+                                        <Border Classes="card" Padding="8" Margin="4" MinWidth="100">
+                                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Label}" HorizontalAlignment="Center"
+                                                           FontWeight="SemiBold" />
+                                                <CheckBox IsChecked="{Binding IsKnown}" HorizontalAlignment="Center"
+                                                          Content="{loc:Locale discovery.tab_glyphs}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Fishing -->
+                <TabItem Header="{loc:Locale discovery.tab_fish}">
+                    <DockPanel Margin="8">
+                        <TextBlock DockPanel.Dock="Top" Text="{loc:Locale discovery.tab_fish}" Classes="sectionHeader" Margin="0,0,0,8" />
+                        <DataGrid ItemsSource="{Binding FishEntries}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{loc:Locale discovery.col_id}" Binding="{Binding ProductId}" Width="200" />
+                                <DataGridTextColumn Header="{loc:Locale discovery.col_name}" Binding="{Binding Name}" Width="*" />
+                                <DataGridTextColumn Header="{loc:Locale discovery.col_count}" Binding="{Binding CatchCount}" Width="80" />
+                                <DataGridTextColumn Header="{loc:Locale discovery.col_largest_catch}" Binding="{Binding LargestCatch}" Width="100" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Recipes -->
+                <TabItem Header="{loc:Locale recipe.title}">
+                    <views:RecipeView DataContext="{Binding Recipe}" />
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

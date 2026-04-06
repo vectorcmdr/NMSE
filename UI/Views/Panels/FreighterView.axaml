@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:controls="using:NMSE.UI.Views.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.FreighterView"
+             x:DataType="vm:FreighterViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale freighter.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl>
+                <!-- Freighter Tab -->
+                <TabItem Header="{loc:Locale freighter.tab_freighter}">
+                    <Grid ColumnDefinitions="320,16,*" Margin="0,8,0,0">
+                        <!-- Left: Details -->
+                        <StackPanel Grid.Column="0" Spacing="8">
+                            <TextBlock Text="{loc:Locale freighter.details}" FontWeight="SemiBold" Margin="0,0,0,4" />
+
+                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale freighter.name}" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding FreighterName}" Watermark="Procedural - No Name Set" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale freighter.type}" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FreighterTypes}"
+                                          SelectedIndex="{Binding SelectedTypeIndex}"
+                                          HorizontalAlignment="Stretch" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale freighter.class}" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding FreighterClasses}"
+                                          SelectedIndex="{Binding SelectedClassIndex}"
+                                          HorizontalAlignment="Stretch" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale freighter.home_seed}" VerticalAlignment="Center" />
+                                <DockPanel Grid.Row="3" Grid.Column="1">
+                                    <Button Content="{loc:Locale common.gen}" DockPanel.Dock="Right" Margin="4,0,0,0"
+                                            Command="{Binding GenerateHomeSeedCommand}" />
+                                    <TextBox Text="{Binding HomeSeed}" />
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale freighter.model_seed}" VerticalAlignment="Center" />
+                                <DockPanel Grid.Row="4" Grid.Column="1">
+                                    <Button Content="{loc:Locale common.gen}" DockPanel.Dock="Right" Margin="4,0,0,0"
+                                            Command="{Binding GenerateModelSeedCommand}" />
+                                    <TextBox Text="{Binding ModelSeed}" />
+                                </DockPanel>
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale freighter.items}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding BaseItemsText}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock Text="{loc:Locale freighter.base_stats}" FontWeight="SemiBold" Margin="0,12,0,4" />
+
+                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale freighter.hyperdrive}" VerticalAlignment="Center" />
+                                <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Hyperdrive}"
+                                               FormatString="F1" Minimum="0" Maximum="99999"
+                                               HorizontalAlignment="Stretch" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale freighter.fleet_coord}" VerticalAlignment="Center" />
+                                <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding FleetCoordination}"
+                                               FormatString="F1" Minimum="0" Maximum="99999"
+                                               HorizontalAlignment="Stretch" />
+                            </Grid>
+
+                            <TextBlock Text="{loc:Locale freighter.crew}" FontWeight="SemiBold" Margin="0,12,0,4" />
+
+                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto" RowSpacing="6">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale freighter.crew_race}" VerticalAlignment="Center" />
+                                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding CrewRaces}"
+                                          SelectedIndex="{Binding SelectedCrewRaceIndex}"
+                                          HorizontalAlignment="Stretch" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale freighter.crew_seed}" VerticalAlignment="Center" />
+                                <DockPanel Grid.Row="1" Grid.Column="1">
+                                    <Button Content="{loc:Locale common.gen}" DockPanel.Dock="Right" Margin="4,0,0,0"
+                                            Command="{Binding GenerateCrewSeedCommand}" />
+                                    <TextBox Text="{Binding CrewSeed}" />
+                                </DockPanel>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,12,0,8" />
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <Button Content="{loc:Locale common.export}" Command="{Binding ExportCommand}" />
+                                <Button Content="{loc:Locale common.import}" Command="{Binding ImportCommand}" />
+                                <Button Content="{loc:Locale common.delete}" Command="{Binding DeleteCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Right: Inventories -->
+                        <DockPanel Grid.Column="2">
+                            <TabControl>
+                                <TabItem Header="{loc:Locale freighter.tab_cargo}">
+                                    <controls:InventoryGridControl DataContext="{Binding CargoGrid}" />
+                                </TabItem>
+                                <TabItem Header="{loc:Locale freighter.tab_tech}">
+                                    <controls:InventoryGridControl DataContext="{Binding TechGrid}" />
+                                </TabItem>
+                            </TabControl>
+                        </DockPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Rooms Tab -->
+                <TabItem Header="{loc:Locale freighter.tab_rooms}">
+                    <ListBox ItemsSource="{Binding RoomList}" Margin="0,8,0,0"
+                             MaxHeight="500" />
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

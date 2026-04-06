@@ -1,0 +1,105 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.AccountView"
+             x:DataType="vm:AccountViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.account_rewards}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,4" />
+
+            <TextBlock Text="{Binding StatusText}" DockPanel.Dock="Top"
+                       Opacity="0.7" Margin="0,0,0,12" />
+
+            <TabControl>
+                <!-- Season Rewards -->
+                <TabItem Header="{loc:Locale account.tab_season}">
+                    <DockPanel Margin="0,8,0,0">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <Button Content="{loc:Locale common.unlock_all}" Command="{Binding UnlockAllSeasonCommand}" />
+                            <Button Content="{loc:Locale common.lock_all}" Command="{Binding LockAllSeasonCommand}" />
+                            <TextBlock Text="{loc:Locale common.filter}" VerticalAlignment="Center" Margin="16,0,4,0" />
+                            <TextBox Text="{Binding SeasonFilter}" Width="200" />
+                        </StackPanel>
+
+                        <DataGrid ItemsSource="{Binding FilteredSeasonRewards}"
+                                  AutoGenerateColumns="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="False"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{loc:Locale account.col_reward_id}" Binding="{Binding RewardId}" IsReadOnly="True" Width="200" />
+                                <DataGridTextColumn Header="{loc:Locale account.col_name}" Binding="{Binding RewardName}" IsReadOnly="True" Width="*" />
+                                <DataGridCheckBoxColumn Header="{loc:Locale account.col_unlocked}" Binding="{Binding IsUnlocked}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Twitch Rewards -->
+                <TabItem Header="{loc:Locale account.tab_twitch}">
+                    <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Warning: Twitch rewards require a linked Twitch account"
+                                   Foreground="#E0A030" FontWeight="SemiBold" FontSize="12"
+                                   Margin="0,0,0,8" />
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <Button Content="{loc:Locale common.unlock_all}" Command="{Binding UnlockAllTwitchCommand}" />
+                            <Button Content="{loc:Locale common.lock_all}" Command="{Binding LockAllTwitchCommand}" />
+                            <TextBlock Text="{loc:Locale common.filter}" VerticalAlignment="Center" Margin="16,0,4,0" />
+                            <TextBox Text="{Binding TwitchFilter}" Width="200" />
+                        </StackPanel>
+
+                        <DataGrid ItemsSource="{Binding FilteredTwitchRewards}"
+                                  AutoGenerateColumns="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="False"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{loc:Locale account.col_reward_id}" Binding="{Binding RewardId}" IsReadOnly="True" Width="200" />
+                                <DataGridTextColumn Header="{loc:Locale account.col_name}" Binding="{Binding RewardName}" IsReadOnly="True" Width="*" />
+                                <DataGridCheckBoxColumn Header="{loc:Locale account.col_unlocked}" Binding="{Binding IsUnlocked}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Platform Rewards -->
+                <TabItem Header="{loc:Locale account.tab_platform}">
+                    <DockPanel Margin="0,8,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Warning: Platform rewards require specific platform configurations"
+                                   Foreground="#E0A030" FontWeight="SemiBold" FontSize="12"
+                                   Margin="0,0,0,8" />
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <Button Content="{loc:Locale common.unlock_all}" Command="{Binding UnlockAllPlatformCommand}" />
+                            <Button Content="{loc:Locale common.lock_all}" Command="{Binding LockAllPlatformCommand}" />
+                            <TextBlock Text="{loc:Locale common.filter}" VerticalAlignment="Center" Margin="16,0,4,0" />
+                            <TextBox Text="{Binding PlatformFilter}" Width="200" />
+                        </StackPanel>
+
+                        <DataGrid ItemsSource="{Binding FilteredPlatformRewards}"
+                                  AutoGenerateColumns="False"
+                                  CanUserReorderColumns="False"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="False"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="{loc:Locale account.col_reward_id}" Binding="{Binding RewardId}" IsReadOnly="True" Width="200" />
+                                <DataGridTextColumn Header="{loc:Locale account.col_name}" Binding="{Binding RewardName}" IsReadOnly="True" Width="*" />
+                                <DataGridCheckBoxColumn Header="{loc:Locale account.col_unlocked}" Binding="{Binding IsUnlocked}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,205 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NMSE.UI.ViewModels"
+        xmlns:views="using:NMSE.UI.Views.Panels"
+        xmlns:pvm="using:NMSE.UI.ViewModels.Panels"
+        xmlns:loc="using:NMSE.UI.Localization"
+        x:Class="NMSE.UI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1200" Height="800"
+        MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="{loc:Locale menu.file}">
+                <MenuItem Header="{loc:Locale menu.file.open_directory}" HotKey="Ctrl+O"
+                          Click="OnOpenDirectory" />
+                <MenuItem Header="{loc:Locale menu.file.load_file}" HotKey="Ctrl+L"
+                          Click="OnOpenFile" />
+                <Separator />
+                <MenuItem Header="{loc:Locale menu.file.save}" Command="{Binding SaveCommand}" HotKey="Ctrl+S"
+                          IsEnabled="{Binding IsSaveLoaded}" />
+                <MenuItem Header="{loc:Locale menu.file.save_as}" IsEnabled="{Binding IsSaveLoaded}"
+                          Click="OnSaveAs" />
+                <Separator />
+                <MenuItem Header="{loc:Locale menu.file.exit}" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="{loc:Locale menu.edit}">
+                <MenuItem Header="{loc:Locale menu.edit.reload}" Command="{Binding ReloadCommand}" HotKey="F5"
+                          IsEnabled="{Binding IsSaveLoaded}" />
+                <MenuItem Header="{loc:Locale menu.edit.restore_backup_all}" Command="{Binding RestoreBackupAllCommand}" IsEnabled="{Binding IsSaveLoaded}" />
+                <MenuItem Header="{loc:Locale menu.edit.restore_backup_single}" Command="{Binding RestoreBackupSingleCommand}" IsEnabled="{Binding IsSaveLoaded}" />
+            </MenuItem>
+            <MenuItem Header="{loc:Locale menu.tools}">
+                <MenuItem Header="{loc:Locale menu.tools.export_json}" Command="{Binding ExportJsonCommand}" IsEnabled="{Binding IsSaveLoaded}" />
+                <MenuItem Header="{loc:Locale menu.tools.import_json}" Command="{Binding ImportJsonCommand}" />
+            </MenuItem>
+            <MenuItem Header="{loc:Locale menu.language}" x:Name="LanguageMenu" />
+            <MenuItem Header="{loc:Locale menu.view}">
+                <MenuItem Header="{loc:Locale menu.view.toggle_sidebar}" Command="{Binding ToggleNavCommand}" />
+                <Separator />
+                <MenuItem Header="{loc:Locale theme.dark}" Command="{Binding SetThemeCommand}" CommandParameter="Dark" />
+                <MenuItem Header="{loc:Locale theme.light}" Command="{Binding SetThemeCommand}" CommandParameter="Light" />
+            </MenuItem>
+            <MenuItem Header="{loc:Locale menu.help}">
+                <MenuItem Header="{loc:Locale menu.help.github}" Command="{Binding OpenGitHubCommand}" />
+                <Separator />
+                <MenuItem Header="{loc:Locale menu.help.sponsor}" Command="{Binding OpenSponsorCommand}" />
+                <Separator />
+                <MenuItem Header="{loc:Locale menu.help.check_updates}" Command="{Binding CheckForUpdatesCommand}" />
+                <Separator />
+                <MenuItem Header="{loc:Locale menu.help.about}" Click="OnAbout" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Classes="toolbar">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  Margin="4,2" VerticalAlignment="Center">
+                <TextBlock Grid.Column="0" Text="{loc:Locale toolbar.directory}" Classes="label" Margin="0,0,6,0" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding Directories}"
+                          SelectedIndex="{Binding SelectedDirectoryIndex}"
+                          HorizontalAlignment="Stretch" Margin="0,0,4,0" />
+                <Button Grid.Column="2" Content="{loc:Locale toolbar.browse}" Click="OnBrowseDirectory" Margin="0,0,8,0" />
+                <Rectangle Grid.Column="3" Width="1" Height="20" Fill="{DynamicResource SemiColorBorder}" Margin="4,0" />
+                <TextBlock Grid.Column="4" Text="{loc:Locale toolbar.save_slot}" Classes="label" Margin="4,0,4,0" />
+                <ComboBox Grid.Column="5" ItemsSource="{Binding SaveSlots}"
+                          SelectedIndex="{Binding SelectedSlotIndex}"
+                          MinWidth="120" Margin="0,0,4,0" />
+                <TextBlock Grid.Column="6" Text="{loc:Locale toolbar.file}" Classes="label" Margin="4,0,4,0" />
+                <ComboBox Grid.Column="7" ItemsSource="{Binding SaveFiles}"
+                          SelectedIndex="{Binding SelectedFileIndex}"
+                          MinWidth="120" Margin="0,0,4,0" />
+                <Rectangle Grid.Column="8" Width="1" Height="20" Fill="{DynamicResource SemiColorBorder}" Margin="4,0" />
+                <Button Grid.Column="9" Content="{loc:Locale toolbar.load}" Command="{Binding LoadSlotCommand}" Margin="4,0,2,0" />
+                <Button Grid.Column="10" Content="{loc:Locale toolbar.save}" Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding IsSaveLoaded}" Margin="2,0,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Classes="statusBar">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding ItemCountText}"
+                           Classes="label" Margin="8,0" />
+                <ProgressBar DockPanel.Dock="Left"
+                             IsVisible="{Binding IsProgressVisible}"
+                             Value="{Binding ProgressValue}"
+                             Minimum="0" Maximum="100"
+                             Width="120" Height="14" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding StatusText}" Classes="label" />
+            </DockPanel>
+        </Border>
+
+        <!-- Main Content: Sidebar Nav + Panel Content -->
+        <Panel>
+            <Grid ColumnDefinitions="Auto,*">
+                <!-- Sidebar Navigation -->
+                <Border Grid.Column="0" Width="{Binding NavWidth}" BorderThickness="0,0,1,0"
+                        BorderBrush="{DynamicResource SemiColorBorder}"
+                        Background="{DynamicResource SemiColorNavBackground}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseInOut" />
+                        </Transitions>
+                    </Border.Transitions>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Top" Command="{Binding ToggleNavCommand}"
+                                Classes="navToggle"
+                                Classes.expanded="{Binding IsNavExpanded}"
+                                Margin="4,4,4,0">
+                            <PathIcon Width="14" Height="14"
+                                      Data="M3,18H21V16H3V18M3,13H21V11H3V13M3,6V8H21V6H3Z" />
+                        </Button>
+                        <ListBox ItemsSource="{Binding NavItems}"
+                                 SelectedIndex="{Binding SelectedNavIndex}"
+                                 Margin="4" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:NavItem">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <PathIcon Data="{Binding IconPath}" Width="16" Height="16" />
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsNavExpanded}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- Content Area -->
+                <ContentControl Grid.Column="1" Content="{Binding SelectedPanel}" Margin="8">
+                    <ContentControl.DataTemplates>
+                    <DataTemplate DataType="pvm:MainStatsViewModel">
+                        <views:MainStatsView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:ExosuitViewModel">
+                        <views:ExosuitView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:MultitoolViewModel">
+                        <views:MultitoolView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:StarshipViewModel">
+                        <views:StarshipView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:FreighterViewModel">
+                        <views:FreighterView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:FleetViewModel">
+                        <views:FleetView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:ExocraftViewModel">
+                        <views:ExocraftView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:CompanionViewModel">
+                        <views:CompanionView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:BaseViewModel">
+                        <views:BaseView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:DiscoveryViewModel">
+                        <views:DiscoveryView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:MilestoneViewModel">
+                        <views:MilestoneView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:SettlementViewModel">
+                        <views:SettlementView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:ByteBeatViewModel">
+                        <views:ByteBeatView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:AccountViewModel">
+                        <views:AccountView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:ExportConfigViewModel">
+                        <views:ExportConfigView />
+                    </DataTemplate>
+                    <DataTemplate DataType="pvm:RawJsonViewModel">
+                        <views:RawJsonView />
+                    </DataTemplate>
+                    </ContentControl.DataTemplates>
+                </ContentControl>
+            </Grid>
+
+            <!-- Loading Overlay -->
+            <Border IsVisible="{Binding IsLoading}"
+                    Background="#80000000"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <ProgressBar IsIndeterminate="True" Width="200" Height="6" />
+                    <TextBlock Text="{Binding LoadingMessage}"
+                               Foreground="{DynamicResource SemiColorWhite}" FontSize="14"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Panel>
+    </DockPanel>
+</Window>

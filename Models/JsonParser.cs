@@ -110,7 +110,7 @@ public static class JsonParser
             case JsonObject obj: SerializeObject(sb, obj, depth, spaces, mapper, skipReverseMapping); break;
             case JsonArray arr: SerializeArray(sb, arr, depth, spaces, mapper, skipReverseMapping); break;
             case BinaryData bin: AppendQuotedBinaryData(sb, bin); break;
-            default: throw new InvalidOperationException($"Unsupported type: {value.GetType().Name}");
+            default: throw new InvalidOperationException("Unsupported JSON value type");
         }
     }
 

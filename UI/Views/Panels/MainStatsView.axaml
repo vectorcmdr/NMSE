@@ -1,0 +1,264 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.MainStatsView"
+             x:DataType="vm:MainStatsViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale player.section_stats}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl>
+                <!-- General Tab -->
+                <TabItem Header="{loc:Locale player.tab_general}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="8">
+                            <!-- Player Stats Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_stats}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.health}" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Health}" Minimum="0" Maximum="999999" FormatString="F0" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.shield}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Shield}" Minimum="0" Maximum="999999" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale player.energy}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Energy}" Minimum="0" Maximum="999999" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale player.units}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding Units}" Minimum="0" Maximum="4294967295" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale player.nanites}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding Nanites}" Minimum="0" Maximum="4294967295" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale player.quicksilver}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding Quicksilver}" Minimum="0" Maximum="4294967295" FormatString="F0" Margin="0,4,0,0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Save Info Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.save_info}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.save_name}" VerticalAlignment="Center" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SaveName}" Watermark="Procedural - No Name Set" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.save_summary}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SaveSummary}" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale player.total_play_time}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PlayTime}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale player.account_name}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding AccountName}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale player.third_person_cam}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding ThirdPersonCamera}" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale player.current_preset}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding PresetItems}" SelectedIndex="{Binding CurrentPresetIndex}" Margin="0,4,0,0" HorizontalAlignment="Stretch" />
+
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Locale player.easiest_used}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding PresetItems}" SelectedIndex="{Binding EasiestPresetIndex}" Margin="0,4,0,0" HorizontalAlignment="Stretch" />
+
+                                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{loc:Locale player.hardest_used}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <ComboBox Grid.Row="7" Grid.Column="1" ItemsSource="{Binding PresetItems}" SelectedIndex="{Binding HardestPresetIndex}" Margin="0,4,0,0" HorizontalAlignment="Stretch" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Coordinates Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_coordinates}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.galaxy}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding GalaxyDisplay}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.portal_code_hex}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PortalCode}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale player.portal_code_dec}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <SelectableTextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PortalCodeDec}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale player.signal_booster}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <SelectableTextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SignalBooster}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale player.player_state}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding PlayerStateItems}" SelectedIndex="{Binding PlayerStateIndex}" Margin="0,4,0,0" HorizontalAlignment="Stretch" />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale player.distance_to_center}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding DistanceToCenter}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="{loc:Locale player.jumps_to_center}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding JumpsToCenter}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="7" Grid.Column="0" Text="{loc:Locale player.freighter_in_system}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding FreighterInSystem}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="{loc:Locale player.nexus_in_system}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding NexusInSystem}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="9" Grid.Column="0" Text="{loc:Locale player.planets_in_system}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding PlanetsInSystem}" VerticalAlignment="Center" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="10" Grid.Column="0" Text="{loc:Locale player.portal_interference}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <CheckBox Grid.Row="10" Grid.Column="1" IsChecked="{Binding PortalInterference}" Margin="0,4,0,0" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Edit Coordinates Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_edit_coords}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="160,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.galaxy}" VerticalAlignment="Center" />
+                                        <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding GalaxyIndex}" Minimum="0" Maximum="255" FormatString="F0" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.voxel_x}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding VoxelX}" Minimum="-2048" Maximum="2047" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale player.voxel_y}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding VoxelY}" Minimum="-128" Maximum="127" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale player.voxel_z}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding VoxelZ}" Minimum="-2048" Maximum="2047" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale player.solar_system}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding SolarSystemIndex}" Minimum="0" Maximum="4095" FormatString="F0" Margin="0,4,0,0" />
+
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale player.planet_index}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding PlanetIndex}" Minimum="0" Maximum="15" FormatString="F0" Margin="0,4,0,0" />
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                        <Button Content="{loc:Locale player.apply_coordinates}" Command="{Binding ApplyCoordinatesCommand}" />
+                                        <Button Content="{loc:Locale player.coordinate_roulette}" Command="{Binding CoordinateRouletteCommand}" />
+                                    </StackPanel>
+
+                                    <Separator Margin="0,8" />
+
+                                    <TextBlock Text="{loc:Locale player.section_portal_to_coords}" Classes="sectionHeader" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                        <TextBox Text="{Binding PortalHexInput}" Watermark="{loc:Locale player.portal_code_msg_12}" Width="200" />
+                                        <Button Content="{loc:Locale player.convert_to_coords}" Command="{Binding ConvertPortalCodeCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Space Battle Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_space_battle}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale player.time_to_next}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TimeToNextBattle}" VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale player.warps_to_next}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding WarpsToNextBattle}" Minimum="0" Maximum="100" FormatString="F0" Margin="0,4,0,0" IsReadOnly="True" />
+                                    </Grid>
+                                    <Button Content="{loc:Locale player.trigger_space_battle}" Command="{Binding TriggerSpaceBattleCommand}" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Guides Tab -->
+                <TabItem Header="{loc:Locale player.tab_guide}">
+                    <DockPanel Margin="8">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <TextBlock Text="{loc:Locale player.guide_title}" Classes="sectionHeader" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding GuideFilter}" Watermark="{loc:Locale player.guide_filter}" Width="200" Margin="16,0,0,0" />
+                            <Button Content="{loc:Locale player.guide_unlock_all}" Command="{Binding UnlockAllGuidesCommand}" />
+                            <Button Content="{loc:Locale player.guide_lock_all}" Command="{Binding LockAllGuidesCommand}" />
+                        </StackPanel>
+                        <DataGrid ItemsSource="{Binding GuideTopics}"
+                                  AutoGenerateColumns="False"
+                                  SelectionMode="Single"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Topic ID" Binding="{Binding TopicId}" Width="180" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="160" IsReadOnly="True" />
+                                <DataGridCheckBoxColumn Header="Seen" Binding="{Binding IsSeen}" Width="60" />
+                                <DataGridCheckBoxColumn Header="Unlocked" Binding="{Binding IsUnlocked}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Titles Tab -->
+                <TabItem Header="{loc:Locale player.tab_titles}">
+                    <DockPanel Margin="8">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                            <TextBlock Text="{loc:Locale player.section_titles}" Classes="sectionHeader" VerticalAlignment="Center" />
+                            <Button Content="{loc:Locale player.titles_unlock_all}" Command="{Binding UnlockAllTitlesCommand}" Margin="16,0,0,0" />
+                            <Button Content="{loc:Locale player.titles_lock_all}" Command="{Binding LockAllTitlesCommand}" />
+                        </StackPanel>
+                        <DataGrid ItemsSource="{Binding TitleRows}"
+                                  AutoGenerateColumns="False"
+                                  SelectionMode="Single"
+                                  CanUserSortColumns="True"
+                                  IsReadOnly="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding TitleId}" Width="120" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Title" Binding="{Binding TitleName}" Width="*" IsReadOnly="True" />
+                                <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" IsReadOnly="True" />
+                                <DataGridCheckBoxColumn Header="Unlocked" Binding="{Binding IsUnlocked}" Width="80" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </TabItem>
+
+                <!-- Save Utilities Tab -->
+                <TabItem Header="{loc:Locale player.tab_save_utils}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="8">
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale player.section_save_utils}" Classes="sectionHeader" />
+                                    <TextBlock Text="{loc:Locale player.save_utils_warning}"
+                                               Foreground="{DynamicResource SemiColorDanger}" FontWeight="Bold" TextWrapping="Wrap" />
+
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                        <TextBlock Text="{loc:Locale player.source_label}" VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding SourceSlotIndex}" MinWidth="100" />
+                                        <TextBlock Text="{loc:Locale player.dest_label}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                        <ComboBox ItemsSource="{Binding SlotItems}" SelectedIndex="{Binding DestSlotIndex}" MinWidth="100" />
+                                    </StackPanel>
+
+                                    <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="{loc:Locale player.copy_slot}" Command="{Binding CopySlotCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.move_slot}" Command="{Binding MoveSlotCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.swap_slots}" Command="{Binding SwapSlotsCommand}" Margin="0,0,4,4" />
+                                        <Button Content="{loc:Locale player.delete_slot}" Command="{Binding DeleteSlotCommand}" Margin="0,0,4,4" />
+                                    </WrapPanel>
+
+                                    <Separator Margin="0,8" />
+
+                                    <TextBlock Text="{loc:Locale player.transfer_label}" Classes="sectionHeader" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="{loc:Locale player.dest_platform}" VerticalAlignment="Center" />
+                                        <ComboBox ItemsSource="{Binding PlatformItems}" SelectedIndex="{Binding TransferPlatformIndex}" MinWidth="140" />
+                                        <Button Content="{loc:Locale player.transfer_to_platform}" Command="{Binding TransferPlatformCommand}" />
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding StatusText}" Margin="0,8,0,0"
+                                               Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

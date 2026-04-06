@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+using Avalonia.Media.Imaging;
 
 namespace NMSE.Data;
 
@@ -12,46 +11,31 @@ namespace NMSE.Data;
 /// </summary>
 public class IconManager : IDisposable
 {
-    /// <summary>
-    /// Maximum width/height for cached images. Icons larger than this are
-    /// downscaled on load.  128 px is more than sufficient for the largest
-    /// display (96x96 detail icon with Zoom) while using 4x less memory
-    /// than the 256x256 originals.
-    /// </summary>
     private const int MaxCacheDimension = 128;
 
-    private readonly Dictionary<string, Image?> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Bitmap?> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _iconsDirectory;
     private bool _disposed;
 
-    /// <summary>Initializes a new <see cref="IconManager"/> loading icons from the specified directory.</summary>
-    /// <param name="iconsDirectory">Path to the directory containing icon image files.</param>
     public IconManager(string iconsDirectory)
     {
         _iconsDirectory = iconsDirectory;
     }
 
-    /// <summary>
-    /// Gets an icon image for the given filename. Returns null if not found.
-    /// Results are cached for performance.
-    /// </summary>
-    public Image? GetIcon(string? iconFilename)
+    public Bitmap? GetIcon(string? iconFilename)
     {
         if (string.IsNullOrEmpty(iconFilename)) return null;
 
         if (_cache.TryGetValue(iconFilename, out var cached))
             return cached;
 
-        Image? image = null;
+        Bitmap? image = null;
         try
         {
             string path = Path.Combine(_iconsDirectory, iconFilename);
             if (File.Exists(path))
             {
-                // Load into memory so file isn't locked
-                using var stream = File.OpenRead(path);
-                using var original = Image.FromStream(stream, useEmbeddedColorManagement: false, validateImageData: false);
-                image = Downscale(original);
+                image = LoadAndScale(path);
             }
         }
         catch
@@ -65,10 +49,6 @@ public class IconManager : IDisposable
 
     /// <summary>
     /// Pre-loads icon images for all items in the database in parallel.
-    /// Reads image files from disk on background threads, then merges
-    /// into the main cache. Dramatically reduces per-icon disk I/O
-    /// during panel loading since most icons will be cache hits.
-    /// Must be called during startup before any panels call GetIcon().
     /// </summary>
     public void PreloadIcons(GameItemDatabase database)
     {
@@ -79,32 +59,25 @@ public class IconManager : IDisposable
                 iconNames.Add(item.Icon);
         }
 
-        // Remove already-cached entries
         foreach (var name in _cache.Keys)
             iconNames.Remove(name);
 
         if (iconNames.Count == 0) return;
 
-        // Load images in parallel on background threads.
-        // Cap parallelism to Environment.ProcessorCount to avoid excessive
-        // thread-pool contention and GDI+ lock contention.
-        var results = new ConcurrentDictionary<string, Image?>(StringComparer.OrdinalIgnoreCase);
+        var results = new ConcurrentDictionary<string, Bitmap?>(StringComparer.OrdinalIgnoreCase);
         var options = new ParallelOptions
         {
             MaxDegreeOfParallelism = Environment.ProcessorCount
         };
         Parallel.ForEach(iconNames, options, iconFilename =>
         {
-            Image? image = null;
+            Bitmap? image = null;
             try
             {
                 string path = Path.Combine(_iconsDirectory, iconFilename);
                 if (File.Exists(path))
                 {
-                    var bytes = File.ReadAllBytes(path);
-                    using var ms = new MemoryStream(bytes);
-                    using var original = Image.FromStream(ms, useEmbeddedColorManagement: false, validateImageData: false);
-                    image = Downscale(original);
+                    image = LoadAndScale(path);
                 }
             }
             catch
@@ -114,15 +87,21 @@ public class IconManager : IDisposable
             results[iconFilename] = image;
         });
 
-        // Merge into main cache (single-threaded)
         foreach (var kvp in results)
             _cache[kvp.Key] = kvp.Value;
     }
 
     /// <summary>
-    /// Gets an icon for an item by looking up the icon filename from the database.
+    /// Gets a small class icon for item classification badges (e.g. "S", "A", "B", "C" class).
     /// </summary>
-    public Image? GetIconForItem(string? itemId, GameItemDatabase? database)
+    public Bitmap? GetClassIcon(string? itemClass)
+    {
+        if (string.IsNullOrEmpty(itemClass)) return null;
+        string filename = $"CLASS_{itemClass.ToUpperInvariant()}.png";
+        return GetIcon(filename);
+    }
+
+    public Bitmap? GetIconForItem(string? itemId, GameItemDatabase? database)
     {
         if (database == null || string.IsNullOrEmpty(itemId)) return null;
 
@@ -130,48 +109,24 @@ public class IconManager : IDisposable
         return item != null ? GetIcon(item.Icon) : null;
     }
 
-    /// <summary>
-    /// Returns a downscaled copy of <paramref name="original"/> if either
-    /// dimension exceeds <see cref="MaxCacheDimension"/>; otherwise returns
-    /// a copy at the original size. The caller owns the returned image.
-    /// Always renders through <see cref="Graphics.DrawImage"/> so that
-    /// corrupt source data (loaded with <c>validateImageData: false</c>)
-    /// is caught here rather than later when the cached image is drawn.
-    /// </summary>
-    private static Image Downscale(Image original)
+    private static Bitmap? LoadAndScale(string path)
     {
-        int ow = original.Width, oh = original.Height;
-        int maxDim = Math.Max(ow, oh);
+        using var stream = File.OpenRead(path);
+        var original = new Bitmap(stream);
 
-        int nw, nh;
+        int maxDim = Math.Max(original.PixelSize.Width, original.PixelSize.Height);
         if (maxDim <= MaxCacheDimension)
-        {
-            nw = ow;
-            nh = oh;
-        }
-        else
-        {
-            float scale = (float)MaxCacheDimension / maxDim;
-            nw = Math.Max(1, (int)(ow * scale));
-            nh = Math.Max(1, (int)(oh * scale));
-        }
+            return original;
 
-        var bmp = new Bitmap(nw, nh, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-        using (var g = Graphics.FromImage(bmp))
-        {
-            // Bilinear is much faster than HighQualityBicubic and visually
-            // indistinguishable at 128 px.  This significantly speeds up the
-            // parallel icon pre-load during startup.
-            g.InterpolationMode = InterpolationMode.Bilinear;
-            g.CompositingQuality = CompositingQuality.HighSpeed;
-            g.SmoothingMode = SmoothingMode.HighSpeed;
-            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
-            g.DrawImage(original, 0, 0, nw, nh);
-        }
-        return bmp;
+        double scale = (double)MaxCacheDimension / maxDim;
+        int nw = Math.Max(1, (int)(original.PixelSize.Width * scale));
+        int nh = Math.Max(1, (int)(original.PixelSize.Height * scale));
+
+        var scaled = original.CreateScaledBitmap(new Avalonia.PixelSize(nw, nh));
+        original.Dispose();
+        return scaled;
     }
 
-    /// <summary>Disposes all cached icon images and clears the cache.</summary>
     public void Dispose()
     {
         if (_disposed) return;

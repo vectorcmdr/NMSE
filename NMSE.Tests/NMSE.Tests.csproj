@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -98,7 +99,6 @@
     <Compile Include="..\Core\InventoryImportHelper.cs" Link="Core\InventoryImportHelper.cs" />
     <Compile Include="..\Core\InventorySlotHelper.cs" Link="Core\InventorySlotHelper.cs" />
     <Compile Include="..\Core\UpdateService.cs" Link="Core\UpdateService.cs" />
-    <Compile Include="..\Core\AppJsonContext.cs" Link="Core\AppJsonContext.cs" />
   </ItemGroup>
 
   <!-- Config (application settings - no WinForms dependency) -->

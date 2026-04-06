@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:controls="using:NMSE.UI.Views.Controls"
+             xmlns:cvm="using:NMSE.UI.ViewModels.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.BaseView"
+             x:DataType="vm:BaseViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale tab.bases_storage}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <TabControl SelectedIndex="{Binding SelectedTabIndex}">
+                <!-- Bases Tab -->
+                <TabItem Header="{loc:Locale base.tab_bases}">
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="16" Margin="8">
+                            <!-- NPC Workers Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale base.npc_header}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale base.npc_label}" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding NpcWorkers}"
+                                                  SelectedItem="{Binding SelectedNpc}" HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:NpcWorkerViewModel">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale base.npc_seed_label}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                            <TextBox Text="{Binding NpcSeed}" Width="250" />
+                                            <Button Content="{loc:Locale common.gen}" Command="{Binding GenerateNpcSeedCommand}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Base Info Section -->
+                            <Border Classes="card" Padding="12">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="{loc:Locale base.base_header}" Classes="sectionHeader" />
+                                    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale base.base_label}" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Bases}"
+                                                  SelectedItem="{Binding SelectedBase}" HorizontalAlignment="Stretch">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:BaseInfoViewModel">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale base.name_label}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                            <TextBox Text="{Binding BaseName}" Width="250" />
+                                            <Button Content="{loc:Locale base.chest_rename}" Command="{Binding SaveBaseNameCommand}" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale base.items_label}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding BaseItemCount}" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                                        <Button Content="{loc:Locale common.export}" Command="{Binding ExportBaseCommand}" />
+                                        <Button Content="{loc:Locale common.import}" Command="{Binding ImportBaseCommand}" />
+                                        <Button Content="{loc:Locale base.move_basecomp}" Command="{Binding MoveBaseComputerCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Chests Tab -->
+                <TabItem Header="{loc:Locale base.tab_chests}">
+                    <TabControl ItemsSource="{Binding ChestGrids}">
+                        <TabControl.ItemTemplate>
+                            <DataTemplate x:DataType="cvm:InventoryGridViewModel">
+                                <TextBlock Text="{Binding InventoryGroup, FallbackValue='Chest'}" />
+                            </DataTemplate>
+                        </TabControl.ItemTemplate>
+                        <TabControl.ContentTemplate>
+                            <DataTemplate x:DataType="cvm:InventoryGridViewModel">
+                                <controls:InventoryGridControl DataContext="{Binding}" />
+                            </DataTemplate>
+                        </TabControl.ContentTemplate>
+                    </TabControl>
+                </TabItem>
+
+                <!-- Storage Tab -->
+                <TabItem Header="{loc:Locale base.tab_storage}">
+                    <TabControl ItemsSource="{Binding StorageTabs}">
+                        <TabControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:StorageTabViewModel">
+                                <TextBlock Text="{Binding Label}" />
+                            </DataTemplate>
+                        </TabControl.ItemTemplate>
+                        <TabControl.ContentTemplate>
+                            <DataTemplate x:DataType="vm:StorageTabViewModel">
+                                <controls:InventoryGridControl DataContext="{Binding Grid}" />
+                            </DataTemplate>
+                        </TabControl.ContentTemplate>
+                    </TabControl>
+                </TabItem>
+            </TabControl>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:views="using:NMSE.UI.Views.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.FleetView"
+             x:DataType="vm:FleetViewModel">
+
+    <TabControl Margin="4">
+        <TabItem Header="{loc:Locale fleet.tab_frigates}">
+            <views:FrigateView DataContext="{Binding Frigates}" />
+        </TabItem>
+        <TabItem Header="{loc:Locale fleet.tab_squadron}">
+            <views:SquadronView DataContext="{Binding Squadron}" />
+        </TabItem>
+    </TabControl>
+</UserControl>

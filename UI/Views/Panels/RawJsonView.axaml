@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Panels"
+             xmlns:loc="using:NMSE.UI.Localization"
+             x:Class="NMSE.UI.Views.Panels.RawJsonView"
+             x:DataType="vm:RawJsonViewModel">
+
+    <Border Classes="card" Padding="16" Margin="4">
+        <DockPanel>
+            <TextBlock Text="{loc:Locale raw_json.title}" Classes="sectionHeader"
+                       DockPanel.Dock="Top" Margin="0,0,0,12" />
+
+            <!-- Toolbar -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <Button Content="{loc:Locale raw_json.tree_view}" Command="{Binding SwitchToTreeViewCommand}" />
+                <Button Content="{loc:Locale raw_json.text_view}" Command="{Binding SwitchToTextViewCommand}" />
+                <Separator Width="1" Background="{DynamicResource SemiColorBorder}" Margin="4,4" />
+                <Button Content="{loc:Locale raw_json.format}" Command="{Binding FormatJsonCommand}" />
+                <Button Content="{loc:Locale raw_json.validate}" Command="{Binding ValidateJsonCommand}" />
+                <Separator Width="1" Background="{DynamicResource SemiColorBorder}" Margin="4,4" />
+                <Button Content="{loc:Locale raw_json.expand_all}" Command="{Binding ExpandAllCommand}" />
+                <Button Content="{loc:Locale raw_json.collapse_all}" Command="{Binding CollapseAllCommand}" />
+                <Separator Width="1" Background="{DynamicResource SemiColorBorder}" Margin="4,4" />
+                <TextBox Text="{Binding SearchQuery}" Watermark="{loc:Locale raw_json.search_placeholder}" Width="200" />
+            </StackPanel>
+
+            <!-- Status Bar -->
+            <Border DockPanel.Dock="Bottom" Padding="8,4" Margin="0,8,0,0"
+                    Background="{DynamicResource SemiColorBackground2}" CornerRadius="4">
+                <TextBlock Text="{Binding StatusText}" FontSize="12" />
+            </Border>
+
+            <!-- Tree View -->
+            <TreeView ItemsSource="{Binding TreeNodes}" IsVisible="{Binding IsTreeView}">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Children}" x:DataType="vm:JsonTreeNodeViewModel">
+                        <TextBlock Text="{Binding DisplayText}"
+                                   Foreground="{DynamicResource SemiColorPrimary}"
+                                   TextTrimming="CharacterEllipsis" MaxWidth="800" />
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <!-- Text View -->
+            <TextBox Text="{Binding JsonText}" IsVisible="{Binding !IsTreeView}"
+                     AcceptsReturn="True" AcceptsTab="True"
+                     FontFamily="Consolas,Courier New,monospace" FontSize="13"
+                     TextWrapping="NoWrap" />
+        </DockPanel>
+    </Border>
+</UserControl>

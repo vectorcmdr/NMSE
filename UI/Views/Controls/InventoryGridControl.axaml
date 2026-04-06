@@ -1,0 +1,321 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NMSE.UI.ViewModels.Controls"
+             xmlns:loc="using:NMSE.UI.Localization"
+             xmlns:ctrl="using:NMSE.UI.Views.Controls"
+             x:Class="NMSE.UI.Views.Controls.InventoryGridControl"
+             x:Name="Root"
+             x:DataType="vm:InventoryGridViewModel"
+             x:CompileBindings="True">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Resize / Import / Export toolbar -->
+        <Border Grid.Row="0" Padding="8,4"
+                Background="{DynamicResource SemiColorBackground2}"
+                CornerRadius="4" Margin="0,0,0,4">
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Locale inventory.width}" Classes="label" />
+                <NumericUpDown Value="{Binding ResizeWidth}" Minimum="1" Maximum="20" Width="72"
+                               FormatString="0" />
+                <TextBlock Text="{loc:Locale inventory.height}" Classes="label" />
+                <NumericUpDown Value="{Binding ResizeHeight}" Minimum="1" Maximum="20" Width="72"
+                               FormatString="0" />
+                <Button Content="{loc:Locale inventory.resize}" Command="{Binding ResizeInventoryCommand}" />
+                <Rectangle Width="1" Height="20" Fill="{DynamicResource SemiColorBorder}" Margin="4,0" />
+                <Button Content="{loc:Locale common.import}" Command="{Binding ImportInventoryCommand}" />
+                <Button Content="{loc:Locale common.export}" Command="{Binding ExportInventoryCommand}" />
+                <TextBlock Text="{Binding MaxSupportedText}" Classes="label" Margin="8,0,0,0"
+                           Foreground="#E0A030" FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+
+        <!-- Main content: Grid + Detail Panel side by side -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+            <!-- Inventory Grid -->
+            <ScrollViewer Grid.Column="0"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          DragDrop.AllowDrop="True">
+                <ItemsControl ItemsSource="{Binding SlotCells}" Margin="4"
+                              Width="{Binding GridPixelWidth}"
+                              MinHeight="{Binding GridPixelHeight}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel ItemWidth="84" ItemHeight="84" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:InventorySlotViewModel">
+                            <Button Classes="slotButton"
+                                    Width="80" Height="80"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                    Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).SelectSlotCommand}"
+                                    CommandParameter="{Binding}"
+                                    Tag="{Binding}"
+                                    DragDrop.AllowDrop="True">
+                                <!-- Context Menu -->
+                                <Button.ContextMenu>
+                                    <ContextMenu Tag="{Binding}"
+                                                 Opening="OnSlotContextMenuOpening">
+                                        <MenuItem Header="{loc:Locale inventory.ctx_add_item}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).ContextAddItemCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_remove_item}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).RemoveItemAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <Separator />
+                                        <MenuItem x:Name="EnableSlotMenuItem"
+                                                  Header="{loc:Locale inventory.ctx_enable_slot}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).ToggleSlotEnabledCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_enable_all}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).EnableAllSlotsCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="{loc:Locale common.repair}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).RepairSlotAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_repair_all}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).RepairAllSlotsCommand}" />
+                                        <Separator />
+                                        <MenuItem x:Name="SuperchargeMenuItem"
+                                                  Header="{loc:Locale inventory.ctx_supercharge}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).SuperchargeSlotAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_supercharge_all}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).SuperchargeAllSlotsCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_fill_stack}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).FillStackAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_recharge_all}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).RechargeAllTechCommand}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_refill_all}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).RefillAllStacksCommand}" />
+                                        <Separator />
+                                        <MenuItem Header="{loc:Locale common.copy}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).CopyItemAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                        <MenuItem Header="{loc:Locale inventory.ctx_paste}"
+                                                  Command="{Binding #Root.((vm:InventoryGridViewModel)DataContext).PasteItemAtCommand}"
+                                                  CommandParameter="{Binding}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
+                                <Border CornerRadius="4"
+                                        Background="{DynamicResource SemiColorBackground1}"
+                                        BorderBrush="{DynamicResource SemiColorBorder}"
+                                        BorderThickness="1"
+                                        Opacity="{Binding SlotOpacity}">
+                                    <Panel>
+                                        <Border IsVisible="{Binding IsEmpty}"
+                                                Background="{DynamicResource SemiColorBackground2}"
+                                                CornerRadius="3" Opacity="0.5" />
+
+                                        <Border IsVisible="{Binding IsDamaged}"
+                                                Background="#40FF4444" CornerRadius="3" />
+
+                                        <Border IsVisible="{Binding IsDragOver}"
+                                                Background="#402196F3" CornerRadius="3" />
+
+                                        <!-- Item icon (fill entire cell) -->
+                                        <Image Source="{Binding Icon}" Stretch="Uniform"
+                                               HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                               Margin="2" />
+
+                                        <!-- Item name (top, scrolling, below icons) -->
+                                        <ctrl:MarqueeTextBlock Text="{Binding ItemName}"
+                                                              FontSize="10"
+                                                              Foreground="{DynamicResource SemiColorText0}"
+                                                              IsVisible="{Binding !IsEmpty}"
+                                                              HorizontalAlignment="Stretch"
+                                                              VerticalAlignment="Top"
+                                                              Margin="16,4,16,0"
+                                                              ScrollSpeed="25" PauseSeconds="2" />
+
+                                        <!-- Supercharge indicator (gold lightning, top-left) -->
+                                        <TextBlock Text="&#x26A1;" FontSize="14" FontWeight="Bold"
+                                                   Foreground="{Binding SuperchargeColor}"
+                                                   IsVisible="{Binding IsSupercharged}"
+                                                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                                                   Margin="2,1,0,0"
+                                                   IsHitTestVisible="False" />
+
+                                        <!-- Class mini icon badge (top-right, 24x24) -->
+                                        <Image Source="{Binding ClassMiniIcon}" Stretch="Uniform"
+                                               Width="24" Height="24"
+                                               HorizontalAlignment="Right" VerticalAlignment="Top"
+                                               Margin="0,1,1,0"
+                                               IsVisible="{Binding HasClassMiniIcon}"
+                                               IsHitTestVisible="False" />
+
+                                        <!-- Element symbol badge (bottom-right) -->
+                                        <Border IsVisible="{Binding HasElementSymbol}"
+                                                Background="#C0D4C4A0" CornerRadius="6"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                Padding="3,1" Margin="0,0,2,2"
+                                                IsHitTestVisible="False">
+                                            <TextBlock Text="{Binding ElementSymbol}" FontSize="9" FontWeight="Bold"
+                                                       Foreground="#333" />
+                                        </Border>
+
+                                        <!-- Charge bar (bottom) -->
+                                        <ProgressBar IsVisible="{Binding ShowCharge}"
+                                                     Value="{Binding Amount}" Maximum="{Binding MaxAmount}"
+                                                     Height="3" Minimum="0"
+                                                     MinWidth="0"
+                                                     Width="30"
+                                                     HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                                     Margin="3,0,0,4" />
+
+                                        <!-- Amount display (bottom-right) -->
+                                        <TextBlock Text="{Binding DisplayAmount}"
+                                                   FontSize="10" FontWeight="Bold"
+                                                   Foreground="{DynamicResource SemiColorText0}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                   Margin="0,0,3,2" />
+
+                                        <!-- Adjacency border -->
+                                        <Border IsVisible="{Binding HasAdjacencyBorder}"
+                                                BorderBrush="{Binding AdjBorderColor}"
+                                                BorderThickness="{Binding AdjBorderThickness}"
+                                                CornerRadius="3"
+                                                IsHitTestVisible="False"
+                                                Opacity="0.7" />
+
+                                        <!-- Selection border -->
+                                        <Border IsVisible="{Binding IsSelected}"
+                                                BorderBrush="{DynamicResource SemiColorPrimary}"
+                                                BorderThickness="2" CornerRadius="3"
+                                                IsHitTestVisible="False" />
+                                    </Panel>
+                                </Border>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Detail Panel (collapsible) -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource SemiColorBackground2}"
+                    CornerRadius="4" Padding="0"
+                    Width="{Binding DetailPanelWidth}">
+                <DockPanel>
+                    <!-- Toggle button always visible -->
+                    <Button DockPanel.Dock="Top"
+                            Command="{Binding ToggleDetailPanelCommand}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Background="Transparent" BorderThickness="0"
+                            Padding="4,6">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <PathIcon Width="12" Height="12"
+                                      Data="{Binding DetailToggleIcon}" />
+                            <TextBlock Text="{loc:Locale inventory.slot_details}"
+                                       IsVisible="{Binding IsDetailPanelExpanded}"
+                                       FontWeight="SemiBold" FontSize="13" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Detail content -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  IsVisible="{Binding IsDetailPanelExpanded}">
+                        <StackPanel Margin="12,4,12,8" Spacing="6">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                <Border Width="56" Height="56" CornerRadius="4"
+                                        Background="{DynamicResource SemiColorBackground1}">
+                                    <Image Source="{Binding DetailIcon}" Stretch="Uniform" Margin="4" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center" Spacing="2">
+                                    <Button Command="{Binding ChangeItemCommand}"
+                                            IsEnabled="{Binding IsSlotSelected}"
+                                            Background="Transparent" BorderThickness="0"
+                                            Padding="0" Cursor="Hand">
+                                        <TextBlock Text="{Binding DetailItemName}" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource SemiColorPrimary}"
+                                                   TextWrapping="Wrap" MaxWidth="200"
+                                                   TextDecorations="Underline" />
+                                    </Button>
+                                    <TextBlock Text="{Binding DetailPosition}" FontSize="11"
+                                               Foreground="{DynamicResource SemiColorText2}" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,4" />
+
+                            <Grid ColumnDefinitions="70,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                  Margin="0,2,0,0">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Locale inventory.label_type}" Classes="label" Margin="0,0,8,4" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding DetailType}" Margin="0,0,0,4" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Locale inventory.label_category}" Classes="label" Margin="0,0,8,4" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DetailCategory}" Margin="0,0,0,4" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Locale inventory.label_item_id}" Classes="label" Margin="0,0,8,4" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DetailItemId}" Margin="0,0,0,4"
+                                         IsEnabled="{Binding IsSlotSelected}" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Locale inventory.amount}" Classes="label" Margin="0,0,8,4" />
+                                <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding DetailAmount}"
+                                               Minimum="0" Maximum="2147483647" FormatString="0"
+                                               IsEnabled="{Binding IsSlotSelected}" Margin="0,0,0,4" />
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Locale inventory.max}" Classes="label" Margin="0,0,8,4" />
+                                <NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding DetailMaxAmount}"
+                                               Minimum="0" Maximum="2147483647" FormatString="0"
+                                               IsEnabled="{Binding IsSlotSelected}" Margin="0,0,0,4" />
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="{loc:Locale inventory.label_damage}" Classes="label" Margin="0,0,8,4" />
+                                <NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding DetailDamageFactor}"
+                                               Minimum="0" Maximum="1" Increment="0.01" FormatString="0.0000"
+                                               IsEnabled="{Binding IsSlotSelected}" Margin="0,0,0,4" />
+                            </Grid>
+
+                            <Button Content="{loc:Locale inventory.apply_changes_title}" Command="{Binding ApplyChangesCommand}"
+                                    IsEnabled="{Binding IsSlotSelected}"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Margin="0,4,0,0" />
+
+                            <TextBlock Text="{Binding DetailDescription}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SemiColorText2}"
+                                       FontSize="11" MaxWidth="260" Margin="0,2,0,0" />
+
+                            <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,6" />
+
+                            <TextBlock Text="{loc:Locale inventory.label_quick_actions}" FontWeight="SemiBold" FontSize="12" />
+                            <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Button Content="{loc:Locale inventory.ctx_replace_item}" Command="{Binding ChangeItemCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale inventory.ctx_remove_item}" Command="{Binding RemoveItemCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale inventory.ctx_fill_stack}" Command="{Binding FillStackCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale common.repair}" Command="{Binding RepairSlotCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale inventory.ctx_supercharge}" Command="{Binding SuperchargeSlotCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale common.copy}" Command="{Binding CopyItemCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                                <Button Content="{loc:Locale inventory.ctx_paste}" Command="{Binding PasteItemCommand}" Margin="0,0,4,4"
+                                        IsEnabled="{Binding IsSlotSelected}" />
+                            </WrapPanel>
+
+                            <Rectangle Height="1" Fill="{DynamicResource SemiColorBorder}" Margin="0,6" />
+
+                            <TextBlock Text="{loc:Locale inventory.label_bulk_actions}" FontWeight="SemiBold" FontSize="12" />
+                            <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <Button Content="{loc:Locale inventory.ctx_repair_all}" Command="{Binding RepairAllSlotsCommand}" Margin="0,0,4,4" />
+                                <Button Content="{loc:Locale inventory.ctx_supercharge_all}" Command="{Binding SuperchargeAllSlotsCommand}" Margin="0,0,4,4" />
+                                <Button Content="{loc:Locale inventory.ctx_recharge_all}" Command="{Binding RechargeAllTechCommand}" Margin="0,0,4,4" />
+                                <Button Content="{loc:Locale inventory.ctx_refill_all}" Command="{Binding RefillAllStacksCommand}" Margin="0,0,4,4" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

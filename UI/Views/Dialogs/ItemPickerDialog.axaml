@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NMSE.UI.ViewModels.Dialogs"
+        xmlns:loc="using:NMSE.UI.Localization"
+        x:Class="NMSE.UI.Views.Dialogs.ItemPickerDialog"
+        x:DataType="vm:ItemPickerViewModel"
+        Title="{loc:Locale inventory.item_picker}"
+        Width="600" Height="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+    <DockPanel Margin="16">
+        <!-- Search / Filters -->
+        <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+            <!-- Search -->
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="{loc:Locale inventory.label_search}" Classes="label" Margin="0,0,8,0" />
+                <TextBox Grid.Column="1" Text="{Binding SearchText}" Watermark="{loc:Locale inventory.search_placeholder}" />
+                <Button Grid.Column="2" Content="{loc:Locale inventory.search}" Command="{Binding SearchCommand}" Margin="8,0,0,0" />
+            </Grid>
+
+            <!-- Filters -->
+            <Grid ColumnDefinitions="Auto,*,Auto,*">
+                <TextBlock Grid.Column="0" Text="{loc:Locale inventory.label_filter_type}" Classes="label" Margin="0,0,8,0" />
+                <ComboBox Grid.Column="1" ItemsSource="{Binding TypeFilters}"
+                          SelectedIndex="{Binding SelectedTypeIndex}" />
+                <TextBlock Grid.Column="2" Text="{loc:Locale inventory.label_filter_category}" Classes="label" Margin="16,0,8,0" />
+                <ComboBox Grid.Column="3" ItemsSource="{Binding CategoryFilters}"
+                          SelectedIndex="{Binding SelectedCategoryIndex}" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Bottom: Manual ID + Buttons -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="{loc:Locale inventory.label_item_id}" Classes="label" Margin="0,0,8,0" />
+                <TextBox Grid.Column="1" Text="{Binding ManualItemId}" Watermark="{loc:Locale item_picker.manual_placeholder}" />
+                <Button Grid.Column="2" Content="{loc:Locale item_picker.add_manual}" Command="{Binding ConfirmManualIdCommand}" Margin="8,0,0,0" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Content="{loc:Locale common.ok}" Command="{Binding ConfirmSelectionCommand}"
+                        x:Name="OkButton"
+                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button Content="{loc:Locale common.cancel}" Click="OnCancelClicked" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Items List -->
+        <DataGrid x:Name="ItemGrid"
+                  ItemsSource="{Binding FilteredItems}"
+                  SelectedItem="{Binding SelectedItem}"
+                  IsReadOnly="True"
+                  CanUserSortColumns="True"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  SelectionMode="Extended">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="{loc:Locale item_picker.col_icon}" Width="40">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:ItemPickerItemViewModel">
+                            <Image Source="{Binding Icon}" Width="24" Height="24" Margin="4" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="{loc:Locale item_picker.col_name}" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="{loc:Locale item_picker.col_id}" Binding="{Binding Id}" Width="150" />
+                <DataGridTextColumn Header="{loc:Locale item_picker.col_category}" Binding="{Binding Category}" Width="120" />
+                <DataGridTextColumn Header="{loc:Locale common.type}" Binding="{Binding Type}" Width="100" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>
