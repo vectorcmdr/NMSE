@@ -1,4 +1,4 @@
-## NMSE — No Man's Save Editor v1.0.390 (preview)
+## NMSE — No Man's Save Editor v1.0.391 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
@@ -6,12 +6,20 @@
 
 #### Bug Fixes:
 
-- Fix regression for some ship technology item filter causing incorrect values for the items charge/amount (resulting in corrupted parts in slots).
+- Fix for inventory sub-panel item detail numeric up/down control values being defaulted to 1 for negative numbers when clicking apply, making some tech/upgrades unusable.
 
 <br />
 
 <details>
 <summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.390 (preview)
+
+#### Bug Fixes:
+
+- Fix regression for some ship technology item filter causing incorrect values for the items charge/amount (resulting in corrupted parts in slots).
+
+<br />
 
 ### Previous Changelog 1.0.389 (preview)
 
