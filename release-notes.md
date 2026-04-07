@@ -1,17 +1,32 @@
-## NMSE — No Man's Save Editor v1.0.391 (preview)
+## NMSE — No Man's Save Editor v1.0.393 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Features:
+
+- Inventory grids now have additional sorting/stacking functionality (thanks @thiago-rcarvalho):
+    - Inventory grids now support sorting by name/category.
+    - Inventory grids can have items sent to other inventories to auto-stack (such as exosuit to chest, ship or freighter).
+    - Inventory grid slots/cells have a new pin button to protect the slot from auto stacking.
+
+#### Bug Fixes:
+
+- Further changes have been made to the way that upgrade/procedural tech installation filters default values based on the MXML defaults to hopefully capture any items that are installing as broken.
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.391 (preview)
 
 #### Bug Fixes:
 
 - Fix for inventory sub-panel item detail numeric up/down control values being defaulted to 1 for negative numbers when clicking apply, making some tech/upgrades unusable.
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.390 (preview)
 
