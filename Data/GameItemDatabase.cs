@@ -109,6 +109,9 @@ public class GameItemDatabase
                         if (element.TryGetProperty("Chargeable", out var chargeableProp) && chargeableProp.ValueKind == JsonValueKind.True)
                             item.IsChargeable = true;
 
+                        if (element.TryGetProperty("BuildFullyCharged", out var bfcProp) && bfcProp.ValueKind == JsonValueKind.True)
+                            item.BuildFullyCharged = true;
+
                         if (element.TryGetProperty("BuildableShipTechID", out var bstProp))
                             item.BuildableShipTechID = bstProp.GetString() ?? "";
 

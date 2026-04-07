@@ -135,8 +135,14 @@ public static class InventoryStackDatabase
         if (inventoryType == "Substance")
             return MaxAmountLimit;
 
+        // Technology: MaxAmount is ALWAYS the ChargeAmount from MXML, regardless
+        // of IsChargeable.  Verified against the game save where EVERY technology
+        // slot's MaxAmount equals the item's ChargeAmount (100, 80, 120, 200, etc.)
+        // and confirmed by cross referencing other editor item databases which also
+        // uses the same ChargeAmount value.  For procedural items (UP_*) ChargeAmount
+        // is inherited from the Template entry in the main GcTechnologyTable.
         if (inventoryType == "Technology")
-            return item.IsChargeable ? item.ChargeValue : 0;
+            return item.ChargeValue;
 
         // Products: multiplier * MaxStackSize
         // The multiplier comes from the inventory group's ProductMaxStorageMultiplier.
@@ -219,7 +225,8 @@ public static class InventoryStackDatabase
     {
         return itemType.Equals("Technology", StringComparison.OrdinalIgnoreCase)
             || itemType.Equals("Upgrades", StringComparison.OrdinalIgnoreCase)
-            || itemType.Equals("Constructed Technology", StringComparison.OrdinalIgnoreCase);
+            || itemType.Equals("Constructed Technology", StringComparison.OrdinalIgnoreCase)
+            || itemType.Equals("Exocraft", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

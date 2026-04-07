@@ -1258,9 +1258,14 @@ public static class Parsers
         var localisation = MxmlParser.LoadLocalisation(Path.Combine(
             Path.GetDirectoryName(mbinDir)!, ExtractorConfig.JsonSubfolder));
 
-        // Template icon and category maps from technology table
+        // Template icon, category, and charge maps from technology table.
+        // Procedural items inherit Chargeable/ChargeAmount/BuildFullyCharged from their
+        // Template entry in the main GcTechnologyTable (matching other editor behaviour).
         var templateIcons = new Dictionary<string, string>();
         var techCategories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var templateChargeable = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var templateChargeAmount = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        var templateBuildFullyCharged = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         string techTablePath = Path.Combine(mbinDir, "nms_reality_gctechnologytable.MXML");
         if (File.Exists(techTablePath))
         {
@@ -1275,6 +1280,12 @@ public static class Parsers
                     if (!string.IsNullOrEmpty(fn)) templateIcons[tid] = MxmlParser.NormalizeGameIconPath(fn);
                     string cat = MxmlParser.GetNestedEnum(te, "Category", "TechnologyCategory");
                     if (!string.IsNullOrEmpty(cat)) techCategories[tid] = cat;
+
+                    bool isChargeable = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(te, "Chargeable", "false")) is true;
+                    templateChargeable[tid] = isChargeable;
+                    templateChargeAmount[tid] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(te, "ChargeAmount", "0"));
+                    bool buildFC = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(te, "BuildFullyCharged", "false")) is true;
+                    templateBuildFullyCharged[tid] = buildFC;
                 }
         }
 
@@ -1342,6 +1353,18 @@ public static class Parsers
                 if (string.IsNullOrEmpty(category) && !string.IsNullOrEmpty(techId))
                     techCategories.TryGetValue(techId, out category);
 
+                // Resolve Chargeable/ChargeAmount/BuildFullyCharged from template
+                // (matching NomNom's DB and NMSSaveEditor.jar behaviour).
+                bool chargeable = false;
+                object? chargeAmount = 0;
+                bool buildFullyCharged = true; // Default true; most templates are BuildFullyCharged=true
+                if (!string.IsNullOrEmpty(templateId))
+                {
+                    templateChargeable.TryGetValue(templateId, out chargeable);
+                    templateChargeAmount.TryGetValue(templateId, out chargeAmount);
+                    templateBuildFullyCharged.TryGetValue(templateId, out buildFullyCharged);
+                }
+
                 technologies.Add(new Dictionary<string, object?>
                 {
                     ["Id"] = techId,
@@ -1355,6 +1378,9 @@ public static class Parsers
                     ["Quality"] = quality,
                     ["Category"] = NullIfEmpty(category ?? ""),
                     ["Category_LocStr"] = TryGetCategoryLocKey(localisation, category),
+                    ["Chargeable"] = chargeable,
+                    ["ChargeAmount"] = chargeAmount,
+                    ["BuildFullyCharged"] = buildFullyCharged,
                     ["NumStatsMin"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "NumStatsMin", "0")),
                     ["NumStatsMax"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "NumStatsMax", "0")),
                     ["WeightingCurve"] = MxmlParser.GetNestedEnum(elem, "WeightingCurve", "WeightingCurve"),

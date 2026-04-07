@@ -830,7 +830,9 @@ public partial class InventoryGridPanel : UserControl
             _detailIcon.Image = _iconManager.GetIcon(selectedItem.Icon);
 
         // Calculate per-item max amount using the inventory-group-aware formula:
-        // Substance -> 9999, Technology -> ChargeValue (or 0), Product -> multiplier x MaxStackSize
+        // Substance -> 9999, Technology -> ChargeAmount always, Product -> multiplier x MaxStackSize
+        // Technology MaxAmount = ChargeAmount for ALL tech items (confirmed via game save + editor cross ref + MXML).
+        // Technology Amount = BuildFullyCharged ? ChargeAmount : 0 (fresh-insert default).
         string invTypeForDefaults = ResolveInventoryTypeForItem(selectedItem);
         int maxAmount = InventoryStackDatabase.GetMaxAmount(selectedItem, invTypeForDefaults, _inventoryGroup);
         if (invTypeForDefaults == "Substance")
@@ -840,19 +842,12 @@ public partial class InventoryGridPanel : UserControl
         }
         else if (invTypeForDefaults == "Technology")
         {
-            // Technology items use ChargeAmount for MaxAmount.
-            //   Chargeable tech: Amount = ChargeValue, MaxAmount = ChargeValue
-            //   Non-chargeable tech: Amount = 1, MaxAmount = 0
-            if (selectedItem.IsChargeable && selectedItem.ChargeValue > 0)
-            {
-                _detailAmount.Value = selectedItem.ChargeValue;
-                _detailMaxAmount.Value = selectedItem.ChargeValue;
-            }
-            else
-            {
-                _detailAmount.Value = 1;
-                _detailMaxAmount.Value = 0;
-            }
+            // Game behaviour (verified against MXML BuildFullyCharged field):
+            //   MaxAmount = ChargeAmount (always, for ALL tech: core, UT_, UP_, HDRIVEBOOST, etc.)
+            //   Amount (fresh insert) = BuildFullyCharged ? ChargeAmount : 0
+            // Examples: HYPERDRIVE → 0/120 (BuildFC=false), UT_QUICKWARP → 100/100 (BuildFC=true)
+            _detailMaxAmount.Value = maxAmount;
+            _detailAmount.Value = selectedItem.BuildFullyCharged ? maxAmount : 0;
         }
         else
         {
@@ -2157,21 +2152,18 @@ public partial class InventoryGridPanel : UserControl
             invType = "Technology";
         }
 
-        // Technology items use ChargeAmount for MaxAmount.
-        //   Chargeable tech: Amount = ChargeValue, MaxAmount = ChargeValue (if user left at 0)
-        //   Non-chargeable tech: Amount = 1, MaxAmount = 0
+        // Technology: MaxAmount = ChargeAmount (always). Amount defaults using BuildFullyCharged.
+        // Verified against MXML, game save, and other editor behaviour.
         if (invType == "Technology")
         {
-            if (gameItem != null && gameItem.IsChargeable && gameItem.ChargeValue > 0)
-            {
-                if (amount == 0) amount = gameItem.ChargeValue;
-                if (maxAmount == 0) maxAmount = gameItem.ChargeValue;
-            }
-            else
-            {
-                if (amount == 0) amount = 1;
-                if (maxAmount == 0) maxAmount = 0;
-            }
+            int techMaxAmount = gameItem != null
+                ? InventoryStackDatabase.GetMaxAmount(gameItem, "Technology", _inventoryGroup)
+                : 100;
+            if (maxAmount == 0) maxAmount = techMaxAmount;
+            if (amount == 0)
+                amount = (gameItem != null && gameItem.BuildFullyCharged)
+                    ? techMaxAmount
+                    : 0;
         }
         else
         {
@@ -2360,21 +2352,18 @@ public partial class InventoryGridPanel : UserControl
             invType = "Technology";
         }
 
-        // Technology items use ChargeAmount for MaxAmount.
-        //   Chargeable tech: Amount = ChargeValue, MaxAmount = ChargeValue (if user left at 0)
-        //   Non-chargeable tech: Amount = 1, MaxAmount = 0
+        // Technology: MaxAmount = ChargeAmount (always). Amount defaults using BuildFullyCharged.
+        // Verified against MXML, game save, and other editor behaviour.
         if (invType == "Technology")
         {
-            if (gameItem != null && gameItem.IsChargeable && gameItem.ChargeValue > 0)
-            {
-                if (amount == 0) amount = gameItem.ChargeValue;
-                if (maxAmount == 0) maxAmount = gameItem.ChargeValue;
-            }
-            else
-            {
-                if (amount == 0) amount = 1;
-                if (maxAmount == 0) maxAmount = 0;
-            }
+            int techMaxAmount = gameItem != null
+                ? InventoryStackDatabase.GetMaxAmount(gameItem, "Technology", _inventoryGroup)
+                : 100;
+            if (maxAmount == 0) maxAmount = techMaxAmount;
+            if (amount == 0)
+                amount = (gameItem != null && gameItem.BuildFullyCharged)
+                    ? techMaxAmount
+                    : 0;
         }
         else
         {

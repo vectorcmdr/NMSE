@@ -38,9 +38,10 @@ public class GameItem
     /// <summary>
     /// Charge capacity for technology items. Populated from ChargeAmount
     /// (tech-parsed items) or ChargeValue (product-parsed items) in the JSON database.
-    /// For chargeable technology this is the maximum charge level.
-    /// For non-chargeable technology (Chargeable == false) uses 0 as the
-    /// max amount even when ChargeAmount is non-zero in the game data.
+    /// For ALL technology items (chargeable and non-chargeable alike) this is the
+    /// MXML ChargeAmount value — the game uses it as MaxAmount in save slots.
+    /// For procedural items (UP_*) this value is inherited from the Template
+    /// entry in the main GcTechnologyTable.
     /// </summary>
     public int ChargeValue { get; set; }
     /// <summary>
@@ -48,6 +49,14 @@ public class GameItem
     /// Only meaningful for technology-type items.
     /// </summary>
     public bool IsChargeable { get; set; }
+    /// <summary>
+    /// Whether this technology starts at full charge when first built/installed.
+    /// From the MXML <c>BuildFullyCharged</c> field. When true the initial Amount
+    /// equals <see cref="ChargeValue"/>; when false the initial Amount is 0.
+    /// For procedural items (UP_*) this value is inherited from the Template
+    /// entry in the main GcTechnologyTable.
+    /// </summary>
+    public bool BuildFullyCharged { get; set; }
     /// <summary>Whether this item is a cooking ingredient.</summary>
     public bool IsCooking { get; set; }
     /// <summary>Item type classification (e.g. "substance", "product", "Technology").</summary>

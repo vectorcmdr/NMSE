@@ -178,18 +178,38 @@ public class StaticDataDatabaseTests
     }
 
     [Fact]
-    public void GetMaxAmount_Technology_NonChargeableReturns0()
+    public void GetMaxAmount_Technology_NonChargeableReturnsChargeAmount()
     {
-        // Non-chargeable tech has ChargeAmount in game data but should still return 0
+        // Non-chargeable tech still uses ChargeAmount for MaxAmount (game stores it regardless of IsChargeable)
         var item = new GameItem { Id = "UT_SCAN", MaxStackSize = 0, ChargeValue = 100, IsChargeable = false };
+        Assert.Equal(100, InventoryStackDatabase.GetMaxAmount(item, "Technology"));
+    }
+
+    [Fact]
+    public void GetMaxAmount_Technology_ChargeValueZeroReturnsZero()
+    {
+        // When ChargeValue is 0 (e.g. missing from DB), return 0 - no fallback.
+        // After extractor fix, all tech items should have ChargeValue populated.
+        var item = new GameItem { Id = "UP_JETX", MaxStackSize = 0, ChargeValue = 0, IsChargeable = false };
         Assert.Equal(0, InventoryStackDatabase.GetMaxAmount(item, "Technology"));
     }
 
     [Fact]
-    public void GetMaxAmount_Technology_NonChargeableNoChargeValueReturns0()
+    public void GetMaxAmount_Technology_ProceduralWithInheritedCharge()
     {
-        var item = new GameItem { Id = "UT_SCAN", MaxStackSize = 0, ChargeValue = 0, IsChargeable = false };
-        Assert.Equal(0, InventoryStackDatabase.GetMaxAmount(item, "Technology"));
+        // Procedural upgrades inherit ChargeAmount from their Template entry.
+        // UP_COLD3 inherits from T_COLDPROT: ChargeAmount=80, Chargeable=true
+        var item = new GameItem { Id = "UP_COLD3", MaxStackSize = 0, ChargeValue = 80, IsChargeable = true };
+        Assert.Equal(80, InventoryStackDatabase.GetMaxAmount(item, "Technology"));
+    }
+
+    [Fact]
+    public void GetMaxAmount_Technology_ProceduralNonChargeableWithInheritedCharge()
+    {
+        // UP_JET3 inherits from T_JET: ChargeAmount=100, Chargeable=false
+        // MaxAmount = ChargeAmount regardless of IsChargeable
+        var item = new GameItem { Id = "UP_JET3", MaxStackSize = 0, ChargeValue = 100, IsChargeable = false };
+        Assert.Equal(100, InventoryStackDatabase.GetMaxAmount(item, "Technology"));
     }
 
     [Theory]
