@@ -1,8 +1,25 @@
-## NMSE — No Man's Save Editor v1.0.396 (preview)
+## NMSE — No Man's Save Editor v1.0.397 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
+### This is a quick build for initial game update 6.30.0.1 support!
+
 ### Changelog
+
+#### Features:
+
+_Work for supporting the new pet battle system is currently underway._
+
+- Database updated with 6.30.0.1 items, titles, etc.
+- JSON key mappings updated for 6.30.0.1.
+- Companion count updated to new limit of 30.
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.396 (preview)
 
 #### Features:
 
@@ -16,9 +33,6 @@
 - Fix for the repair function in inventory so that it now correctly sets damage, amount and fully installed values so items don't get "stuck" in the tech inventory when repaied but not installed in game. (Issue #38)
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.393 (preview)
 
