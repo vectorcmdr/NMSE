@@ -45,6 +45,12 @@ internal static class StatHelper
                 var entry = baseStatValues.GetObject(i);
                 if (entry.GetString("BaseStatID") == statId)
                 {
+                    // If the existing value is a RawDouble with the same numeric value,
+                    // skip the write to preserve the original JSON text representation
+                    // and avoid precision loss from double-to-string round-tripping.
+                    var existing = entry.GetValue("Value");
+                    if (existing is RawDouble rd && rd.Value == value)
+                        return;
                     entry.Set("Value", value);
                     return;
                 }
