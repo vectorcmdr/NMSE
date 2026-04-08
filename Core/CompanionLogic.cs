@@ -232,7 +232,7 @@ internal static class CompanionLogic
     /// Sets the unlocked state for a companion slot in the UnlockedPetSlots array.
     /// </summary>
     /// <param name="playerState">The PlayerStateData JSON object.</param>
-    /// <param name="slotIndex">The pet slot index (0–17).</param>
+    /// <param name="slotIndex">The pet slot index (0–29).</param>
     /// <param name="unlocked">Whether the slot should be unlocked.</param>
     internal static void SetSlotUnlocked(JsonObject playerState, int slotIndex, bool unlocked)
     {
