@@ -2266,12 +2266,12 @@ public class LogicTests
         CompanionLogic.SetSlotUnlocked(playerState, 29, true);
 
         var slots = playerState.GetArray("UnlockedPetSlots")!;
-        Assert.Equal(18, slots.Length);
+        Assert.Equal(30, slots.Length);
         Assert.True(slots.GetBool(0));   // original
         Assert.False(slots.GetBool(1));  // original
-        for (int i = 2; i < 17; i++)
+        for (int i = 2; i < 29; i++)
             Assert.False(slots.GetBool(i)); // padded
-        Assert.True(slots.GetBool(17));  // newly set
+        Assert.True(slots.GetBool(29));  // newly set
     }
 
     [Fact]
