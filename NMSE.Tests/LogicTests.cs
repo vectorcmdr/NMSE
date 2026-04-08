@@ -2242,14 +2242,14 @@ public class LogicTests
     }
 
     [Fact]
-    public void CompanionLogic_SetSlotUnlocked_RejectsIndex18OrAbove()
+    public void CompanionLogic_SetSlotUnlocked_RejectsIndexTooLarge()
     {
         var playerState = JsonObject.Parse(@"{
             ""UnlockedPetSlots"": [true, false]
         }");
 
-        // Index 18 should be rejected (max is 17)
-        CompanionLogic.SetSlotUnlocked(playerState, 18, true);
+        // Index 30 should be rejected (max is 29)
+        CompanionLogic.SetSlotUnlocked(playerState, 30, true);
 
         var slots = playerState.GetArray("UnlockedPetSlots")!;
         Assert.Equal(2, slots.Length); // unchanged
@@ -2262,8 +2262,8 @@ public class LogicTests
             ""UnlockedPetSlots"": [true, false]
         }");
 
-        // Index 17 (last valid) should grow the array to 18
-        CompanionLogic.SetSlotUnlocked(playerState, 17, true);
+        // Index 29 (last valid) should grow the array to 30
+        CompanionLogic.SetSlotUnlocked(playerState, 29, true);
 
         var slots = playerState.GetArray("UnlockedPetSlots")!;
         Assert.Equal(18, slots.Length);
@@ -2275,9 +2275,9 @@ public class LogicTests
     }
 
     [Fact]
-    public void CompanionLogic_MaxPetSlots_Is18()
+    public void CompanionLogic_MaxPetSlots_Is30()
     {
-        Assert.Equal(18, CompanionLogic.MaxPetSlots);
+        Assert.Equal(30, CompanionLogic.MaxPetSlots);
     }
 
     // --- CatalogueLogic ----------------------------------------------

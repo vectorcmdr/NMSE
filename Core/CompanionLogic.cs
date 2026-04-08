@@ -224,9 +224,9 @@ internal static class CompanionLogic
     }
 
     /// <summary>
-    /// Maximum number of pet slots supported by the game (indices 0–17).
+    /// Maximum number of pet slots supported by the game (indices 0–29).
     /// </summary>
-    internal const int MaxPetSlots = 18;
+    internal const int MaxPetSlots = 30;
 
     /// <summary>
     /// Sets the unlocked state for a companion slot in the UnlockedPetSlots array.
