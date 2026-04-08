@@ -26,9 +26,13 @@ public class CategorizerTests
     [InlineData("Trade Goods", "Trade.json")]
     [InlineData("Construction module", "Buildings.json")]
     [InlineData("Decoration", "Buildings.json")]
+    [InlineData("Wall Access Route", "Buildings.json")]
+    [InlineData("Constructable Relic", "Buildings.json")]
     [InlineData("Access Card", "Constructed Technology.json")]
     [InlineData("High value curiosity", "Curiosities.json")]
     [InlineData("Mission Location System", "Corvette.json")]
+    [InlineData("Self-Mounted Refiner Unit", "Technology.json")]
+    [InlineData("Priceless Fragment", "Technology.json")]
     public void CategorizeItem_ExactGroupMatches(string group, string expectedFile)
     {
         var item = MakeItem("TEST", "Test Item", group);
@@ -88,10 +92,24 @@ public class CategorizerTests
     }
 
     [Fact]
-    public void CategorizeItem_UnknownGroup_ReturnsNull()
+    public void CategorizeItem_UnknownGroup_GoesToOthers()
     {
         var item = MakeItem("TEST", "Test Item", "Never Before Seen Category");
+        Assert.Equal("Others.json", Categorizer.CategorizeItem(item));
+    }
+
+    [Fact]
+    public void CategorizeItem_TechPackException_ReturnsNull()
+    {
+        var item = MakeItem("U_TECHPACK_CORE", "Core Package", "Archived Technology Package");
         Assert.Null(Categorizer.CategorizeItem(item));
+    }
+
+    [Fact]
+    public void CategorizeItem_NonTechPackFallthrough_GoesToOthers()
+    {
+        var item = MakeItem("U_TECHBOX_ALIEN", "Alien Implant", "Potent Nodule");
+        Assert.Equal("Others.json", Categorizer.CategorizeItem(item));
     }
 
     // Verify Raw Materials re-routing categories match expected

@@ -84,6 +84,15 @@ public class MxmlParser
         if (MissingLocalisationOverrides.TryGetValue(key, out string? overrideVal))
             return PostProcessTranslation(key, overrideVal);
 
+        // Try alternate key (strip redundant "_NAME" segment, e.g. UI_X_NAME_SUB -> UI_X_SUB)
+        int nameIdx = key.IndexOf("_NAME_", StringComparison.Ordinal);
+        if (nameIdx > 0)
+        {
+            string altKey = string.Concat(key.AsSpan(0, nameIdx), key.AsSpan(nameIdx + 5));
+            if (loc.TryGetValue(altKey, out string? altTranslation))
+                return PostProcessTranslation(altKey, altTranslation);
+        }
+
         // If looks like a key, make it readable
         if (fallback == key && key.Contains('_'))
         {
@@ -176,7 +185,26 @@ public class MxmlParser
 
     public static int UnresolvedLocalisationKeyCount(Dictionary<string, string> localisation, params string[] keys)
     {
-        return keys.Count(key => LooksLikeLocalisationKey(key) && !localisation.ContainsKey(key));
+        return keys.Count(key => LooksLikeLocalisationKey(key) &&
+            !localisation.ContainsKey(key) &&
+            !MissingLocalisationOverrides.ContainsKey(key) &&
+            !TryAlternateLocKey(localisation, key));
+    }
+
+    /// <summary>
+    /// Tries to find a localisation value by stripping a redundant "_NAME" segment from the key.
+    /// Handles game data where keys were updated to include "_NAME" (e.g. UI_X_NAME_SUB)
+    /// while the localisation file uses the original keys (e.g. UI_X_SUB).
+    /// </summary>
+    private static bool TryAlternateLocKey(Dictionary<string, string> localisation, string key)
+    {
+        int idx = key.IndexOf("_NAME_", StringComparison.Ordinal);
+        if (idx > 0)
+        {
+            string alt = string.Concat(key.AsSpan(0, idx), key.AsSpan(idx + 5)); // strip "_NAME"
+            return localisation.ContainsKey(alt);
+        }
+        return false;
     }
 
     public static string FormatStatTypeName(string statType, params string[] stripPrefixes)

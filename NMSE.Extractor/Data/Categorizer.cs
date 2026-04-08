@@ -83,7 +83,7 @@ public static class Categorizer
             "Stone Construction Component", "Synthetic Space Station Decoration",
             "System Simulation Device", "Timber Construction Component",
             "Unlockable Decoration", "Wooden Construction Component", "Worker Terminal",
-            "Fossil Display Case"
+            "Fossil Display Case", "Wall Access Route", "Constructable Relic"
         },
         ["Curiosities.json"] = new()
         {
@@ -292,7 +292,8 @@ public static class Categorizer
         {
             "Industrial Waste Manipulation Device", "Chargeable Power Unit",
             "Fuel Incineration Device", "Generator Coupling", "Homeworld Repeater",
-            "Deep-Space Salvage Locator", "A relic of another place",
+            "Deep-Space Salvage Locator", "Priceless Fragment",
+            "Self-Mounted Refiner Unit", "A relic of another place",
             "Active Camouflage Unit", "Adaptive Camouflage Suit",
             "Advanced Crafted Technology", "Advanced Engine Technology",
             "Advanced Exocraft Mining Laser", "Advanced Minotaur Mining Laser",
@@ -503,6 +504,11 @@ public static class Categorizer
                 if (group.StartsWith(prefix, StringComparison.Ordinal))
                     return filename;
 
-        return null;
+        // U_TECHPACK_ items are intentionally uncategorized (kept in none.json)
+        if (itemId.StartsWith("U_TECHPACK_", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        // Default: valid items with unrecognized groups go to Others.json
+        return "Others.json";
     }
 }
