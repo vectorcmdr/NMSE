@@ -13,8 +13,13 @@ public static class FontManager
     private static PrivateFontCollection? _fontCollection;
     private static FontFamily? _nmsFont;
     private static bool _initialized;
+    
+    private static PrivateFontCollection? _glyphFontCollection;
+    private static FontFamily? _glyphFont;
+    private static bool _glyphInitialized;
 
     private const string FontResourceName = "NMSE.Resources.app.NMSGeoSans_Kerned.ttf";
+    private const string GlyphFontResourceName = "NMSE.Resources.app.NMS_Glyphs_Mono.ttf";
 
     /// <summary>The loaded NMS GeoSans font family, or null if loading failed.</summary>
     public static FontFamily? NmsFont
@@ -35,6 +40,27 @@ public static class FontManager
         EnsureInitialized();
         var family = _nmsFont ?? Control.DefaultFont.FontFamily;
         return new Font(family, size, style);
+    }
+
+    /// <summary>The loaded NMS portal glyph font family, or null if loading failed.</summary>
+    public static FontFamily? GlyphFont
+    {
+        get
+        {
+            EnsureGlyphInitialized();
+            return _glyphFont;
+        }
+    }
+
+    /// <summary>
+    /// Creates a Font using the embedded NMS portal glyph font at the given size.
+    /// Falls back to Consolas if the embedded font could not be loaded.
+    /// </summary>
+    public static Font CreateGlyphFont(float size)
+    {
+        EnsureGlyphInitialized();
+        var family = _glyphFont ?? FontFamily.GenericMonospace;
+        return new Font(family, size, FontStyle.Regular);
     }
 
     /// <summary>
@@ -98,6 +124,44 @@ public static class FontManager
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"FontManager: failed to load font: {ex.Message}");
+        }
+    }
+
+        private static void EnsureGlyphInitialized()
+    {
+        if (_glyphInitialized) return;
+        _glyphInitialized = true;
+
+        try
+        {
+            var assembly = typeof(FontManager).Assembly;
+            using var stream = assembly.GetManifestResourceStream(GlyphFontResourceName);
+            if (stream == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"FontManager: embedded resource '{GlyphFontResourceName}' not found.");
+                return;
+            }
+
+            byte[] fontData = new byte[stream.Length];
+            stream.ReadExactly(fontData);
+
+            _glyphFontCollection = new PrivateFontCollection();
+            var handle = GCHandle.Alloc(fontData, GCHandleType.Pinned);
+            try
+            {
+                _glyphFontCollection.AddMemoryFont(handle.AddrOfPinnedObject(), fontData.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            if (_glyphFontCollection.Families.Length > 0)
+                _glyphFont = _glyphFontCollection.Families[0];
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"FontManager: failed to load glyph font: {ex.Message}");
         }
     }
 }

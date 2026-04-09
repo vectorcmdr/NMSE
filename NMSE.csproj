@@ -108,6 +108,7 @@
 
 	<ItemGroup>
 		<EmbeddedResource Include="Resources\app\NMSGeoSans_Kerned.ttf" />
+		<EmbeddedResource Include="Resources\app\NMS_Glyphs_Mono.ttf" />
 		<!-- Copy the ICO file to the output directory so the app can load it
 		     from disk at runtime.  This is the most reliable icon-loading path
 		     (no ResourceManager, no embedded-resource naming quirks).

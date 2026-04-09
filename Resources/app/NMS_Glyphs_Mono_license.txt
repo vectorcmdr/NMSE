@@ -1,0 +1,10 @@
+This font was downloaded from the NMS Wiki (Miraheze)
+https://nms.miraheze.org/wiki/File:NMS-Glyphs-Mono.ttf
+Creation is credited to: Stephan vd Feest aka Ghuyajil
+
+As per https://github.com/DemmyDemon/nms-glyph/blob/main/LICENSE and
+https://www.reddit.com/r/NMSCoordinateExchange/comments/aaz8c4/download_nmsglyphs_fonts_for_your_posters/
+the font seems to be freely available under a permissive license.
+
+If you are the creator and this is no longer the case,
+please open an GitHub Issue and it will be promptly removed.
