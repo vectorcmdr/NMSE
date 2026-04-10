@@ -1021,6 +1021,7 @@ public partial class RawJsonPanel : UserControl
         {
             DeleteSelectedNode();
             e.Handled = true;
+            e.SuppressKeyPress = true;
         }
         else if (e.KeyCode == Keys.F2)
         {
