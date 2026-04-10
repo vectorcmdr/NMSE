@@ -10,34 +10,15 @@ internal static class CompanionLogic
 {
     /// <summary>
     /// Known planetary biome types where companions can be found.
-    /// Matches the Creature Builder biome list.
+    /// Delegates to <see cref="CompanionDatabase.BiomeTypes"/>.
     /// </summary>
-    internal static readonly string[] BiomeTypes =
-    {
-        "Lush", "Toxic", "Scorched", "Radioactive", "Frozen", "Barren",
-        "Dead", "Weird", "Red", "Green", "Blue", "Test",
-        "Swamp", "Lava", "Waterworld", "All"
-    };
+    internal static string[] BiomeTypes => CompanionDatabase.BiomeTypes;
 
-    internal static readonly Dictionary<string, string> BiomeTypeLocKeys = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["Lush"] = "companion.biome_lush",
-        ["Toxic"] = "companion.biome_toxic",
-        ["Scorched"] = "companion.biome_scorched",
-        ["Radioactive"] = "companion.biome_radioactive",
-        ["Frozen"] = "companion.biome_frozen",
-        ["Barren"] = "companion.biome_barren",
-        ["Dead"] = "companion.biome_dead",
-        ["Weird"] = "companion.biome_weird",
-        ["Red"] = "companion.biome_red",
-        ["Green"] = "companion.biome_green",
-        ["Blue"] = "companion.biome_blue",
-        ["Test"] = "companion.biome_test",
-        ["Swamp"] = "companion.biome_swamp",
-        ["Lava"] = "companion.biome_lava",
-        ["Waterworld"] = "companion.biome_waterworld",
-        ["All"] = "companion.biome_all",
-    };
+    /// <summary>
+    /// Mapping of biome type names to their UI localisation keys.
+    /// Delegates to <see cref="CompanionDatabase.BiomeTypeLocKeys"/>.
+    /// </summary>
+    internal static Dictionary<string, string> BiomeTypeLocKeys => CompanionDatabase.BiomeTypeLocKeys;
 
     /// <summary>
     /// Looks up the species display name for a given species identifier using the companion database.
@@ -150,6 +131,9 @@ internal static class CompanionLogic
 
         // Reset accessory customisation
         ResetAccessoryCustomisation(companion);
+
+        // Reset battle data fields
+        ResetBattleData(companion);
     }
 
     /// <summary>
@@ -177,50 +161,6 @@ internal static class CompanionLogic
             }
         }
         catch { }
-    }
-
-    /// <summary>
-    /// Exports a companion's JSON data to a file.
-    /// </summary>
-    /// <param name="companion">The companion JSON object to export.</param>
-    /// <param name="filePath">The destination file path.</param>
-    internal static void ExportCompanion(JsonObject companion, string filePath)
-    {
-        companion.ExportToFile(filePath);
-    }
-
-    /// <summary>
-    /// Imports a companion from a file into the first empty companion slot.
-    /// </summary>
-    /// <param name="companions">The JSON array of companion entries.</param>
-    /// <param name="filePath">The source file path containing exported companion data.</param>
-    /// <returns>The index of the slot the companion was imported into.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no empty companion slot is available.</exception>
-    internal static int ImportCompanion(JsonArray companions, string filePath)
-    {
-        var imported = JsonObject.ImportFromFile(filePath);
-
-        // Unwrap NomNom wrapper if present (Data -> Pet + AccessoryCustomisation)
-        imported = InventoryImportHelper.UnwrapNomNomCompanion(imported);
-
-        for (int i = 0; i < companions.Length; i++)
-        {
-            var comp = companions.GetObject(i);
-            var seedArray = comp.GetArray("CreatureSeed");
-            if (seedArray != null && seedArray.Length >= 2)
-            {
-                bool occupied;
-                try { occupied = seedArray.GetBool(0); } catch { occupied = false; }
-                if (!occupied)
-                {
-                    foreach (var name in imported.Names())
-                        comp.Set(name, imported.Get(name));
-                    return i;
-                }
-            }
-        }
-
-        throw new InvalidOperationException("No empty companion slot available.");
     }
 
     /// <summary>
@@ -269,5 +209,147 @@ internal static class CompanionLogic
             }
         }
         catch { }
+    }
+
+    //  Pet Battle Data Helpers
+
+    /// <summary>Names of all battle-related keys stored in a companion JSON object.</summary>
+    internal static readonly string[] BattleKeys =
+    {
+        "PetBattlerUseCoreStatClassOverrides",
+        "PetBattlerCoreStatClassOverrides",
+        "PetBattlerTreatsEaten",
+        "PetBattlerTreatsAvailable",
+        "PetBattleProgressToTreat",
+        "PetBattlerVictories",
+        "PetBattlerMoveList",
+    };
+
+    /// <summary>
+    /// Resets all pet battle data fields to their default state.
+    /// </summary>
+    internal static void ResetBattleData(JsonObject companion)
+    {
+        try { companion.Set("PetBattlerUseCoreStatClassOverrides", false); } catch { }
+
+        // PetBattlerCoreStatClassOverrides: array of 3 InventoryClass objects -> "C"
+        try
+        {
+            var overrides = companion.GetArray("PetBattlerCoreStatClassOverrides");
+            if (overrides != null)
+                for (int i = 0; i < overrides.Length; i++)
+                {
+                    var obj = overrides.GetObject(i);
+                    obj?.Set("InventoryClass", "C");
+                }
+        }
+        catch { }
+
+        // PetBattlerTreatsEaten: array of 3 integers -> 0
+        try
+        {
+            var treats = companion.GetArray("PetBattlerTreatsEaten");
+            if (treats != null)
+                for (int i = 0; i < treats.Length; i++)
+                    treats.Set(i, 0);
+        }
+        catch { }
+
+        try { companion.Set("PetBattlerTreatsAvailable", 0); } catch { }
+        try { companion.Set("PetBattleProgressToTreat", 0.0); } catch { }
+        try { companion.Set("PetBattlerVictories", 0); } catch { }
+
+        // PetBattlerMoveList: array of 5 move objects -> reset MoveTemplateID/Cooldown/ScoreBoost
+        try
+        {
+            var moveList = companion.GetArray("PetBattlerMoveList");
+            if (moveList != null)
+                for (int i = 0; i < moveList.Length; i++)
+                {
+                    var obj = moveList.GetObject(i);
+                    if (obj != null)
+                    {
+                        obj.Set("MoveTemplateID", "^");
+                        obj.Set("Cooldown", 0);
+                        obj.Set("ScoreBoost", 0.0);
+                    }
+                }
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Exports a companion to file, including all battle and accessory data.
+    /// The exported JSON will contain the full companion object as-is.
+    /// </summary>
+    internal static void ExportCompanion(JsonObject companion, string filePath,
+        JsonArray? petAccessoryCustomisationSlots = null)
+    {
+        // If we have accessory customisation data, include it in the export
+        if (petAccessoryCustomisationSlots != null)
+        {
+            try
+            {
+                companion.Set("PetAccessoryCustomisation", petAccessoryCustomisationSlots);
+            }
+            catch { }
+        }
+
+        companion.ExportToFile(filePath);
+    }
+
+    /// <summary>
+    /// Imports a companion from a file into the first empty companion slot.
+    /// Handles all battle keys and accessory customisation data.
+    /// </summary>
+    internal static int ImportCompanion(JsonArray companions, string filePath,
+        JsonArray? petAccessoryCustomisationArray = null)
+    {
+        var imported = JsonObject.ImportFromFile(filePath);
+
+        // Unwrap NomNom wrapper if present (Data -> Pet + AccessoryCustomisation)
+        imported = InventoryImportHelper.UnwrapNomNomCompanion(imported);
+
+        for (int i = 0; i < companions.Length; i++)
+        {
+            var comp = companions.GetObject(i);
+            var seedArray = comp.GetArray("CreatureSeed");
+            if (seedArray != null && seedArray.Length >= 2)
+            {
+                bool occupied;
+                try { occupied = seedArray.GetBool(0); } catch { occupied = false; }
+                if (!occupied)
+                {
+                    // Merge all fields from the imported companion
+                    foreach (var name in imported.Names())
+                    {
+                        // PetAccessoryCustomisation is handled separately
+                        if (name == "PetAccessoryCustomisation") continue;
+                        comp.Set(name, imported.Get(name));
+                    }
+
+                    // If the imported data has PetAccessoryCustomisation and we have the target array
+                    if (petAccessoryCustomisationArray != null)
+                    {
+                        try
+                        {
+                            var importedAcc = imported.GetArray("PetAccessoryCustomisation");
+                            if (importedAcc == null)
+                                importedAcc = imported.Get("PetAccessoryCustomisation") as JsonArray;
+
+                            if (importedAcc != null && i < petAccessoryCustomisationArray.Length)
+                            {
+                                petAccessoryCustomisationArray.Set(i, importedAcc);
+                            }
+                        }
+                        catch { }
+                    }
+
+                    return i;
+                }
+            }
+        }
+
+        throw new InvalidOperationException("No empty companion slot available.");
     }
 }

@@ -1,3 +1,6 @@
+using System.Text.Json;
+using NMSE.Core;
+
 namespace NMSE.Data;
 
 /// <summary>Represents a companion creature entry with an ID and species name.</summary>
@@ -15,6 +18,40 @@ public class CompanionEntry
 /// <summary>Static database of all known companion creature species.</summary>
 public static class CompanionDatabase
 {
+    /// <summary>
+    /// Known planetary biome types where companions can be found.
+    /// Matches the Creature Builder biome list.
+    /// </summary>
+    public static readonly string[] BiomeTypes =
+    {
+        "Lush", "Toxic", "Scorched", "Radioactive", "Frozen", "Barren",
+        "Dead", "Weird", "Red", "Green", "Blue", "Test",
+        "Swamp", "Lava", "Waterworld", "All"
+    };
+
+    /// <summary>
+    /// Mapping of biome type names to their UI localisation keys.
+    /// </summary>
+    public static readonly Dictionary<string, string> BiomeTypeLocKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Lush"] = "companion.biome_lush",
+        ["Toxic"] = "companion.biome_toxic",
+        ["Scorched"] = "companion.biome_scorched",
+        ["Radioactive"] = "companion.biome_radioactive",
+        ["Frozen"] = "companion.biome_frozen",
+        ["Barren"] = "companion.biome_barren",
+        ["Dead"] = "companion.biome_dead",
+        ["Weird"] = "companion.biome_weird",
+        ["Red"] = "companion.biome_red",
+        ["Green"] = "companion.biome_green",
+        ["Blue"] = "companion.biome_blue",
+        ["Test"] = "companion.biome_test",
+        ["Swamp"] = "companion.biome_swamp",
+        ["Lava"] = "companion.biome_lava",
+        ["Waterworld"] = "companion.biome_waterworld",
+        ["All"] = "companion.biome_all",
+    };
+
     /// <summary>
     /// All known companion creature entries.
     /// Species names are intentionally blank for now; they need populating from game data
@@ -246,7 +283,9 @@ public static class CreaturePartDatabase
 
     // =======================================================================
     // Static creature part data
-    // 55 creature types, 918 groups, 3056 descriptors
+    // 55 creature types, 918 groups, 3056 descriptors - eventually these need
+    // populating from game data, but for now they are hardcoded.
+    // A problem for another time.
     // =======================================================================
 
     private static readonly List<CreaturePartEntry> AllEntries = new()
@@ -8784,4 +8823,615 @@ public static class CreaturePartDatabase
         }
         },
     };
+}
+
+// ==================================================================
+//  Companion Accessories (from Companion Accessories.json)
+// ==================================================================
+
+/// <summary>Represents a single pet accessory entry from Companion Accessories.json.</summary>
+public class CompanionAccessoryEntry
+{
+    /// <summary>Accessory group identifier (e.g. "PET_ACC_0", "PET_ACC_NULL").</summary>
+    public string Id { get; set; } = "";
+    /// <summary>Localised display name (e.g. "Cargo Drum").</summary>
+    public string Name { get; set; } = "";
+    /// <summary>Game localisation key for the name (e.g. "UI_TIP_PET_ACCESSORY_1").</summary>
+    public string? NameLocStr { get; set; }
+    /// <summary>Primary model descriptor (e.g. "_ACC_CARGOCYLINDER").</summary>
+    public string? Descriptor { get; set; }
+    /// <summary>Linked special product or unlock ID (e.g. "SPEC_PETCUST2").</summary>
+    public string? LinkedProduct { get; set; }
+
+    public override string ToString() => !string.IsNullOrEmpty(Name) ? Name : Id;
+}
+
+/// <summary>
+/// Companion accessory slot index mapping: [0] = Right, [1] = Left, [2] = Chest.
+/// </summary>
+public enum AccessorySlot
+{
+    /// <summary>Right side accessory (index 0 in save).</summary>
+    Right = 0,
+    /// <summary>Left side accessory (index 1 in save).</summary>
+    Left = 1,
+    /// <summary>Chest/front accessory (index 2 in save).</summary>
+    Chest = 2,
+}
+
+/// <summary>Static database of companion pet accessories, loaded from Companion Accessories.json.</summary>
+public static class CompanionAccessoryDatabase
+{
+    /// <summary>All loaded accessory entries.</summary>
+    public static readonly IReadOnlyList<CompanionAccessoryEntry> Entries = new List<CompanionAccessoryEntry>();
+
+    /// <summary>Lookup dictionary mapping accessory ID to entry.</summary>
+    public static readonly Dictionary<string, CompanionAccessoryEntry> ById =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, string> _englishNameBackup = new();
+
+    /// <summary>
+    /// Per-slot allowed accessory IDs, derived from the game's CHARACTERCUSTOMISATIONUIDATA.MXML(MBIN).
+    /// The same shared accessories (PET_ACC_NULL, PET_ACC_0–11) appear in all slots;
+    /// slot-specific accessories are unique to Left, Right, or Chest.
+    /// </summary>
+    private static readonly Dictionary<AccessorySlot, HashSet<string>> SlotFilter = new()
+    {
+        [AccessorySlot.Right] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PET_ACC_NULL",
+            "PET_ACC_0", "PET_ACC_1", "PET_ACC_2", "PET_ACC_3", "PET_ACC_4",
+            "PET_ACC_5", "PET_ACC_6", "PET_ACC_7", "PET_ACC_8", "PET_ACC_9",
+            "PET_ACC_10", "PET_ACC_11",
+            // Right-specific (R-prefix descriptors)
+            "PET_ACC_19", "PET_ACC_20", "PET_ACC_21", "PET_ACC_22",
+            "PET_ACC_23", "PET_ACC_24", "PET_ACC_25",
+            "PET_ACC_27", "PET_ACC_28",
+        },
+        [AccessorySlot.Left] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PET_ACC_NULL",
+            "PET_ACC_0", "PET_ACC_1", "PET_ACC_2", "PET_ACC_3", "PET_ACC_4",
+            "PET_ACC_5", "PET_ACC_6", "PET_ACC_7", "PET_ACC_8", "PET_ACC_9",
+            "PET_ACC_10", "PET_ACC_11",
+            // Left-specific (L-prefix descriptors)
+            "PET_ACC_12", "PET_ACC_13", "PET_ACC_14", "PET_ACC_15",
+            "PET_ACC_16", "PET_ACC_17", "PET_ACC_18",
+            "PET_ACC_26", "PET_ACC_29",
+        },
+        [AccessorySlot.Chest] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PET_ACC_NULL",
+            "PET_ACC_0", "PET_ACC_1", "PET_ACC_2", "PET_ACC_3", "PET_ACC_4",
+            "PET_ACC_5", "PET_ACC_6", "PET_ACC_7", "PET_ACC_8", "PET_ACC_9",
+            "PET_ACC_10", "PET_ACC_11",
+            // Chest-specific
+            "PET_ACC_30",
+        },
+    };
+
+    /// <summary>
+    /// Returns the accessory entries valid for a given slot.
+    /// </summary>
+    public static IReadOnlyList<CompanionAccessoryEntry> GetEntriesForSlot(AccessorySlot slot)
+    {
+        if (!SlotFilter.TryGetValue(slot, out var allowed))
+            return (IReadOnlyList<CompanionAccessoryEntry>)Entries;
+
+        return Entries.Where(e => allowed.Contains(e.Id)).ToList();
+    }
+
+    /// <summary>
+    /// Loads accessory data from Companion Accessories.json.
+    /// </summary>
+    public static bool LoadFromFile(string jsonPath)
+    {
+        if (!File.Exists(jsonPath)) return false;
+
+        try
+        {
+            var content = File.ReadAllBytes(jsonPath);
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return false;
+
+            var loaded = new List<CompanionAccessoryEntry>();
+            foreach (var elem in doc.RootElement.EnumerateArray())
+            {
+                loaded.Add(new CompanionAccessoryEntry
+                {
+                    Id = elem.TryGetProperty("Id", out var idP) ? idP.GetString() ?? "" : "",
+                    Name = elem.TryGetProperty("Name", out var nP) ? nP.GetString() ?? "" : "",
+                    NameLocStr = elem.TryGetProperty("Name_LocStr", out var nlP) ? nlP.GetString() : null,
+                    Descriptor = elem.TryGetProperty("Descriptor", out var dP) ? dP.GetString() : null,
+                    LinkedProduct = elem.TryGetProperty("LinkedProduct", out var lP) ? lP.GetString() : null,
+                });
+            }
+
+            if (loaded.Count > 0)
+            {
+                var list = (List<CompanionAccessoryEntry>)Entries;
+                list.Clear();
+                list.AddRange(loaded);
+
+                ById.Clear();
+                foreach (var e in loaded) ById[e.Id] = e;
+            }
+
+            return loaded.Count > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Applies localisation to accessory names.</summary>
+    public static int ApplyLocalisation(LocalisationService service)
+    {
+        if (!service.IsActive) { RevertLocalisation(); return 0; }
+
+        int count = 0;
+        foreach (var entry in Entries)
+        {
+            if (!_englishNameBackup.ContainsKey(entry.Id))
+                _englishNameBackup[entry.Id] = entry.Name;
+
+            entry.Name = _englishNameBackup[entry.Id];
+
+            if (!string.IsNullOrEmpty(entry.NameLocStr))
+            {
+                var loc = service.Lookup(entry.NameLocStr);
+                if (loc != null) { entry.Name = loc; count++; }
+            }
+        }
+        return count;
+    }
+
+    /// <summary>Reverts accessory names to English.</summary>
+    public static void RevertLocalisation()
+    {
+        foreach (var kvp in _englishNameBackup)
+        {
+            if (ById.TryGetValue(kvp.Key, out var entry))
+                entry.Name = kvp.Value;
+        }
+        _englishNameBackup.Clear();
+    }
+}
+
+// ==================================================================
+//  Pet Battle Moves (from Pet Battle Moves.json)
+// ==================================================================
+
+/// <summary>Represents a single phase within a pet battle move.</summary>
+public class PetBattleMovePhase
+{
+    /// <summary>Phase strength level (e.g. "VeryLight", "Medium").</summary>
+    public string Strength { get; set; } = "";
+    /// <summary>Visual effect type (e.g. "Projectile", "Beam").</summary>
+    public string Effect { get; set; } = "";
+
+    /// <summary>Normalised display string for Strength.</summary>
+    public string StrengthDisplay => DisplayStringHelper.NormalizeDisplayString(Strength);
+    /// <summary>Normalised display string for Effect.</summary>
+    public string EffectDisplay => Effect == "DoTDamage"
+        ? "Damage over Time"
+        : DisplayStringHelper.NormalizeDisplayString(Effect);
+}
+
+/// <summary>Represents a pet battle move from Pet Battle Moves.json.</summary>
+public class PetBattleMoveEntry
+{
+    /// <summary>Unique move identifier (e.g. "ATTACK_NORM").</summary>
+    public string Id { get; set; } = "";
+    /// <summary>Human-readable description of the move.</summary>
+    public string DebugDescription { get; set; } = "";
+    /// <summary>Primary target type (e.g. "ActiveEnemy", "Self").</summary>
+    public string Target { get; set; } = "";
+    /// <summary>Whether this is a multi-turn move.</summary>
+    public bool MultiTurnMove { get; set; }
+    /// <summary>Whether this is a basic/default move.</summary>
+    public bool BasicMove { get; set; }
+    /// <summary>Icon style enum (e.g. "Attack", "Buff", "Heal").</summary>
+    public string IconStyle { get; set; } = "";
+    /// <summary>Internal name stub for loc key derivation.</summary>
+    public string NameStub { get; set; } = "";
+    /// <summary>Game localisation key for the stat this move describes (e.g. "UI_PB_STAT_ATTACK").</summary>
+    public string? LocIDToDescribeStat { get; set; }
+    /// <summary>Phases of this move.</summary>
+    public IReadOnlyList<PetBattleMovePhase> Phases { get; set; } = Array.Empty<PetBattleMovePhase>();
+
+    /// <summary>Normalised display string for Target.</summary>
+    public string TargetDisplay => DisplayStringHelper.NormalizeDisplayString(Target);
+
+    /// <summary>Normalised display string for IconStyle.</summary>
+    public string IconStyleDisplay => DisplayStringHelper.NormalizeDisplayString(IconStyle);
+
+    /// <summary>
+    /// Returns an emoji/symbol matching the icon style.
+    /// </summary>
+    public string IconEmoji => IconStyle?.ToLowerInvariant() switch
+    {
+        // Yeah, emojis - I know... leave me alone lol.
+        "attack" => "⚔️",
+        "buff" => "🛡️",
+        "heal" => "💚",
+        "debuff" => "💀",
+        "speed" => "⚡",
+        "dot" => "🔥",
+        "special" => "✨",
+        "shield" => "🛡️",
+        "none" or "" or null => "",
+        _ => "❓",
+    };
+
+    /// <summary>ComboBox display: "ID - Description".</summary>
+    public override string ToString()
+    {
+        if (string.IsNullOrEmpty(DebugDescription))
+            return Id;
+        // Capitalise first letter of description
+        string desc = char.ToUpperInvariant(DebugDescription[0]) + DebugDescription[1..];
+        return $"{Id} - {desc}";
+    }
+}
+
+/// <summary>Static database of pet battle moves, loaded from Pet Battle Moves.json.</summary>
+public static class PetBattleMoveDatabase
+{
+    /// <summary>All loaded battle moves.</summary>
+    public static readonly IReadOnlyList<PetBattleMoveEntry> Moves = new List<PetBattleMoveEntry>();
+
+    /// <summary>Lookup dictionary mapping move ID to entry.</summary>
+    public static readonly Dictionary<string, PetBattleMoveEntry> ById =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Loads move data from Pet Battle Moves.json.
+    /// </summary>
+    public static bool LoadFromFile(string jsonPath)
+    {
+        if (!File.Exists(jsonPath)) return false;
+
+        try
+        {
+            var content = File.ReadAllBytes(jsonPath);
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return false;
+
+            var loaded = new List<PetBattleMoveEntry>();
+            foreach (var elem in doc.RootElement.EnumerateArray())
+            {
+                var phases = new List<PetBattleMovePhase>();
+                if (elem.TryGetProperty("Phases", out var phaseArr) && phaseArr.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var ph in phaseArr.EnumerateArray())
+                    {
+                        phases.Add(new PetBattleMovePhase
+                        {
+                            Strength = ph.TryGetProperty("Strength", out var sP) ? sP.GetString() ?? "" : "",
+                            Effect = ph.TryGetProperty("Effect", out var eP) ? eP.GetString() ?? "" : "",
+                        });
+                    }
+                }
+
+                loaded.Add(new PetBattleMoveEntry
+                {
+                    Id = elem.TryGetProperty("Id", out var idP) ? idP.GetString() ?? "" : "",
+                    DebugDescription = elem.TryGetProperty("DebugDescription", out var ddP) ? ddP.GetString() ?? "" : "",
+                    Target = elem.TryGetProperty("Target", out var tP) ? tP.GetString() ?? "" : "",
+                    MultiTurnMove = elem.TryGetProperty("MultiTurnMove", out var mtP) && mtP.ValueKind == JsonValueKind.True,
+                    BasicMove = elem.TryGetProperty("BasicMove", out var bmP) && bmP.ValueKind == JsonValueKind.True,
+                    IconStyle = elem.TryGetProperty("IconStyle", out var isP) ? isP.GetString() ?? "" : "",
+                    NameStub = elem.TryGetProperty("NameStub", out var nsP) ? nsP.GetString() ?? "" : "",
+                    LocIDToDescribeStat = elem.TryGetProperty("LocIDToDescribeStat", out var lsP) ? lsP.GetString() : null,
+                    Phases = phases,
+                });
+            }
+
+            if (loaded.Count > 0)
+            {
+                var list = (List<PetBattleMoveEntry>)Moves;
+                list.Clear();
+                list.AddRange(loaded);
+
+                ById.Clear();
+                foreach (var m in loaded) ById[m.Id] = m;
+            }
+
+            return loaded.Count > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+// ==================================================================
+//  Pet Battle Movesets (from Pet Battle Movesets.json)
+// ==================================================================
+
+/// <summary>A single allowed move option within a moveset slot.</summary>
+public class PetBattleMoveSlotOption
+{
+    /// <summary>Move template ID (e.g. "ATTACK_AFF").</summary>
+    public string Template { get; set; } = "";
+    /// <summary>Minimum cooldown turns.</summary>
+    public int CooldownMin { get; set; }
+    /// <summary>Maximum cooldown turns.</summary>
+    public int CooldownMax { get; set; }
+    /// <summary>Relative weighting for random selection.</summary>
+    public double Weighting { get; set; }
+}
+
+/// <summary>One of 5 move slots in a moveset, containing the allowed move options.</summary>
+public class PetBattleMoveSlot
+{
+    /// <summary>Slot number (1-5).</summary>
+    public int SlotNumber { get; set; }
+    /// <summary>Allowed move options for this slot.</summary>
+    public IReadOnlyList<PetBattleMoveSlotOption> Options { get; set; } = Array.Empty<PetBattleMoveSlotOption>();
+}
+
+/// <summary>Represents a pet battle moveset from Pet Battle Movesets.json.</summary>
+public class PetBattleMovesetEntry
+{
+    /// <summary>Moveset identifier (e.g. "BASIC", "DOT_BOMBER").</summary>
+    public string Id { get; set; } = "";
+    /// <summary>The 5 move slots for this moveset.</summary>
+    public IReadOnlyList<PetBattleMoveSlot> Slots { get; set; } = Array.Empty<PetBattleMoveSlot>();
+
+    /// <summary>Normalised display name (e.g. "BASIC" -> "Basic", "DOT_BOMBER" -> "Dot Bomber").</summary>
+    public string DisplayName => DisplayStringHelper.NormalizeDisplayString(Id);
+
+    public override string ToString() => DisplayName;
+}
+
+/// <summary>Static database of pet battle movesets, loaded from Pet Battle Movesets.json.</summary>
+public static class PetBattleMovesetDatabase
+{
+    /// <summary>All loaded movesets.</summary>
+    public static readonly IReadOnlyList<PetBattleMovesetEntry> Movesets = new List<PetBattleMovesetEntry>();
+
+    /// <summary>Lookup dictionary mapping moveset ID to entry.</summary>
+    public static readonly Dictionary<string, PetBattleMovesetEntry> ById =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Returns the allowed move IDs for a specific slot in a given moveset.
+    /// </summary>
+    public static IReadOnlyList<string> GetAllowedMovesForSlot(string movesetId, int slotNumber)
+    {
+        if (!ById.TryGetValue(movesetId, out var entry)) return Array.Empty<string>();
+        var slot = entry.Slots.FirstOrDefault(s => s.SlotNumber == slotNumber);
+        return slot?.Options.Select(o => o.Template).ToList() ?? (IReadOnlyList<string>)Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// Finds which moveset(s) a given move belongs to (across all slots).
+    /// </summary>
+    public static IReadOnlyList<PetBattleMovesetEntry> FindMovesetsContainingMove(string moveId)
+    {
+        return Movesets.Where(ms =>
+            ms.Slots.Any(slot =>
+                slot.Options.Any(o => string.Equals(o.Template, moveId, StringComparison.OrdinalIgnoreCase))))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Loads moveset data from Pet Battle Movesets.json.
+    /// </summary>
+    public static bool LoadFromFile(string jsonPath)
+    {
+        if (!File.Exists(jsonPath)) return false;
+
+        try
+        {
+            var content = File.ReadAllBytes(jsonPath);
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return false;
+
+            var loaded = new List<PetBattleMovesetEntry>();
+            foreach (var elem in doc.RootElement.EnumerateArray())
+            {
+                var slots = new List<PetBattleMoveSlot>();
+                if (elem.TryGetProperty("Slots", out var slotsArr) && slotsArr.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var slotElem in slotsArr.EnumerateArray())
+                    {
+                        int slotNum = slotElem.TryGetProperty("Slot", out var snP) && snP.TryGetInt32(out int sn) ? sn : 0;
+                        var options = new List<PetBattleMoveSlotOption>();
+                        if (slotElem.TryGetProperty("Options", out var optsArr) && optsArr.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var optElem in optsArr.EnumerateArray())
+                            {
+                                options.Add(new PetBattleMoveSlotOption
+                                {
+                                    Template = optElem.TryGetProperty("Template", out var tP) ? tP.GetString() ?? "" : "",
+                                    CooldownMin = optElem.TryGetProperty("CooldownMin", out var cMinP) && cMinP.TryGetInt32(out int cMin) ? cMin : 0,
+                                    CooldownMax = optElem.TryGetProperty("CooldownMax", out var cMaxP) && cMaxP.TryGetInt32(out int cMax) ? cMax : 0,
+                                    Weighting = optElem.TryGetProperty("Weighting", out var wP) && wP.TryGetDouble(out double w) ? w : 0.0,
+                                });
+                            }
+                        }
+                        slots.Add(new PetBattleMoveSlot { SlotNumber = slotNum, Options = options });
+                    }
+                }
+
+                loaded.Add(new PetBattleMovesetEntry
+                {
+                    Id = elem.TryGetProperty("Id", out var idP) ? idP.GetString() ?? "" : "",
+                    Slots = slots,
+                });
+            }
+
+            if (loaded.Count > 0)
+            {
+                var list = (List<PetBattleMovesetEntry>)Movesets;
+                list.Clear();
+                list.AddRange(loaded);
+
+                ById.Clear();
+                foreach (var ms in loaded) ById[ms.Id] = ms;
+            }
+
+            return loaded.Count > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+// ==================================================================
+//  Pet Biome Affinity Map (from Game Table Globals.json)
+// ==================================================================
+
+/// <summary>
+/// Maps biome types to pet battler affinities and their localisation keys.
+/// Loaded from Game Table Globals.json.
+/// </summary>
+public static class PetBiomeAffinityMap
+{
+    /// <summary>Biome -> Affinity mapping (e.g. "Scorched" -> "Fire").</summary>
+    private static readonly Dictionary<string, string> _biomeToAffinity = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Affinity -> Game loc key mapping (e.g. "Fire" -> "UI_PB_AFFINITY_HOT").</summary>
+    private static readonly Dictionary<string, string> _affinityLoc = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Affinity -> Short stub mapping (e.g. "Fire" -> "HOT").</summary>
+    private static readonly Dictionary<string, string> _affinityLocStub = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Target -> Game loc key mapping (e.g. "ActiveEnemy" -> "UI_PB_MOVE_TARGET_ENEMY").</summary>
+    private static readonly Dictionary<string, string> _targetLoc = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Resolves a biome type to its pet battler affinity.
+    /// Returns empty string if not found.
+    /// </summary>
+    public static string BiomeToAffinity(string biome)
+    {
+        if (string.IsNullOrEmpty(biome)) return "";
+        return _biomeToAffinity.TryGetValue(biome, out var aff) ? aff : "";
+    }
+
+    /// <summary>
+    /// Gets the game localisation key for an affinity type.
+    /// Returns null if not found.
+    /// </summary>
+    public static string? GetAffinityLocKey(string affinity)
+    {
+        if (string.IsNullOrEmpty(affinity)) return null;
+        return _affinityLoc.TryGetValue(affinity, out var key) ? key : null;
+    }
+
+    /// <summary>
+    /// Returns an emoji matching the affinity type, for visual consistency with move type icons.
+    /// </summary>
+    public static string GetAffinityEmoji(string affinity)
+    {
+        return affinity?.ToLowerInvariant() switch
+        {
+            "toxic" => "\U0001F480",   // skull
+            "radioactive" => "\u2622\uFE0F", // radioactive
+            "fire" => "\U0001F525",    // fire
+            "cold" or "frozen" => "\u2744\uFE0F", // snowflake
+            "lush" => "\U0001F33F",    // herb/leaf
+            "barren" => "\U0001F3DC\uFE0F", // desert
+            "weird" => "\U0001F52E",   // crystal ball
+            "mech" => "\u2699\uFE0F",  // gear
+            "normal" => "\u2B50",      // star
+            _ => "",
+        };
+    }
+
+    /// <summary>
+    /// Returns a normalised display name for an affinity value, prefixed with an emoji.
+    /// Uses the loc stub if available, otherwise normalises the raw affinity string.
+    /// For example: "Fire" -> "Fire" (already normalised), "Normal" -> "Normal".
+    /// The loc-resolved value (e.g. "FIRE") is also normalised: "FIRE" -> "Fire".
+    /// </summary>
+    public static string GetAffinityDisplayName(string affinity, LocalisationService? service = null)
+    {
+        if (string.IsNullOrEmpty(affinity)) return "";
+
+        string emoji = GetAffinityEmoji(affinity);
+        string name;
+
+        // Try to resolve via game localisation
+        if (service != null && _affinityLoc.TryGetValue(affinity, out var locKey))
+        {
+            var locValue = service.Lookup(locKey);
+            if (locValue != null)
+            {
+                name = DisplayStringHelper.NormalizeDisplayString(locValue);
+                return !string.IsNullOrEmpty(emoji) ? $"{emoji}{name}" : name;
+            }
+        }
+
+        // Fallback: normalise the raw affinity string
+        name = DisplayStringHelper.NormalizeDisplayString(affinity);
+        return !string.IsNullOrEmpty(emoji) ? $"{emoji}{name}" : name;
+    }
+
+    /// <summary>
+    /// Gets the game localisation key for a battle target type.
+    /// Returns null if not found.
+    /// </summary>
+    public static string? GetTargetLocKey(string target)
+    {
+        if (string.IsNullOrEmpty(target)) return null;
+        return _targetLoc.TryGetValue(target, out var key) && !string.IsNullOrEmpty(key) ? key : null;
+    }
+
+    /// <summary>Whether any data has been loaded.</summary>
+    public static bool IsLoaded => _biomeToAffinity.Count > 0 || _affinityLoc.Count > 0;
+
+    /// <summary>
+    /// Loads from Game Table Globals.json. Expects a single-element array
+    /// containing PetBiomeAffinities, PetAffinityLoc, PetAffinityLocStub, PetTargetLoc objects.
+    /// </summary>
+    public static bool LoadFromFile(string jsonPath)
+    {
+        if (!File.Exists(jsonPath)) return false;
+
+        try
+        {
+            var content = File.ReadAllBytes(jsonPath);
+            using var doc = JsonDocument.Parse(content);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return false;
+
+            // Expect a single-element array wrapping all sections
+            var first = doc.RootElement.EnumerateArray().FirstOrDefault();
+            if (first.ValueKind != JsonValueKind.Object) return false;
+
+            LoadDictSection(first, "PetBiomeAffinities", _biomeToAffinity);
+            LoadDictSection(first, "PetAffinityLoc", _affinityLoc);
+            LoadDictSection(first, "PetAffinityLocStub", _affinityLocStub);
+            LoadDictSection(first, "PetTargetLoc", _targetLoc);
+
+            return _biomeToAffinity.Count > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void LoadDictSection(JsonElement root, string propertyName, Dictionary<string, string> target)
+    {
+        target.Clear();
+        if (!root.TryGetProperty(propertyName, out var section) || section.ValueKind != JsonValueKind.Object)
+            return;
+
+        foreach (var prop in section.EnumerateObject())
+        {
+            string val = prop.Value.GetString() ?? "";
+            if (!string.IsNullOrEmpty(prop.Name))
+                target[prop.Name] = val;
+        }
+    }
 }

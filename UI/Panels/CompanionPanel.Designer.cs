@@ -46,14 +46,13 @@ partial class CompanionPanel
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        // -- Left column: title + Creature Builder button + listbox + buttons --
+        // -- Left column: title + listbox + buttons --
         var leftLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4
+            RowCount = 3
         };
-        leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -67,17 +66,9 @@ partial class CompanionPanel
         FontManager.ApplyHeadingFont(_titleLabel, 14);
         leftLayout.Controls.Add(_titleLabel, 0, 0);
 
-        _creatureBuilderBtn = new Button { Text = "Creature Builder (Web)", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill };
-        _creatureBuilderBtn.Click += (s, e) =>
-        {
-            try { Process.Start(new ProcessStartInfo("https://creature.nmscd.com/#/builder") { UseShellExecute = true }); }
-            catch { }
-        };
-        leftLayout.Controls.Add(_creatureBuilderBtn, 0, 1);
-
         _companionList = new ListBox { Dock = DockStyle.Fill };
         _companionList.SelectedIndexChanged += OnCompanionSelected;
-        leftLayout.Controls.Add(_companionList, 0, 2);
+        leftLayout.Controls.Add(_companionList, 0, 1);
 
         var btnPanel = new FlowLayoutPanel
         {
@@ -92,25 +83,35 @@ partial class CompanionPanel
         _exportCompanionBtn.Click += OnExport;
         _importCompanionBtn = new Button { Text = "Import", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(75, 0) };
         _importCompanionBtn.Click += OnImport;
-        _resetAccessoryBtn = new Button { Text = "Reset Accessory", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _resetAccessoryBtn.Click += OnResetAccessory;
         btnPanel.Controls.Add(_deleteBtn);
         btnPanel.Controls.Add(_exportCompanionBtn);
         btnPanel.Controls.Add(_importCompanionBtn);
-        btnPanel.Controls.Add(_resetAccessoryBtn);
         btnPanel.Controls.Add(_countLabel);
-        leftLayout.Controls.Add(btnPanel, 0, 3);
+        leftLayout.Controls.Add(btnPanel, 0, 2);
 
         mainLayout.Controls.Add(leftLayout, 0, 0);
 
-        // -- Right column: detail panel with two-column form --
-        _detailPanel = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Visible = false };
+        // -- Right column: detail panel with TabControl --
+        _detailPanel = new Panel { Dock = DockStyle.Fill, Visible = false };
+
+        _tabControl = new DoubleBufferedTabControl { Dock = DockStyle.Fill };
+        _statsPage = new TabPage("Stats");
+        _battlePage = new TabPage("Battle");
+        _tabControl.TabPages.Add(_statsPage);
+        _tabControl.TabPages.Add(_battlePage);
+        _detailPanel.Controls.Add(_tabControl);
+
+        // ======== Stats Tab Content ========
+        var statsScroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(0) };
+        _statsPage.Padding = new Padding(2, 0, 2, 2);
+        _statsPage.Controls.Add(statsScroll);
 
         _formLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 2,
+            Margin = new Padding(0),
         };
         _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         _formLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
@@ -326,8 +327,6 @@ partial class CompanionPanel
         // -- Left column rows: Identity & Properties --
         int lRow = 0;
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _leftColumn.Controls.Add(new Label { Text = "", Height = 30 }, 0, lRow++);
-        _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _slotUnlockedLabel = AddRow(_leftColumn, "Slot Unlocked:", _unlockedCheck, lRow++);
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _speciesLabel = AddRow(_leftColumn, "Species:", _typeField, lRow++);
@@ -366,8 +365,6 @@ partial class CompanionPanel
         // -- Right column rows: Seeds, Traits & Moods --
         int rRow = 0;
         _rightColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _rightColumn.Controls.Add(new Label { Text = "", Height = 52 }, 0, rRow++);
-        _rightColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _creatureSeedLabel = AddSeedRow(_rightColumn, "Creature Seed:", _creatureSeedField, rRow++, WriteCreatureSeed);
         _rightColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _secondarySeedLabel = AddSeedRow(_rightColumn, "Secondary Seed:", _secondarySeedField, rRow++, WriteSecondarySeed);
@@ -397,30 +394,208 @@ partial class CompanionPanel
         _rightColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _rightColumn.Controls.Add(new Label { Text = "", AutoSize = true }, 0, rRow++);
 
+        // -- Descriptors heading with Creature Builder button --
+        var descriptorsRow = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Padding = new Padding(0),
+        };
         _descriptorsHeading = new Label
         {
             Text = "Descriptors (Parts)",
             AutoSize = true,
-            Padding = new Padding(0, 10, 0, 5)
+            Padding = new Padding(0, 10, 10, 5)
         };
         FontManager.ApplyHeadingFont(_descriptorsHeading, 11);
+
+        _creatureBuilderBtn = new Button { Text = "Creature Builder (Web)", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        _creatureBuilderBtn.Click += (s, e) =>
+        {
+            try { Process.Start(new ProcessStartInfo("https://creature.nmscd.com/#/builder") { UseShellExecute = true }); }
+            catch { }
+        };
+
+        descriptorsRow.Controls.Add(_descriptorsHeading);
+        descriptorsRow.Controls.Add(_creatureBuilderBtn);
+
+        // ======== Accessory Customisation Section ========
+        _accessoryHeading = new Label
+        {
+            Text = "Accessory Customisation",
+            AutoSize = true,
+            Padding = new Padding(0, 10, 0, 5)
+        };
+        FontManager.ApplyHeadingFont(_accessoryHeading, 11);
+
+        _accessoryPanel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 6,
+            Padding = new Padding(0, 5, 0, 5),
+        };
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Slot label
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45)); // Combo
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Primary colour swatch
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Alt colour swatch
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Scale label + field
+        _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Reset
+
+        string[] slotLabels = { "Right:", "Left:", "Chest:" };
+        _accessorySlotLabels = new Label[3];
+        _accessoryCombos = new ComboBox[3];
+        _accessoryDescriptorLabels = new Label[3];
+        _accessoryPrimaryColourBtns = new Button[3];
+        _accessoryAltColourBtns = new Button[3];
+        _accessoryPrimarySwatches = new Panel[3];
+        _accessoryAltSwatches = new Panel[3];
+        _accessoryScaleFields = new TextBox[3];
+        _accessoryScaleLabels = new Label[3];
+        _accessoryResetBtns = new Button[3];
+
+        for (int slot = 0; slot < 3; slot++)
+        {
+            _accessoryPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            int s = slot; // capture
+
+            _accessorySlotLabels[slot] = new Label
+            {
+                Text = slotLabels[slot],
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                Padding = new Padding(0, 5, 5, 0),
+            };
+
+            _accessoryCombos[slot] = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+            };
+            _accessoryCombos[slot].SelectedIndexChanged += (sender, e) => { if (!_loading) OnAccessoryChanged(s); };
+
+            _accessoryDescriptorLabels[slot] = new Label
+            {
+                Text = "",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                Padding = new Padding(5, 5, 5, 0),
+                ForeColor = SystemColors.GrayText,
+            };
+
+            // Primary colour: label + clickable swatch
+            var primaryRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0) };
+            var primaryLbl = new Label { Text = "P:", AutoSize = true, Padding = new Padding(0, 5, 2, 0) };
+            _accessoryPrimarySwatches[slot] = new Panel
+            {
+                Size = new Size(18, 18),
+                BackColor = SystemColors.Control,
+                BorderStyle = BorderStyle.FixedSingle,
+                Margin = new Padding(0, 4, 0, 0),
+                Cursor = Cursors.Hand,
+            };
+            _accessoryPrimarySwatches[slot].Click += (sender, e) => OnAccessoryColourClick(s, 0);
+            // Keep hidden button for programmatic access
+            _accessoryPrimaryColourBtns[slot] = new Button { Visible = false, Size = new Size(0, 0) };
+            primaryRow.Controls.Add(primaryLbl);
+            primaryRow.Controls.Add(_accessoryPrimarySwatches[slot]);
+
+            // Alt colour: label + clickable swatch
+            var altRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0) };
+            var altLbl = new Label { Text = "A:", AutoSize = true, Padding = new Padding(5, 5, 2, 0) };
+            _accessoryAltSwatches[slot] = new Panel
+            {
+                Size = new Size(18, 18),
+                BackColor = SystemColors.Control,
+                BorderStyle = BorderStyle.FixedSingle,
+                Margin = new Padding(0, 4, 0, 0),
+                Cursor = Cursors.Hand,
+            };
+            _accessoryAltSwatches[slot].Click += (sender, e) => OnAccessoryColourClick(s, 1);
+            _accessoryAltColourBtns[slot] = new Button { Visible = false, Size = new Size(0, 0) };
+            altRow.Controls.Add(altLbl);
+            altRow.Controls.Add(_accessoryAltSwatches[slot]);
+
+            // Scale with label
+            var scaleRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0) };
+            _accessoryScaleLabels[slot] = new Label { Text = "Scale:", AutoSize = true, Padding = new Padding(5, 5, 2, 0) };
+            _accessoryScaleFields[slot] = new TextBox { Width = 50, Text = "1.0" };
+            _accessoryScaleFields[slot].Leave += (sender, e) => OnAccessoryScaleChanged(s);
+            scaleRow.Controls.Add(_accessoryScaleLabels[slot]);
+            scaleRow.Controls.Add(_accessoryScaleFields[slot]);
+
+            _accessoryResetBtns[slot] = new Button
+            {
+                Text = "Reset",
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                MinimumSize = new Size(50, 23),
+            };
+            _accessoryResetBtns[slot].Click += (sender, e) => OnAccessoryReset(s);
+
+            _accessoryPanel.Controls.Add(_accessorySlotLabels[slot], 0, slot);
+            _accessoryPanel.Controls.Add(_accessoryCombos[slot], 1, slot);
+            _accessoryPanel.Controls.Add(primaryRow, 2, slot);
+            _accessoryPanel.Controls.Add(altRow, 3, slot);
+            _accessoryPanel.Controls.Add(scaleRow, 4, slot);
+            _accessoryPanel.Controls.Add(_accessoryResetBtns[slot], 5, slot);
+        }
+
+        // Assemble Stats tab inner layout
+        // Two-column row for Descriptors (left) and Accessories (right)
+        var descAccessoryRow = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+        };
+        descAccessoryRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        descAccessoryRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        descAccessoryRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var descColumn = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+        };
+        descColumn.Controls.Add(descriptorsRow);
+        descColumn.Controls.Add(_descriptorPanel);
+        descAccessoryRow.Controls.Add(descColumn, 0, 0);
+
+        var accColumn = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+        };
+        accColumn.Controls.Add(_accessoryHeading);
+        accColumn.Controls.Add(_accessoryPanel);
+        descAccessoryRow.Controls.Add(accColumn, 1, 0);
 
         var innerLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 2,
         };
         innerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         innerLayout.Controls.Add(_formLayout, 0, 0);
-        innerLayout.Controls.Add(_descriptorsHeading, 0, 1);
-        innerLayout.Controls.Add(_descriptorPanel, 0, 2);
+        innerLayout.Controls.Add(descAccessoryRow, 0, 1);
 
-        _detailPanel.Controls.Add(innerLayout);
+        statsScroll.Controls.Add(innerLayout);
+
+        // ======== Battle Tab Content ========
+        BuildBattleTab();
+
         mainLayout.Controls.Add(_detailPanel, 1, 0);
 
         Controls.Add(mainLayout);
@@ -428,9 +603,298 @@ partial class CompanionPanel
         PerformLayout();
     }
 
+    /// <summary>
+    /// Builds all controls for the Battle tab.
+    /// Layout from top to bottom:
+    ///   Row 0: [Stat Class Overrides (left) | Mutation Progress (right)]
+    ///   Row 1: Affinity
+    ///   Row 2+: Move Slots (single column, two-column per slot)
+    /// </summary>
+    private void BuildBattleTab()
+    {
+        var battleScroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(0) };
+        _battlePage.Padding = new Padding(2, 0, 2, 2);
+        _battlePage.Controls.Add(battleScroll);
+
+        var battleLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 1,
+            Padding = new Padding(5),
+        };
+        battleLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        int bRow = 0;
+
+        // == Row 0: Two-column top section ==
+        battleLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var topRow = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, RowCount = 1 };
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        topRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // == Left column: Stat Class Overrides ==
+        var statClassPanel = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 0, 8, 0) };
+        statClassPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        statClassPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        int scRow = 0;
+        _battleOverrideClassesLabel = new Label { Text = "Stat Class Overrides", AutoSize = true, Padding = new Padding(0, 0, 0, 3) };
+        FontManager.ApplyHeadingFont(_battleOverrideClassesLabel, 10);
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        statClassPanel.Controls.Add(_battleOverrideClassesLabel, 0, scRow);
+        statClassPanel.SetColumnSpan(_battleOverrideClassesLabel, 2);
+        scRow++;
+
+        // Override checkbox + average class on the same row
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var overrideRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        _battleOverrideCheck = new CheckBox { Text = "Override Pet Classes", AutoSize = true };
+        _battleOverrideCheck.CheckedChanged += (s, e) => { if (!_loading) OnBattleOverrideChanged(); };
+        _battleAverageClassLabel = new Label { Text = "Average Class:", AutoSize = true, Anchor = AnchorStyles.Left, Padding = new Padding(15, 5, 5, 0) };
+        _battleAverageClassValue = new Label { Text = "-", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
+        overrideRow.Controls.Add(_battleOverrideCheck);
+        overrideRow.Controls.Add(_battleAverageClassLabel);
+        overrideRow.Controls.Add(_battleAverageClassValue);
+        statClassPanel.Controls.Add(overrideRow, 0, scRow);
+        statClassPanel.SetColumnSpan(overrideRow, 2);
+        scRow++;
+
+        string[] classItems = { "C", "B", "A", "S" };
+
+        // Health class
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleHealthClassLabel = new Label { Text = "Health:", AutoSize = true, Anchor = AnchorStyles.Left, Padding = new Padding(0, 5, 5, 0) };
+        _battleHealthClass = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 50 };
+        _battleHealthClass.Items.AddRange(classItems);
+        _battleHealthClass.SelectedIndexChanged += (s, e) => { if (!_loading) OnBattleClassChanged(); };
+        statClassPanel.Controls.Add(_battleHealthClassLabel, 0, scRow);
+        statClassPanel.Controls.Add(_battleHealthClass, 1, scRow);
+        scRow++;
+
+        // Agility class
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleAgilityClassLabel = new Label { Text = "Agility:", AutoSize = true, Anchor = AnchorStyles.Left, Padding = new Padding(0, 5, 5, 0) };
+        _battleAgilityClass = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 50 };
+        _battleAgilityClass.Items.AddRange(classItems);
+        _battleAgilityClass.SelectedIndexChanged += (s, e) => { if (!_loading) OnBattleClassChanged(); };
+        statClassPanel.Controls.Add(_battleAgilityClassLabel, 0, scRow);
+        statClassPanel.Controls.Add(_battleAgilityClass, 1, scRow);
+        scRow++;
+
+        // Combat class
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleCombatClassLabel = new Label { Text = "Combat Effectiveness:", AutoSize = true, Anchor = AnchorStyles.Left, Padding = new Padding(0, 5, 5, 0) };
+        _battleCombatClass = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 50 };
+        _battleCombatClass.Items.AddRange(classItems);
+        _battleCombatClass.SelectedIndexChanged += (s, e) => { if (!_loading) OnBattleClassChanged(); };
+        statClassPanel.Controls.Add(_battleCombatClassLabel, 0, scRow);
+        statClassPanel.Controls.Add(_battleCombatClass, 1, scRow);
+        scRow++;
+
+        // Holo-Arena Victories (moved to bottom of Stat Class Overrides)
+        statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleVictoriesLabel = new Label { Text = "Holo-Arena Victories:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleVictories = new NumericUpDown { Minimum = 0, Maximum = 999999, Width = 70 };
+        _battleVictories.ValueChanged += (s, e) => { if (!_loading) WriteBattleVictories(); };
+        statClassPanel.Controls.Add(_battleVictoriesLabel, 0, scRow);
+        statClassPanel.Controls.Add(_battleVictories, 1, scRow);
+
+        topRow.Controls.Add(statClassPanel, 0, 0);
+
+        // == Right column: Mutation Progress ==
+        var mutationPanel = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(8, 0, 0, 0) };
+        mutationPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        mutationPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        int mpRow = 0;
+        var mutationHeading = new Label { Text = "Mutation Progress", AutoSize = true, Padding = new Padding(0, 0, 0, 3) };
+        FontManager.ApplyHeadingFont(mutationHeading, 10);
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        mutationPanel.Controls.Add(mutationHeading, 0, mpRow);
+        mutationPanel.SetColumnSpan(mutationHeading, 2);
+        mpRow++;
+
+        // Genes Improved / Level (read-only)
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleGenesLevelLabel = new Label { Text = "Genes Improved / Level:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleGenesLevelValue = new Label { Text = "0 / 30", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
+        mutationPanel.Controls.Add(_battleGenesLevelLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleGenesLevelValue, 1, mpRow);
+        mpRow++;
+
+        // Mutation Progress
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleMutationProgressLabel = new Label { Text = "Mutation Progress:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleMutationProgress = new TextBox { Width = 110, Text = "0.0" };
+        _battleMutationProgress.Leave += (s, e) => WriteBattleMutationProgress();
+        mutationPanel.Controls.Add(_battleMutationProgressLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleMutationProgress, 1, mpRow);
+        mpRow++;
+
+        // Gene Edits Available
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleGenesAvailableLabel = new Label { Text = "Gene Edits Available:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleGenesAvailable = new NumericUpDown { Minimum = 0, Maximum = 100, Width = 55 };
+        _battleGenesAvailable.ValueChanged += (s, e) => { if (!_loading) WriteBattleTreatsAvailable(); };
+        mutationPanel.Controls.Add(_battleGenesAvailableLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleGenesAvailable, 1, mpRow);
+        mpRow++;
+
+        // Gene edits (Health / Agility / Combat) - no heading, directly under Gene Edits Available
+        _battleTreatsHeadingLabel = new Label { Text = "", AutoSize = true, Visible = false };
+
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleTreatHealthLabel = new Label { Text = "Health:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleTreatHealth = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatHealth.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        mutationPanel.Controls.Add(_battleTreatHealthLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleTreatHealth, 1, mpRow);
+        mpRow++;
+
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleTreatAgilityLabel = new Label { Text = "Agility:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleTreatAgility = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatAgility.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        mutationPanel.Controls.Add(_battleTreatAgilityLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleTreatAgility, 1, mpRow);
+        mpRow++;
+
+        mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _battleTreatCombatLabel = new Label { Text = "Combat:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleTreatCombat = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatCombat.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        mutationPanel.Controls.Add(_battleTreatCombatLabel, 0, mpRow);
+        mutationPanel.Controls.Add(_battleTreatCombat, 1, mpRow);
+
+        topRow.Controls.Add(mutationPanel, 1, 0);
+        battleLayout.Controls.Add(topRow, 0, bRow++);
+
+        // == Affinity row ==
+        battleLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        var affinityRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Dock = DockStyle.Fill, Padding = new Padding(0, 5, 0, 5) };
+        _battleAffinityLabel = new Label { Text = "Affinity:", AutoSize = true, Padding = new Padding(0, 5, 10, 0) };
+        FontManager.ApplyHeadingFont(_battleAffinityLabel, 10);
+        _battleAffinityValue = new Label { Text = "", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
+        affinityRow.Controls.Add(_battleAffinityLabel);
+        affinityRow.Controls.Add(_battleAffinityValue);
+        battleLayout.Controls.Add(affinityRow, 0, bRow++);
+
+        // == Move Slots (single column, each slot is a wide two-column layout) ==
+        // No "Move List" heading label (removed per request)
+        _battleMoveListLabel = new Label { Text = "", AutoSize = true, Visible = false };
+
+        _moveSlotPanels = new Panel[5];
+        _moveSlotLabels = new Label[5];
+        _moveSlotCombos = new ComboBox[5];
+        _moveSlotMovesetLabels = new Label[5];
+        _moveSlotCooldowns = new NumericUpDown[5];
+        _moveSlotCooldownLabels = new Label[5];
+        _moveSlotScoreBoosts = new TextBox[5];
+        _moveSlotScoreBoostLabels = new Label[5];
+        _moveSlotDetailPanels = new FlowLayoutPanel[5];
+
+        for (int i = 0; i < 5; i++)
+        {
+            int slotIdx = i;
+            battleLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // Move slot heading
+            _moveSlotLabels[i] = new Label { Text = $"Move Slot {i + 1}:", AutoSize = true, Padding = new Padding(0, 3, 5, 0) };
+            FontManager.ApplyHeadingFont(_moveSlotLabels[i], 9);
+
+            // Two-column layout per slot: [left: combo + cooldown/scoreboost + moveset] | [right: detail info]
+            var slotLayout = new TableLayoutPanel
+            {
+                AutoSize = true,
+                ColumnCount = 2,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, 0, 0, 8),
+            };
+            slotLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            slotLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+
+            // Left column: combo, cooldown/scoreboost, moveset label
+            var leftCol = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Dock = DockStyle.Fill,
+            };
+
+            _moveSlotCombos[i] = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 310,
+            };
+            _moveSlotCombos[i].SelectedIndexChanged += (s, e) => { if (!_loading) OnMoveSlotChanged(slotIdx); };
+
+            var controlRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+            _moveSlotCooldownLabels[i] = new Label { Text = "Cooldown:", AutoSize = true, Padding = new Padding(0, 5, 3, 0) };
+            _moveSlotCooldowns[i] = new NumericUpDown { Minimum = 0, Maximum = 20, Width = 50 };
+            _moveSlotCooldowns[i].ValueChanged += (s, e) => { if (!_loading) OnMoveSlotCooldownChanged(slotIdx); };
+            _moveSlotScoreBoostLabels[i] = new Label { Text = "Score Boost:", AutoSize = true, Padding = new Padding(8, 5, 3, 0) };
+            _moveSlotScoreBoosts[i] = new TextBox { Width = 70, Text = "0.000000" };
+            _moveSlotScoreBoosts[i].Leave += (s, e) => OnMoveSlotScoreBoostChanged(slotIdx);
+            controlRow.Controls.Add(_moveSlotCooldownLabels[i]);
+            controlRow.Controls.Add(_moveSlotCooldowns[i]);
+            controlRow.Controls.Add(_moveSlotScoreBoostLabels[i]);
+            controlRow.Controls.Add(_moveSlotScoreBoosts[i]);
+
+            _moveSlotMovesetLabels[i] = new Label
+            {
+                Text = "",
+                AutoSize = true,
+                Padding = new Padding(0, 2, 0, 0),
+                ForeColor = SystemColors.GrayText,
+            };
+
+            leftCol.Controls.Add(_moveSlotCombos[i]);
+            leftCol.Controls.Add(controlRow);
+            leftCol.Controls.Add(_moveSlotMovesetLabels[i]);
+
+            // Right column: detail panel (read-only move info)
+            _moveSlotDetailPanels[i] = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Visible = false,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(5, 0, 0, 2),
+            };
+
+            slotLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            slotLayout.Controls.Add(leftCol, 0, 0);
+            slotLayout.Controls.Add(_moveSlotDetailPanels[i], 1, 0);
+
+            // Wrap heading + slot layout in a container
+            var slotContainer = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(0, 2, 0, 0),
+            };
+            slotContainer.Controls.Add(_moveSlotLabels[i]);
+            slotContainer.Controls.Add(slotLayout);
+            _moveSlotPanels[i] = slotContainer;
+
+            battleLayout.Controls.Add(slotContainer, 0, bRow++);
+        }
+
+        battleScroll.Controls.Add(battleLayout);
+    }
+
     private ListBox _companionList = null!;
     private Label _countLabel = null!;
     private Panel _detailPanel = null!;
+    private DoubleBufferedTabControl _tabControl = null!;
+    private TabPage _statsPage = null!;
+    private TabPage _battlePage = null!;
     private TableLayoutPanel _formLayout = null!;
     private TableLayoutPanel _leftColumn = null!;
     private TableLayoutPanel _rightColumn = null!;
@@ -507,10 +971,64 @@ partial class CompanionPanel
     // Button fields for localisation
     private Button _exportCompanionBtn = null!;
     private Button _importCompanionBtn = null!;
-    private Button _resetAccessoryBtn = null!;
 
     // Seed "Gen" buttons created by AddSeedRow - stored for re-localisation
     private readonly List<Button> _seedGenButtons = new();
     // Regen Descriptor ID button - stored for re-localisation
     private Button? _regenDescriptorBtn;
+
+    // Accessory Customisation section
+    private Label _accessoryHeading = null!;
+    private TableLayoutPanel _accessoryPanel = null!;
+    private Label[] _accessorySlotLabels = null!;
+    private ComboBox[] _accessoryCombos = null!;
+    private Label[] _accessoryDescriptorLabels = null!;
+    private Button[] _accessoryPrimaryColourBtns = null!;
+    private Button[] _accessoryAltColourBtns = null!;
+    private Panel[] _accessoryPrimarySwatches = null!;
+    private Panel[] _accessoryAltSwatches = null!;
+    private TextBox[] _accessoryScaleFields = null!;
+    private Label[] _accessoryScaleLabels = null!;
+    private Button[] _accessoryResetBtns = null!;
+
+    // Battle tab fields
+    private Label _battleAffinityLabel = null!;
+    private Label _battleAffinityValue = null!;
+    private Label _battleOverrideClassesLabel = null!;
+    private CheckBox _battleOverrideCheck = null!;
+    private Label _battleHealthClassLabel = null!;
+    private ComboBox _battleHealthClass = null!;
+    private Label _battleAgilityClassLabel = null!;
+    private ComboBox _battleAgilityClass = null!;
+    private Label _battleCombatClassLabel = null!;
+    private ComboBox _battleCombatClass = null!;
+    private Label _battleAverageClassLabel = null!;
+    private Label _battleAverageClassValue = null!;
+    private Label _battleTreatsHeadingLabel = null!;
+    private Label _battleTreatHealthLabel = null!;
+    private NumericUpDown _battleTreatHealth = null!;
+    private Label _battleTreatAgilityLabel = null!;
+    private NumericUpDown _battleTreatAgility = null!;
+    private Label _battleTreatCombatLabel = null!;
+    private NumericUpDown _battleTreatCombat = null!;
+    private Label _battleGenesLevelLabel = null!;
+    private Label _battleGenesLevelValue = null!;
+    private Label _battleGenesAvailableLabel = null!;
+    private NumericUpDown _battleGenesAvailable = null!;
+    private Label _battleMutationProgressLabel = null!;
+    private TextBox _battleMutationProgress = null!;
+    private Label _battleVictoriesLabel = null!;
+    private NumericUpDown _battleVictories = null!;
+    private Label _battleMoveListLabel = null!;
+
+    // Per-move-slot controls (5 slots)
+    private Panel[] _moveSlotPanels = null!;
+    private Label[] _moveSlotLabels = null!;
+    private ComboBox[] _moveSlotCombos = null!;
+    private Label[] _moveSlotMovesetLabels = null!;
+    private NumericUpDown[] _moveSlotCooldowns = null!;
+    private Label[] _moveSlotCooldownLabels = null!;
+    private TextBox[] _moveSlotScoreBoosts = null!;
+    private Label[] _moveSlotScoreBoostLabels = null!;
+    private FlowLayoutPanel[] _moveSlotDetailPanels = null!;
 }
