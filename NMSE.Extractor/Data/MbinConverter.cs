@@ -123,15 +123,22 @@ public static class MbinConverter
                 return;
             }
             process.StandardOutput.ReadToEnd();
-            process.StandardError.ReadToEnd();
+            string stderr = process.StandardError.ReadToEnd();
             process.WaitForExit();
             int count = Interlocked.Increment(ref completed);
-            Console.WriteLine($"  [{count}/{mbinFiles.Length}] Converted {Path.GetFileName(mbinFile)}");
+            if (process.ExitCode != 0)
+                Console.Error.WriteLine($"  [{count}/{mbinFiles.Length}] FAILED {Path.GetFileName(mbinFile)} (exit code {process.ExitCode}): {stderr.Trim()}");
+            else
+                Console.WriteLine($"  [{count}/{mbinFiles.Length}] Converted {Path.GetFileName(mbinFile)}");
         });
 
-        // Verify expected outputs
+        // Verify expected outputs (case-insensitive check handles MBINCompiler output variations)
+        var actualFiles = new HashSet<string>(
+            Directory.GetFiles(mbinDir).Select(Path.GetFileName).OfType<string>(),
+            StringComparer.OrdinalIgnoreCase);
+
         var missing = ExtractorConfig.ExpectedMxmlFiles
-            .Where(name => !File.Exists(Path.Combine(mbinDir, name)))
+            .Where(name => !actualFiles.Contains(name))
             .ToList();
 
         if (missing.Count > 0)
@@ -144,7 +151,7 @@ public static class MbinConverter
 
         // Check optional files (warn but don't abort)
         var optionalMissing = ExtractorConfig.OptionalMxmlFiles
-            .Where(name => !File.Exists(Path.Combine(mbinDir, name)))
+            .Where(name => !actualFiles.Contains(name))
             .ToList();
 
         if (optionalMissing.Count > 0)

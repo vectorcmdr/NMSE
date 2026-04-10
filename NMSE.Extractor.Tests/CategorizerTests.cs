@@ -20,8 +20,8 @@ public class CategorizerTests
     [InlineData("Edible Product", "Food.json")]
     [InlineData("Carnivore Bait", "Food.json")]
     [InlineData("Crafted Technology Component", "Products.json")]
-    [InlineData("Mineral", "Raw Materials.json")]
-    [InlineData("Fuel", "Raw Materials.json")]
+    [InlineData("Abundant Mineral", "Raw Materials.json")]
+    [InlineData("Unrefined Organic Element", "Raw Materials.json")]
     [InlineData("Common Fish", "Fish.json")]
     [InlineData("Trade Goods", "Trade.json")]
     [InlineData("Construction module", "Buildings.json")]
@@ -106,10 +106,22 @@ public class CategorizerTests
     }
 
     [Fact]
-    public void CategorizeItem_NonTechPackFallthrough_GoesToOthers()
+    public void CategorizeItem_TechBoxException_ReturnsNull()
     {
         var item = MakeItem("U_TECHBOX_ALIEN", "Alien Implant", "Potent Nodule");
-        Assert.Equal("Others.json", Categorizer.CategorizeItem(item));
+        Assert.Null(Categorizer.CategorizeItem(item));
+    }
+
+    [Theory]
+    [InlineData("SPACEGUNK1")]
+    [InlineData("SPACEGUNK2")]
+    [InlineData("SPACEGUNK3")]
+    [InlineData("SPACEGUNK4")]
+    [InlineData("SPACEGUNK5")]
+    public void CategorizeItem_SpaceGunk_GoesToRawMaterials(string itemId)
+    {
+        var item = MakeItem(itemId, "Residual Goop", "Junk");
+        Assert.Equal("Raw Materials.json", Categorizer.CategorizeItem(item));
     }
 
     // Verify Raw Materials re-routing categories match expected

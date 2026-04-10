@@ -17,23 +17,61 @@ public class ExtractorConfigTests
     }
 
     [Fact]
-    public void ExpectedMxmlFiles_ContainEnglishLocaleFiles()
+    public void MbinFilters_ContainsGcGameTableGlobalsFilter()
     {
-        // English locale MXML files must be in ExpectedMxmlFiles
+        // GCGAMETABLEGLOBALS.mbin uses only the * form (bare form caused hgpaktool errors)
+        Assert.Contains("*GCGAMETABLEGLOBALS.mbin", ExtractorConfig.MbinFilters);
+        Assert.DoesNotContain("GCGAMETABLEGLOBALS.mbin", ExtractorConfig.MbinFilters);
+    }
+
+    [Fact]
+    public void MbinFilters_ContainsPetBattleFilters()
+    {
+        Assert.Contains(ExtractorConfig.MbinFilters,
+            f => f.Contains("PETBATTLERMOVESTABLE.mbin"));
+        Assert.Contains(ExtractorConfig.MbinFilters,
+            f => f.Contains("PETBATTLERMOVESETSTABLE.mbin"));
+        Assert.Contains(ExtractorConfig.MbinFilters,
+            f => f.Contains("CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.mbin"));
+    }
+
+    [Fact]
+    public void ExpectedMxmlFiles_ContainAllRequiredFiles()
+    {
+        // All game data MXMLs must be in ExpectedMxmlFiles (no optional fallthrough)
         Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
             f => f.Contains("nms_loc1_english.MXML"));
         Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
             f => f.Contains("nms_update3_english.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("GCGAMETABLEGLOBALS.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("PETBATTLERMOVESTABLE.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("PETBATTLERMOVESETSTABLE.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("UNLOCKABLESEASONREWARDS.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("FRIGATETRAITTABLE.MXML"));
+        Assert.Contains(ExtractorConfig.ExpectedMxmlFiles,
+            f => f.Contains("WIKI.MXML"));
     }
 
     [Fact]
-    public void OptionalMxmlFiles_ContainNonEnglishLocaleFiles()
+    public void OptionalMxmlFiles_OnlyContainNonEnglishLocaleFiles()
     {
-        // Non-English locale MXML files must be optional (depend on game language packs)
+        // Only non-English locale MXML files should be optional
         Assert.Contains(ExtractorConfig.OptionalMxmlFiles,
             f => f.Contains("japanese"));
         Assert.Contains(ExtractorConfig.OptionalMxmlFiles,
             f => f.Contains("french"));
+        // No game data MXMLs should be optional
+        Assert.DoesNotContain(ExtractorConfig.OptionalMxmlFiles,
+            f => f.Contains("GCGAMETABLEGLOBALS"));
+        Assert.DoesNotContain(ExtractorConfig.OptionalMxmlFiles,
+            f => f.Contains("WIKI"));
     }
 
     [Fact]
@@ -102,6 +140,60 @@ public class ExtractorConfigTests
         // Should contain texture filters
         Assert.Contains(ExtractorConfig.AllExtractionFilters,
             f => f.Contains("*.DDS"));
+    }
+
+    [Fact]
+    public void GetFiltersForPak_Globals_ReturnsMbinFilters()
+    {
+        // All non-Tex paks get all MBIN filters since NMS distributes data across many paks
+        string[] filters = ExtractorConfig.GetFiltersForPak("NMSARC.globals.pak");
+        Assert.Equal(ExtractorConfig.MbinFilters, filters);
+        Assert.Contains(filters, f => f.Contains("GCGAMETABLEGLOBALS"));
+        Assert.Contains(filters, f => f.Contains("nms_reality_gcproducttable.mbin"));
+    }
+
+    [Fact]
+    public void GetFiltersForPak_MetadataEtc_ReturnsMbinFilters()
+    {
+        // MetadataEtc gets all MBIN filters (same as any non-Tex pak)
+        string[] filters = ExtractorConfig.GetFiltersForPak("NMSARC.MetadataEtc.pak");
+        Assert.Equal(ExtractorConfig.MbinFilters, filters);
+        Assert.Contains(filters, f => f.Contains("nms_reality_gcproducttable.mbin"));
+        Assert.Contains(filters, f => f.Contains("LANGUAGE/nms_loc1_"));
+        Assert.DoesNotContain(filters, f => f.Contains("*.DDS"));
+    }
+
+    [Fact]
+    public void GetFiltersForPak_Precache_ReturnsMbinFilters()
+    {
+        string[] filters = ExtractorConfig.GetFiltersForPak("NMSARC.Precache.pak");
+        Assert.Equal(ExtractorConfig.MbinFilters, filters);
+    }
+
+    [Fact]
+    public void GetFiltersForPak_HexNamedPak_ReturnsMbinFilters()
+    {
+        // Hex-named paks may contain REALITY/TABLES or SIMULATION data
+        string[] filters = ExtractorConfig.GetFiltersForPak("NMSARC.59AABAC1.pak");
+        Assert.Equal(ExtractorConfig.MbinFilters, filters);
+        Assert.Contains(filters, f => f.Contains("nms_reality_gcproducttable.mbin"));
+    }
+
+    [Fact]
+    public void GetFiltersForPak_TexPak_ReturnsTextureOnly()
+    {
+        string[] filters = ExtractorConfig.GetFiltersForPak("NMSARC.TexUI.pak");
+        Assert.Equal(ExtractorConfig.TextureFilters, filters);
+        Assert.Contains(filters, f => f.Contains("*.DDS"));
+    }
+
+    [Fact]
+    public void GetFiltersForPak_NoBareGlobalsFilter()
+    {
+        // Bare GCGAMETABLEGLOBALS.mbin (no * prefix) was causing hgpaktool to error out
+        // for paks that don't have a root-level match. Only the * form should exist.
+        Assert.DoesNotContain(ExtractorConfig.GlobalsMbinFilters, f => f == "GCGAMETABLEGLOBALS.mbin");
+        Assert.Contains(ExtractorConfig.GlobalsMbinFilters, f => f == "*GCGAMETABLEGLOBALS.mbin");
     }
 
     [Fact]

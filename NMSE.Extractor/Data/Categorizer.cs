@@ -399,8 +399,22 @@ public static class Categorizer
         },
         ["Raw Materials.json"] = new()
         {
-            "Catalyst", "Fuel", "Gas", "Harvested", "Mineral", "Organic",
-            "Precious Metal", "Stellar Metal", "Technology"
+            "Abundant Mineral", "Aquatic Mineral Extract", "Ashes of Despair",
+            "Charged Metallic Element", "Concentrated Liquid Fuel",
+            "Decayed Spacetime Remnant", "Disharmonic Metal", "Essence of Atlantid",
+            "Harvested Agricultural Substance", "Harvested Substance",
+            "High Energy Substance", "Highly Refined Stellar Metal",
+            "Localised Earth Element", "Metallic Mineral Extract",
+            "Neutron-Rich Fuel Element", "Organic Compound",
+            "Processed Aquatic Mineral", "Processed Metallic Minerals",
+            "Processed Subterranean Mineral", "Recessive Creature Genes",
+            "Recycled Minerals", "Refined Catalytic Element",
+            "Refined Organic Element", "Refined Stellar Metal: Blue",
+            "Refined Stellar Metal: Green", "Refined Stellar Metal: Purple",
+            "Refined Stellar Metal: Red", "Refined Stellar Metal: Yellow",
+            "Salvaged Scrap", "Soul Fragment", "Subterranean Mineral",
+            "Transmuted Metal", "Unrefined Catalytic Element",
+            "Unrefined Organic Element", "Valuable Asteroid Mineral"
         },
     };
 
@@ -504,8 +518,13 @@ public static class Categorizer
                 if (group.StartsWith(prefix, StringComparison.Ordinal))
                     return filename;
 
-        // U_TECHPACK_ items are intentionally uncategorized (kept in none.json)
-        if (itemId.StartsWith("U_TECHPACK_", StringComparison.OrdinalIgnoreCase))
+        // SPACEGUNK items belong in Raw Materials (Group is "Junk" which doesn't match exact rules)
+        if (itemId.StartsWith("SPACEGUNK", StringComparison.OrdinalIgnoreCase))
+            return "Raw Materials.json";
+
+        // U_TECHPACK_ and U_TECHBOX_ items are intentionally uncategorized (kept in none.json)
+        if (itemId.StartsWith("U_TECHPACK_", StringComparison.OrdinalIgnoreCase) ||
+            itemId.StartsWith("U_TECHBOX_", StringComparison.OrdinalIgnoreCase))
             return null;
 
         // Default: valid items with unrecognized groups go to Others.json

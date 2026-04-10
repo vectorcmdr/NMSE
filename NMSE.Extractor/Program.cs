@@ -70,12 +70,20 @@ public class Program
             Console.WriteLine("\n--- Step 3: Cleaning resources ---");
             CleanResources(resourcesDir);
 
+            // Clean banks/extracted/ to prevent stale data from previous runs masking failures
+            string banksExtracted = Path.Combine(banksDir, ExtractorConfig.ExtractedSubfolder);
+            if (Directory.Exists(banksExtracted))
+            {
+                Directory.Delete(banksExtracted, recursive: true);
+                Console.WriteLine("  [OK] Removed banks/extracted/ (stale data cleanup)");
+            }
+
             try
             {
                 // Step 4: Per-pak filtered extraction - copies one pak at a time, extracts, removes it
                 Console.WriteLine("\n--- Step 4: Extracting game data from .pak files ---");
                 PakExtractor.ExtractPerPak(hgpaktoolPath, pcbanks, banksDir,
-                    ExtractorConfig.AllExtractionFilters);
+                    ExtractorConfig.GetFiltersForPak);
 
                 // Step 5: Consolidate MBINs from extracted data (uses Move, not Copy)
                 Console.WriteLine("\n--- Step 5: Consolidating MBINs ---");
@@ -246,6 +254,10 @@ public class Program
             ("FrigateTraits", "FRIGATETRAITTABLE.MXML", Parsers.ParseFrigateTraits),
             ("SettlementPerks", "SETTLEMENTPERKSTABLE.MXML", Parsers.ParseSettlementPerks),
             ("WikiGuide", "WIKI.MXML", Parsers.ParseWikiGuide),
+            ("CompanionAccessories", "CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.MXML", Parsers.ParsePetAccessories),
+            ("PetBattleMoves", "PETBATTLERMOVESTABLE.MXML", Parsers.ParsePetBattleMoves),
+            ("PetBattleMovesets", "PETBATTLERMOVESETSTABLE.MXML", Parsers.ParsePetBattleMovesets),
+            ("GameTableGlobals", "GCGAMETABLEGLOBALS.MXML", Parsers.ParseGameTableGlobals),
         };
 
         // Pre-warm XML cache by loading shared MXML files on the main thread.
@@ -314,11 +326,19 @@ public class Program
         if (baseData.ContainsKey("Titles"))
             finalFiles["Titles.json"] = baseData["Titles"];
         if (baseData.ContainsKey("FrigateTraits"))
-            finalFiles["FrigateTraits.json"] = baseData["FrigateTraits"];
+            finalFiles["Frigate Traits.json"] = baseData["FrigateTraits"];
         if (baseData.ContainsKey("SettlementPerks"))
-            finalFiles["SettlementPerks.json"] = baseData["SettlementPerks"];
+            finalFiles["Settlement Perks.json"] = baseData["SettlementPerks"];
         if (baseData.ContainsKey("WikiGuide"))
-            finalFiles["WikiGuide.json"] = baseData["WikiGuide"];
+            finalFiles["Wiki Guide.json"] = baseData["WikiGuide"];
+        if (baseData.ContainsKey("CompanionAccessories"))
+            finalFiles["Companion Accessories.json"] = baseData["CompanionAccessories"];
+        if (baseData.ContainsKey("PetBattleMoves"))
+            finalFiles["Pet Battle Moves.json"] = baseData["PetBattleMoves"];
+        if (baseData.ContainsKey("PetBattleMovesets"))
+            finalFiles["Pet Battle Movesets.json"] = baseData["PetBattleMovesets"];
+        if (baseData.ContainsKey("GameTableGlobals"))
+            finalFiles["Game Table Globals.json"] = baseData["GameTableGlobals"];
 
         // Categorized files
         var categorized = new Dictionary<string, List<Dictionary<string, object?>>>
@@ -385,6 +405,13 @@ public class Program
         // Merge categorized into final
         foreach (var (filename, data) in categorized)
             finalFiles[filename] = data;
+
+        // Reclassify items between Upgrades.json and Technology Module.json based on DeploysInto.
+        // Items in Upgrades.json WITH DeploysInto are cargo-holdable tech module fragments
+        // that unpack into technology slots — they belong in Technology Module.json.
+        // Items in Technology Module.json WITHOUT DeploysInto are actual tech upgrades
+        // meant to be installed directly — they belong in Upgrades.json.
+        ReclassifyByDeploysInto(finalFiles);
 
         // Re-route Raw Materials items that belong elsewhere (e.g. Reward Item -> Others.json).
         // Raw Materials is pre-seeded from the substance table and normally bypasses categorization.
@@ -1241,6 +1268,66 @@ public class Program
             finalFiles["Others.json"] = keep;
             Console.WriteLine($"  [NORMALIZE] Others.json: removed {removed} Starship Interior Adornment display duplicates");
         }
+    }
+
+    /// <summary>
+    /// Reclassify items between Upgrades.json and Technology Module.json based on DeploysInto.
+    /// <para>
+    /// Items in Upgrades.json that have a DeploysInto value are cargo-holdable tech module
+    /// fragments (e.g. U_SHIPSHIELD3, U_HYPER3, U_SCANNER4) that unpack into technology
+    /// slots when used. These belong in Technology Module.json because they are products
+    /// stored in cargo inventory, not direct tech installs.
+    /// </para>
+    /// <para>
+    /// Conversely, items in Technology Module.json that do NOT have DeploysInto are actual
+    /// technology upgrades (e.g. UA_PULSE1, UA_LAUN1, UA_HYP1) that install directly into
+    /// technology slots. These belong in Upgrades.json.
+    /// </para>
+    /// </summary>
+    private static void ReclassifyByDeploysInto(
+        Dictionary<string, List<Dictionary<string, object?>>> finalFiles)
+    {
+        if (!finalFiles.TryGetValue("Upgrades.json", out var upgrades)
+            || !finalFiles.TryGetValue("Technology Module.json", out var techModules))
+            return;
+
+        // Upgrades WITH DeploysInto → move to Technology Module
+        var toTechModule = new List<Dictionary<string, object?>>();
+        var keepInUpgrades = new List<Dictionary<string, object?>>();
+        foreach (var item in upgrades)
+        {
+            string deploysInto = item.GetValueOrDefault("DeploysInto")?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(deploysInto) && deploysInto != "^")
+                toTechModule.Add(item);
+            else
+                keepInUpgrades.Add(item);
+        }
+
+        // Technology Module WITHOUT DeploysInto → move to Upgrades
+        var toUpgrades = new List<Dictionary<string, object?>>();
+        var keepInTechModule = new List<Dictionary<string, object?>>();
+        foreach (var item in techModules)
+        {
+            string deploysInto = item.GetValueOrDefault("DeploysInto")?.ToString() ?? "";
+            if (string.IsNullOrEmpty(deploysInto) || deploysInto == "^")
+                toUpgrades.Add(item);
+            else
+                keepInTechModule.Add(item);
+        }
+
+        if (toTechModule.Count == 0 && toUpgrades.Count == 0)
+            return;
+
+        // Apply the reclassification
+        keepInUpgrades.AddRange(toUpgrades);
+        keepInTechModule.AddRange(toTechModule);
+        finalFiles["Upgrades.json"] = keepInUpgrades;
+        finalFiles["Technology Module.json"] = keepInTechModule;
+
+        if (toTechModule.Count > 0)
+            Console.WriteLine($"  [RECLASSIFY] Moved {toTechModule.Count} items from Upgrades → Technology Module (have DeploysInto)");
+        if (toUpgrades.Count > 0)
+            Console.WriteLine($"  [RECLASSIFY] Moved {toUpgrades.Count} items from Technology Module → Upgrades (no DeploysInto)");
     }
 
     /// <summary>

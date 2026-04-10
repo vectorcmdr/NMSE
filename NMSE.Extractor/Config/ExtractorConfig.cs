@@ -59,8 +59,11 @@ public static class ExtractorConfig
         return LocaleFileStems.Select(stem => $"{stem}_{suffix}.MXML").ToArray();
     }
 
-    /// <summary>Game data MBIN filters (non-locale).</summary>
-    private static readonly string[] GameDataMbinFilters =
+    /// <summary>
+    /// Game data MBIN filters for METADATA paks (MetadataEtc, Precache).
+    /// These are under METADATA/ paths within the paks.
+    /// </summary>
+    public static readonly string[] MetadataMbinFilters =
     [
         "*REALITY/TABLES/nms_reality_gcproducttable.mbin",
         "*REALITY/TABLES/consumableitemtable.mbin",
@@ -82,22 +85,28 @@ public static class ExtractorConfig
         "*REALITY/TABLES/FRIGATETRAITTABLE.mbin",
         "*REALITY/TABLES/SETTLEMENTPERKSTABLE.mbin",
         "*REALITY/WIKI.mbin",
+        "*GAMESTATE/PLAYERDATA/CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.mbin",
+        "*SIMULATION/GAMETABLES/PETBATTLER/PETBATTLERMOVESTABLE.mbin",
+        "*SIMULATION/GAMETABLES/PETBATTLER/PETBATTLERMOVESETSTABLE.mbin",
     ];
 
     /// <summary>
     /// Locale MBIN filters using wildcards to capture all language variants.
     /// e.g. "*LANGUAGE/nms_loc1_*.mbin" matches nms_loc1_english, nms_loc1_french, etc.
     /// </summary>
-    private static readonly string[] LocaleMbinFilters =
+    public static readonly string[] LocaleMbinFilters =
         LocaleFileStems.Select(stem => $"*LANGUAGE/{stem}_*.mbin").ToArray();
 
     /// <summary>
-    /// All MBIN filters for game data extraction (game data + all locale languages).
+    /// Filters for GCGAMETABLEGLOBALS.mbin which lives at the root level of NMSARC.globals.pak.
     /// </summary>
-    public static readonly string[] MbinFilters = [.. GameDataMbinFilters, .. LocaleMbinFilters];
+    public static readonly string[] GlobalsMbinFilters =
+    [
+        "*GCGAMETABLEGLOBALS.mbin",
+    ];
 
     /// <summary>
-    /// Filters for DDS texture files needed for icon extraction.
+    /// Filters for DDS texture files needed for icon extraction (Tex* paks only).
     /// </summary>
     public static readonly string[] TextureFilters =
     [
@@ -105,7 +114,33 @@ public static class ExtractorConfig
     ];
 
     /// <summary>
-    /// Combined MBIN + texture filters for single-pass extraction.
+    /// Returns the appropriate extraction filters for a given pak file.
+    /// NMS distributes game data across many paks (including hex-named paks),
+    /// so all non-texture paks receive MBIN filters. Texture paks only get DDS filters.
+    /// </summary>
+    public static string[] GetFiltersForPak(string pakFileName)
+    {
+        string nameUpper = (Path.GetFileNameWithoutExtension(pakFileName) ?? "").ToUpperInvariant();
+
+        // Tex* → texture filters only (these paks only contain DDS/texture data)
+        int firstDot = nameUpper.IndexOf('.');
+        if (firstDot >= 0 && nameUpper[(firstDot + 1)..].StartsWith("TEX"))
+            return TextureFilters;
+
+        // All other paks → all MBIN filters (metadata + locale + globals).
+        // NMS distributes game data across many paks — REALITY/TABLES MBINs
+        // are NOT in MetadataEtc.pak but in other (often hex-named) paks.
+        return MbinFilters;
+    }
+
+    /// <summary>
+    /// All MBIN filters (for reference/tests). Game data + locale + globals.
+    /// </summary>
+    public static readonly string[] MbinFilters = [.. MetadataMbinFilters, .. LocaleMbinFilters, .. GlobalsMbinFilters];
+
+    /// <summary>
+    /// Combined MBIN + texture filters (for reference/tests).
+    /// Note: At runtime, pak-specific filters are used via GetFiltersForPak().
     /// </summary>
     public static readonly string[] AllExtractionFilters = [.. MbinFilters, .. TextureFilters];
 
@@ -128,6 +163,17 @@ public static class ExtractorConfig
         "rewardtable.MXML",
         "nms_dialog_gcalienspeechtable.MXML",
         "peteggtraitmodifieroverridetable.MXML",
+        "UNLOCKABLESEASONREWARDS.MXML",
+        "UNLOCKABLETWITCHREWARDS.MXML",
+        "UNLOCKABLEPLATFORMREWARDS.MXML",
+        "PLAYERTITLEDATA.MXML",
+        "FRIGATETRAITTABLE.MXML",
+        "SETTLEMENTPERKSTABLE.MXML",
+        "WIKI.MXML",
+        "CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.MXML",
+        "PETBATTLERMOVESTABLE.MXML",
+        "PETBATTLERMOVESETSTABLE.MXML",
+        "GCGAMETABLEGLOBALS.MXML",
         "nms_loc1_english.MXML",
         "nms_loc4_english.MXML",
         "nms_loc5_english.MXML",
@@ -139,21 +185,12 @@ public static class ExtractorConfig
     ];
 
     /// <summary>
-    /// MXML files extracted on a best-effort basis. MBINCompiler may not support these
-    /// MBIN types or they may not exist in all game versions. Missing files are logged
-    /// as warnings but do not abort the extraction pipeline.
     /// Non-English locale MXML files are optional since they depend on which
-    /// language packs the game installation has.
+    /// language packs the game installation has. Missing files are logged
+    /// as warnings but do not abort the extraction pipeline.
     /// </summary>
     public static readonly string[] OptionalMxmlFiles =
     [
-        "UNLOCKABLESEASONREWARDS.MXML",
-        "UNLOCKABLETWITCHREWARDS.MXML",
-        "UNLOCKABLEPLATFORMREWARDS.MXML",
-        "PLAYERTITLEDATA.MXML",
-        "FRIGATETRAITTABLE.MXML",
-        "SETTLEMENTPERKSTABLE.MXML",
-        "WIKI.MXML",
         .. SupportedLanguages.Keys
             .Where(lang => !lang.Equals("English", StringComparison.OrdinalIgnoreCase))
             .SelectMany(lang => GetLocaleMxmlFiles(lang)),

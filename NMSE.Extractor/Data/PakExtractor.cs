@@ -12,24 +12,44 @@ public static partial class PakExtractor
     private static partial Regex UnpackedCountRegex();
 
     /// <summary>
-    /// Determine if a .pak file could contain files matching our extraction filters.
-    /// Based on known NMS pak naming conventions:
-    /// - MetadataEtc -> METADATA/REALITY/TABLES and SIMULATION MBINs
-    /// - Precache -> LANGUAGE MBINs
-    /// - Tex* -> TEXTURES/*.DDS files
-    /// Everything else (audio, mesh, fonts, shaders, animations, scenes, etc.) is skipped.
+    /// Pak file type prefixes that are known to never contain MBIN game data or
+    /// needed DDS textures. These are mesh, audio, animation, font, shader,
+    /// pipeline, scene, and miscellaneous asset paks. Skipping them avoids
+    /// copying multi-GB files only to find zero matching filters.
+    /// </summary>
+    private static readonly string[] IrrelevantPakPrefixes =
+    [
+        "ANIMMBIN",
+        "AUDIO",
+        "AUDIOBNK",
+        "ENTITYSCENEMBIN",
+        "FONTS",
+        "MESH",
+        "MISC",
+        "PIPELINES",
+        "SCENES",
+        "SHADERS",
+        "UI",
+    ];
+
+    /// <summary>
+    /// Determines whether a pak file could contain data we need (MBINs or DDS textures).
+    /// Paks whose type segment matches a known irrelevant prefix are skipped.
+    /// Everything else (MetadataEtc, Precache, globals, Tex*, hex-named, etc.) is processed.
     /// </summary>
     public static bool IsPakRelevant(string pakFileName)
     {
-        string name = Path.GetFileNameWithoutExtension(pakFileName) ?? "";
-        string nameUpper = name.ToUpperInvariant();
-        if (nameUpper.Contains("METADATAETC") || nameUpper.Contains("PRECACHE"))
-            return true;
-        // Match Tex* type segment (e.g., NMSARC.TexUI -> type "TEXUI" starts with "TEX")
-        int firstDot = nameUpper.IndexOf('.');
-        if (firstDot >= 0 && nameUpper[(firstDot + 1)..].StartsWith("TEX"))
-            return true;
-        return false;
+        string name = (Path.GetFileNameWithoutExtension(pakFileName) ?? "").ToUpperInvariant();
+        // Extract the type segment after the first dot (e.g. "NMSARC.MeshCommon" -> "MESHCOMMON")
+        int dot = name.IndexOf('.');
+        if (dot < 0) return true; // no dot = unknown format, process it
+        string type = name[(dot + 1)..];
+        foreach (string prefix in IrrelevantPakPrefixes)
+        {
+            if (type.StartsWith(prefix, StringComparison.Ordinal))
+                return false;
+        }
+        return true;
     }
 
     /// <summary>
@@ -66,11 +86,14 @@ public static partial class PakExtractor
 
     /// <summary>
     /// Extract filtered files from game .pak files, processing one pak at a time.
-    /// For each pak: checks relevance, copies to banksDir, runs hgpaktool with filters, removes the copy.
+    /// For each pak: checks relevance, copies to banksDir, runs hgpaktool with pak-specific filters, removes the copy.
     /// Extracted content accumulates in banksDir/extracted/.
     /// Irrelevant paks (audio, mesh, fonts, shaders, etc.) are skipped entirely.
+    /// Each pak receives only the filters relevant to its type (via getFiltersForPak) to avoid
+    /// cross-contamination where unrelated filters could cause hgpaktool errors.
     /// </summary>
-    public static void ExtractPerPak(string hgpaktoolPath, string pcbanksPath, string banksDir, string[] filters)
+    public static void ExtractPerPak(string hgpaktoolPath, string pcbanksPath, string banksDir,
+        Func<string, string[]> getFiltersForPak)
     {
         if (!File.Exists(hgpaktoolPath))
             throw new FileNotFoundException($"hgpaktool not found: {hgpaktoolPath}");
@@ -86,13 +109,7 @@ public static partial class PakExtractor
         int paksWithContent = 0;
         int totalEntries = 0;
 
-        Console.WriteLine($"[INFO] Found {allPakFiles.Length} .pak files, {skippedCount} irrelevant skipped, processing {total} with {filters.Length} filters...");
-
-        // Build filter args once
-        var filterArgParts = new List<string>();
-        foreach (var filter in filters)
-            filterArgParts.Add($"-f=\"{filter}\"");
-        string filterArgStr = string.Join(" ", filterArgParts);
+        Console.WriteLine($"[INFO] Found {allPakFiles.Length} .pak files, {skippedCount} irrelevant skipped, processing {total}...");
 
         var sw = Stopwatch.StartNew();
 
@@ -102,7 +119,19 @@ public static partial class PakExtractor
             string pakName = Path.GetFileName(srcPak);
             long sizeMB = new FileInfo(srcPak).Length / (1024 * 1024);
 
-            WriteProgress($"  [{i + 1}/{total}] {pakName} ({sizeMB} MB) - extracting...");
+            // Get pak-specific filters
+            string[] pakFilters = getFiltersForPak(pakName);
+            if (pakFilters.Length == 0)
+            {
+                WriteProgress($"  [{i + 1}/{total}] {pakName} ({sizeMB} MB) -> skipped (no applicable filters)");
+                FinishProgress();
+                continue;
+            }
+
+            WriteProgress($"  [{i + 1}/{total}] {pakName} ({sizeMB} MB) - extracting ({pakFilters.Length} filters)...");
+
+            // Build filter args for this pak
+            string filterArgStr = string.Join(" ", pakFilters.Select(f => $"-f=\"{f}\""));
 
             // Copy single pak to working directory
             string destPak = Path.Combine(banksDir, pakName);
@@ -128,14 +157,17 @@ public static partial class PakExtractor
                 var stderrTask = process.StandardError.ReadToEndAsync();
                 var stdoutTask = process.StandardOutput.ReadToEndAsync();
 
-                stdoutTask.GetAwaiter().GetResult();
+                string stdout = stdoutTask.GetAwaiter().GetResult();
                 string stderr = stderrTask.GetAwaiter().GetResult();
                 process.WaitForExit();
 
-                // Parse actual count from hgpaktool stderr ("Unpacked N files")
+                // Parse actual count from hgpaktool output ("Unpacked N files")
+                // Check both stderr and stdout as different hgpaktool versions vary
                 pakEntries = ParseUnpackedCount(stderr);
+                if (pakEntries == 0)
+                    pakEntries = ParseUnpackedCount(stdout);
 
-                if (process.ExitCode != 0)
+                if (process.ExitCode != 0 && pakEntries == 0)
                 {
                     FinishProgress();
                     Console.WriteLine($"  [WARN] hgpaktool error (code {process.ExitCode}) for {pakName}");

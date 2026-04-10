@@ -354,7 +354,7 @@ public class MbinConverterTests
                     Path.Combine(tempRoot, "nonexistent.exe"),
                     pcbanksDir,
                     banksDir,
-                    ["*.mbin"]));
+                    _ => ["*.mbin"]));
         }
         finally
         {
@@ -383,7 +383,7 @@ public class MbinConverterTests
                     fakeExe,
                     Path.Combine(tempRoot, "nonexistent_pcbanks"),
                     banksDir,
-                    ["*.mbin"]));
+                    _ => ["*.mbin"]));
         }
         finally
         {
@@ -451,52 +451,50 @@ public class MbinConverterTests
     // --- IsPakRelevant tests ---
 
     /// <summary>
-    /// MetadataEtc paks contain MBIN metadata tables and should be processed.
+    /// Data paks (metadata, precache, globals, hex-named) are relevant.
     /// </summary>
-    [Fact]
-    public void IsPakRelevant_MetadataEtc_ReturnsTrue()
+    [Theory]
+    [InlineData("NMSARC.MetadataEtc.pak")]
+    [InlineData("NMSARC.Precache.pak")]
+    [InlineData("NMSARC.globals.pak")]
+    [InlineData("NMSARC.59AABAC1.pak")]
+    public void IsPakRelevant_DataPaks_ReturnsTrue(string pakName)
     {
-        Assert.True(PakExtractor.IsPakRelevant("NMSARC.MetadataEtc.pak"));
+        Assert.True(PakExtractor.IsPakRelevant(pakName));
     }
 
     /// <summary>
-    /// Precache paks contain language and simulation MBINs and should be processed.
-    /// </summary>
-    [Fact]
-    public void IsPakRelevant_Precache_ReturnsTrue()
-    {
-        Assert.True(PakExtractor.IsPakRelevant("NMSARC.Precache.pak"));
-    }
-
-    /// <summary>
-    /// Texture paks contain DDS files needed for icon extraction.
+    /// Texture paks are relevant (needed for DDS icon extraction).
     /// </summary>
     [Theory]
     [InlineData("NMSARC.TexUI.pak")]
     [InlineData("NMSARC.TexMisc.pak")]
     [InlineData("NMSARC.TexBiomesCOMMON.pak")]
-    [InlineData("NMSARC.TexPlayer.pak")]
-    [InlineData("NMSARC.TexSpacecraft.pak")]
-    [InlineData("NMSARC.TexCreatureFISH.pak")]
-    [InlineData("NMSARC.TexAtlas.pak")]
     public void IsPakRelevant_TexturePaks_ReturnsTrue(string pakName)
     {
         Assert.True(PakExtractor.IsPakRelevant(pakName));
     }
 
     /// <summary>
-    /// Audio, mesh, font, shader, animation, scene, pipeline, and misc paks are irrelevant.
+    /// Audio, mesh, animation, font, shader, pipeline, scene, and misc paks are irrelevant.
     /// </summary>
     [Theory]
+    [InlineData("NMSARC.AnimMBIN.pak")]
     [InlineData("NMSARC.audio.pak")]
     [InlineData("NMSARC.audioBNK.pak")]
-    [InlineData("NMSARC.AnimMBIN.pak")]
     [InlineData("NMSARC.EntitySceneMBIN.pak")]
     [InlineData("NMSARC.fonts.pak")]
-    [InlineData("NMSARC.globals.pak")]
     [InlineData("NMSARC.MeshCommon.pak")]
     [InlineData("NMSARC.MeshMisc.pak")]
     [InlineData("NMSARC.MeshPlanetBIOMES.pak")]
+    [InlineData("NMSARC.MeshPlanetCOMMON.pak")]
+    [InlineData("NMSARC.MeshPlanetCREATURES.pak")]
+    [InlineData("NMSARC.MeshPlanetDESERT.pak")]
+    [InlineData("NMSARC.MeshPlanetENEMIES.pak")]
+    [InlineData("NMSARC.MeshPlanetNPCS.pak")]
+    [InlineData("NMSARC.MeshPlanetOCEAN.pak")]
+    [InlineData("NMSARC.MeshPlanetSKY.pak")]
+    [InlineData("NMSARC.MeshPlanetSNOW.pak")]
     [InlineData("NMSARC.misc.pak")]
     [InlineData("NMSARC.pipelines.pak")]
     [InlineData("NMSARC.Scenes.pak")]
@@ -560,7 +558,7 @@ public class MbinConverterTests
             long totalSize = PakExtractor.GetPakFilesSize(pcbanksDir);
             Assert.Equal(8000, totalSize);
 
-            // With relevance filter: only relevant ones
+            // IsPakRelevant excludes audio.pak (irrelevant), so only MetadataEtc + TexUI
             long filteredSize = PakExtractor.GetPakFilesSize(pcbanksDir, PakExtractor.IsPakRelevant);
             Assert.Equal(3000, filteredSize);
         }
@@ -594,7 +592,7 @@ public class MbinConverterTests
             long largest = PakExtractor.GetLargestPakFileSize(pcbanksDir);
             Assert.Equal(9000, largest);
 
-            // With relevance filter: TexUI.pak is largest relevant
+            // IsPakRelevant excludes audio.pak, so TexUI.pak is largest relevant
             long filteredLargest = PakExtractor.GetLargestPakFileSize(pcbanksDir, PakExtractor.IsPakRelevant);
             Assert.Equal(2000, filteredLargest);
         }

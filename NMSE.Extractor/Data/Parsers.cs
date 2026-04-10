@@ -126,6 +126,9 @@ public static class Parsers
         if (extraAfterCanSend != null)
             foreach (var kv in extraAfterCanSend)
                 d[kv.Key] = kv.Value;
+        // Inherit SourceTable from the source product dictionary if present;
+        // callers that use BuildCanonicalProductDict always parse from the product table.
+        d["SourceTable"] = product.GetValueOrDefault("SourceTable") ?? "Product";
         return d;
     }
 
@@ -229,7 +232,9 @@ public static class Parsers
                     ["Procedural"] = row["Procedural"],
                 };
 
-                // Include raw subtitle key if requested (used for categorization)
+                // Tag source game table for downstream classification (SeenProducts vs SeenTechnologies).
+                // Products parsed from gcproducttable are Product-table items.
+                product["SourceTable"] = "Product";
                 if (includeSubtitleKey)
                 {
                     if (row.TryGetValue("SubtitleKey", out var sk)) product["SubtitleKey"] = sk;
@@ -349,6 +354,7 @@ public static class Parsers
                     ["PinObjectiveScannableType"] = NullIfEmpty(MxmlParser.GetNestedEnum(elem, "PinObjectiveScannableType", "ScanIconType")),
                     ["WikiMissionID"] = NullIfEmpty(MxmlParser.GetPropertyValue(elem, "WikiMissionID")),
                     ["Symbol"] = NullIfEmpty(symbol),
+                    ["SourceTable"] = "Substance",
                 });
             }
             catch (Exception ex) { Console.WriteLine($"Warning: Skipped material: {ex.Message}"); }
@@ -526,6 +532,7 @@ public static class Parsers
                     ["NeverPinnable"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "NeverPinnable", "false")),
                     ["IsTemplate"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "IsTemplate", "false")),
                     ["ExclusivePrimaryStat"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "ExclusivePrimaryStat", "false")),
+                    ["SourceTable"] = "Technology",
                 });
             }
             catch (Exception ex) { Console.WriteLine($"Warning: Skipped technology: {ex.Message}"); }
@@ -1215,6 +1222,7 @@ public static class Parsers
                     ["PinObjectiveEasyToRefine"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "PinObjectiveEasyToRefine", "false")),
                     ["NeverPinnable"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "NeverPinnable", "false")),
                     ["CanSendToOtherPlayers"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "CanSendToOtherPlayers", "true")),
+                    ["SourceTable"] = "Product",
                 });
             }
             catch (Exception ex) { Console.WriteLine($"Warning: Skipped ship component: {ex.Message}"); }
@@ -1385,6 +1393,7 @@ public static class Parsers
                     ["NumStatsMax"] = MxmlParser.ParseValue(MxmlParser.GetPropertyValue(elem, "NumStatsMax", "0")),
                     ["WeightingCurve"] = MxmlParser.GetNestedEnum(elem, "WeightingCurve", "WeightingCurve"),
                     ["StatLevels"] = statLevels,
+                    ["SourceTable"] = "Technology",
                 });
             }
             catch (Exception ex) { Console.WriteLine($"Warning: Skipped procedural tech: {ex.Message}"); }
@@ -2259,5 +2268,350 @@ public static class Parsers
         }
 
         return productId;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Pet Accessories
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses PET_ACCESSORY descriptor groups from CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.MXML.
+    /// Produces Companion Accessories.json with per-slot filtering data.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ParsePetAccessories(string mxmlPath)
+    {
+        var root = MxmlParser.LoadXml(mxmlPath);
+        var localisation = MxmlParser.LoadLocalisation(Path.Combine(
+            Path.GetDirectoryName(Path.GetDirectoryName(mxmlPath))!, ExtractorConfig.JsonSubfolder));
+        var accessories = new List<Dictionary<string, object?>>();
+
+        // Find the PET_ACCESSORY descriptor group set
+        var descriptorGroupSets = root.Descendants("Property")
+            .Where(e => e.Attribute("name")?.Value == "DescriptorGroupSets"
+                     && e.Attribute("_id")?.Value == "PET_ACCESSORY");
+
+        var petAccSet = descriptorGroupSets.FirstOrDefault();
+        if (petAccSet == null)
+        {
+            Console.WriteLine("[WARN] ParsePetAccessories: No PET_ACCESSORY descriptor group set found");
+            return accessories;
+        }
+
+        var groupsProp = petAccSet.Elements("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "DescriptorGroups");
+        if (groupsProp == null) return accessories;
+
+        foreach (var grp in groupsProp.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "GcCustomisationDescriptorGroup"))
+        {
+            string groupId = MxmlParser.GetPropertyValue(grp, "GroupID");
+            if (string.IsNullOrEmpty(groupId)) continue;
+
+            string tipKey = MxmlParser.GetPropertyValue(grp, "Tip");
+            string tipName = !string.IsNullOrEmpty(tipKey) ? MxmlParser.Translate(tipKey, "") : "";
+            string linkedProduct = MxmlParser.GetPropertyValue(grp, "LinkedProductOrSpecialID");
+
+            // Extract first descriptor value
+            string descriptor = "";
+            var descriptorsProp = grp.Elements("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "Descriptors");
+            if (descriptorsProp != null)
+            {
+                var firstDesc = descriptorsProp.Elements("Property")
+                    .FirstOrDefault(e => e.Attribute("_index")?.Value == "0");
+                if (firstDesc != null)
+                    descriptor = firstDesc.Attribute("value")?.Value ?? "";
+            }
+
+            accessories.Add(new()
+            {
+                ["Id"] = groupId,
+                ["Name"] = !string.IsNullOrEmpty(tipName) ? tipName : groupId,
+                ["Name_LocStr"] = NullIfEmpty(tipKey),
+                ["Descriptor"] = NullIfEmpty(descriptor),
+                ["LinkedProduct"] = NullIfEmpty(linkedProduct),
+            });
+        }
+
+        Console.WriteLine($"[OK] Parsed {accessories.Count} pet accessories");
+        return accessories;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Pet Battle Moves
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses pet battler moves from petbattlermovestable.MXML.
+    /// Produces Pet Battle Moves.json with full move detail.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ParsePetBattleMoves(string mxmlPath)
+    {
+        var root = MxmlParser.LoadXml(mxmlPath);
+        var localisation = MxmlParser.LoadLocalisation(Path.Combine(
+            Path.GetDirectoryName(Path.GetDirectoryName(mxmlPath))!, ExtractorConfig.JsonSubfolder));
+        var moves = new List<Dictionary<string, object?>>();
+
+        var movesProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "Moves"
+                && e.Parent?.Name.LocalName == "Data");
+        if (movesProp == null)
+        {
+            // Try alternative: direct child of root Data element
+            movesProp = root.Descendants("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "Moves");
+        }
+        if (movesProp == null)
+        {
+            Console.WriteLine("[WARN] ParsePetBattleMoves: No <Property name=\"Moves\"> found in MXML");
+            return moves;
+        }
+
+        foreach (var elem in movesProp.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "GcPetBattlerMoveTemplate"))
+        {
+            try
+            {
+                string moveId = MxmlParser.GetPropertyValue(elem, "ID");
+                if (string.IsNullOrEmpty(moveId)) continue;
+
+                string debugDesc = MxmlParser.GetPropertyValue(elem, "DebugDescription");
+                string target = MxmlParser.GetNestedEnum(elem, "PrimaryTarget", "PetBattlerTarget") ?? "";
+                bool multiTurn = MxmlParser.ParseValue(
+                    MxmlParser.GetPropertyValue(elem, "MultiTurnMove", "false")) is true;
+                bool basicMove = MxmlParser.ParseValue(
+                    MxmlParser.GetPropertyValue(elem, "BasicMove", "false")) is true;
+                string iconStyle = MxmlParser.GetNestedEnum(elem, "OverrideMoveIcon", "PetBattlerIcon") ?? "";
+                string nameStub = MxmlParser.GetPropertyValue(elem, "NameStub");
+
+                // Parse Phases
+                var phases = new List<Dictionary<string, object?>>();
+                var phasesProp = elem.Elements("Property")
+                    .FirstOrDefault(e => e.Attribute("name")?.Value == "Phases");
+                if (phasesProp != null)
+                {
+                    foreach (var phase in phasesProp.Elements("Property")
+                        .Where(e => e.Attribute("value")?.Value == "GcPetBattlerMovePhase"))
+                    {
+                        string strength = MxmlParser.GetNestedEnum(phase, "Strength", "PetPayloadStrength") ?? "";
+                        string effect = MxmlParser.GetNestedEnum(phase, "Effect", "PetBattlerMoveEffect") ?? "";
+
+                        phases.Add(new()
+                        {
+                            ["Strength"] = NullIfEmpty(strength),
+                            ["Effect"] = NullIfEmpty(effect),
+                        });
+                    }
+                }
+
+                // Resolve LocIDToDescribeStat from NameStub
+                string? locStatKey = null;
+                if (!string.IsNullOrEmpty(nameStub))
+                {
+                    string candidate = $"UI_PB_STAT_{nameStub.ToUpperInvariant()}";
+                    if (localisation.ContainsKey(candidate))
+                        locStatKey = candidate;
+                }
+
+                moves.Add(new()
+                {
+                    ["Id"] = moveId,
+                    ["DebugDescription"] = NullIfEmpty(debugDesc),
+                    ["Target"] = NullIfEmpty(target),
+                    ["MultiTurnMove"] = multiTurn,
+                    ["BasicMove"] = basicMove,
+                    ["IconStyle"] = NullIfEmpty(iconStyle),
+                    ["NameStub"] = NullIfEmpty(nameStub),
+                    ["LocIDToDescribeStat"] = locStatKey,
+                    ["Phases"] = phases.Count > 0 ? phases : null,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [WARN] Skipped pet battle move: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[OK] Parsed {moves.Count} pet battle moves");
+        return moves;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Pet Battle Movesets
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses pet battler movesets from petbattlermovesetstable.MXML.
+    /// Produces Pet Battle Movesets.json with per-slot options.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ParsePetBattleMovesets(string mxmlPath)
+    {
+        var root = MxmlParser.LoadXml(mxmlPath);
+        var movesets = new List<Dictionary<string, object?>>();
+
+        var moveSetsProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "MoveSets"
+                && e.Parent?.Name.LocalName == "Data");
+        if (moveSetsProp == null)
+        {
+            moveSetsProp = root.Descendants("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "MoveSets");
+        }
+        if (moveSetsProp == null)
+        {
+            Console.WriteLine("[WARN] ParsePetBattleMovesets: No <Property name=\"MoveSets\"> found");
+            return movesets;
+        }
+
+        foreach (var elem in moveSetsProp.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "GcPetBattlerMoveSet"))
+        {
+            try
+            {
+                string setId = MxmlParser.GetPropertyValue(elem, "ID");
+                if (string.IsNullOrEmpty(setId)) continue;
+
+                var slots = new List<Dictionary<string, object?>>();
+                for (int s = 1; s <= 5; s++)
+                {
+                    string slotName = $"Slot{s}";
+                    var slotProp = elem.Elements("Property")
+                        .FirstOrDefault(e => e.Attribute("name")?.Value == slotName);
+                    if (slotProp == null) continue;
+
+                    var optionsProp = slotProp.Descendants("Property")
+                        .FirstOrDefault(e => e.Attribute("name")?.Value == "AllowedMoveTemplates"
+                            && e.Elements("Property").Any());
+                    if (optionsProp == null) continue;
+
+                    var options = new List<Dictionary<string, object?>>();
+                    foreach (var opt in optionsProp.Elements("Property")
+                        .Where(e => e.Attribute("value")?.Value == "GcPetBattlerMoveSlotOption"))
+                    {
+                        string template = MxmlParser.GetPropertyValue(opt, "Template");
+                        int cooldownMin = MxmlParser.ParseValue(
+                            MxmlParser.GetPropertyValue(opt, "CooldownMin", "0")) is int cMin ? cMin : 0;
+                        int cooldownMax = MxmlParser.ParseValue(
+                            MxmlParser.GetPropertyValue(opt, "CooldownMax", "0")) is int cMax ? cMax : 0;
+                        object weightVal = MxmlParser.ParseValue(
+                            MxmlParser.GetPropertyValue(opt, "Weighting", "0"));
+                        double weighting = weightVal is double d ? d : weightVal is int i ? i : 0.0;
+
+                        options.Add(new()
+                        {
+                            ["Template"] = NullIfEmpty(template),
+                            ["CooldownMin"] = cooldownMin,
+                            ["CooldownMax"] = cooldownMax,
+                            ["Weighting"] = weighting,
+                        });
+                    }
+
+                    slots.Add(new()
+                    {
+                        ["Slot"] = s,
+                        ["Options"] = options,
+                    });
+                }
+
+                movesets.Add(new()
+                {
+                    ["Id"] = setId,
+                    ["Slots"] = slots,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [WARN] Skipped pet battle moveset: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[OK] Parsed {movesets.Count} pet battle movesets");
+        return movesets;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Game Table Globals (Pet Battle sections)
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses pet-battle-relevant sections from gcgametableglobals.MXML:
+    /// PetBiomeAffinities, PetAffinityLoc, PetAffinityLocStub, PetTargetLoc.
+    /// Produces Game Table Globals.json.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ParseGameTableGlobals(string mxmlPath)
+    {
+        var root = MxmlParser.LoadXml(mxmlPath);
+        var result = new List<Dictionary<string, object?>>();
+
+        // PetBiomeAffinities
+        var affinities = new Dictionary<string, object?>();
+        var affinityProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "PetBiomeAffinities");
+        if (affinityProp != null)
+        {
+            foreach (var child in affinityProp.Elements("Property"))
+            {
+                string biome = child.Attribute("name")?.Value ?? "";
+                string affinity = MxmlParser.GetPropertyValue(child, "PetBattlerAffinity");
+                if (!string.IsNullOrEmpty(biome))
+                    affinities[biome] = affinity;
+            }
+        }
+
+        // PetAffinityLoc
+        var affinityLoc = new Dictionary<string, object?>();
+        var affinityLocProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "PetAffinityLoc");
+        if (affinityLocProp != null)
+        {
+            foreach (var child in affinityLocProp.Elements("Property"))
+            {
+                string key = child.Attribute("name")?.Value ?? "";
+                string val = child.Attribute("value")?.Value ?? "";
+                if (!string.IsNullOrEmpty(key))
+                    affinityLoc[key] = val;
+            }
+        }
+
+        // PetAffinityLocStub
+        var affinityLocStub = new Dictionary<string, object?>();
+        var stubProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "PetAffinityLocStub");
+        if (stubProp != null)
+        {
+            foreach (var child in stubProp.Elements("Property"))
+            {
+                string key = child.Attribute("name")?.Value ?? "";
+                string val = child.Attribute("value")?.Value ?? "";
+                if (!string.IsNullOrEmpty(key))
+                    affinityLocStub[key] = val;
+            }
+        }
+
+        // PetTargetLoc
+        var targetLoc = new Dictionary<string, object?>();
+        var targetLocProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "PetTargetLoc");
+        if (targetLocProp != null)
+        {
+            foreach (var child in targetLocProp.Elements("Property"))
+            {
+                string key = child.Attribute("name")?.Value ?? "";
+                string val = child.Attribute("value")?.Value ?? "";
+                if (!string.IsNullOrEmpty(key))
+                    targetLoc[key] = val;
+            }
+        }
+
+        result.Add(new()
+        {
+            ["PetBiomeAffinities"] = affinities.Count > 0 ? affinities : null,
+            ["PetAffinityLoc"] = affinityLoc.Count > 0 ? affinityLoc : null,
+            ["PetAffinityLocStub"] = affinityLocStub.Count > 0 ? affinityLocStub : null,
+            ["PetTargetLoc"] = targetLoc.Count > 0 ? targetLoc : null,
+        });
+
+        Console.WriteLine($"[OK] Parsed Game Table Globals (Biome affinities: {affinities.Count}, Affinity locs: {affinityLoc.Count})");
+        return result;
     }
 }
