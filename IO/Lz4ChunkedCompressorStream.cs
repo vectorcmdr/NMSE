@@ -1,8 +1,14 @@
 namespace NMSE.IO;
 
 /// <summary>
-/// Chunked LZ4 compression stream with 1MB blocks.
+/// Chunked LZ4 compression stream with 1MB blocks (HGSAVEV2 format).
 /// Each block has 8-byte header: uncompressedLen(4) + compressedLen(4).
+/// Used by post-Omega Xbox/Microsoft saves between versions 4.52 and 5.00.
+/// Note: The caller must prepend the "HGSAVEV2\0" header before the first block.
+/// Note: Apparently the trailing null terminator byte should be compressed as
+/// a separate 1-byte chunk. This class does not handle that automatically; the
+/// caller must split the data accordingly if strict compatibility is required.
+/// For Worlds Part I 5.00+, Xbox uses standard NMS LZ4 streaming (Lz4CompressorStream).
 /// </summary>
 public class Lz4ChunkedCompressorStream : Stream
 {

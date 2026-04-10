@@ -39,10 +39,10 @@ public static class MetaFileWriter
     internal const uint META_HEADER = 0xEEEEEEBE; // Steam/GOG: 4,008,636,094
 
     // Magic header for Switch and PlayStation meta files.
-    /// <summary>Switch and PlayStation meta file magic header (0x000007D0).</summary>
-    internal const uint META_HEADER_SWITCH_PS = 0x000007D0; // 2000 decimal
+    /// <summary>Switch and PlayStation meta file magic header (0xCA55E77E).</summary>
+    internal const uint META_HEADER_SWITCH_PS = 0xCA55E77E; // 3,394,627,454
 
-    // Meta format version identifiers - must match NMS game values (2001–2004).
+    // Meta format version identifiers - must match NMS game values (2001-2004).
     /// <summary>Meta format version for pre-Frontiers saves.</summary>
     internal const uint META_FORMAT_1 = 2001; // Pre-Frontiers
     /// <summary>Meta format version for Frontiers 3.60+ saves.</summary>
@@ -134,7 +134,7 @@ public static class MetaFileWriter
 
     private static uint GetMetaFormat(int baseVersion)
     {
-        // Base version thresholds from libNOM.io's Meta.GameVersion
+        // Base version thresholds
         if (baseVersion >= 4145) return META_FORMAT_4; // Worlds Part II 5.50+
         if (baseVersion >= 4135) return META_FORMAT_3; // Worlds Part I 5.00+
         if (baseVersion >= 4115) return META_FORMAT_2; // Frontiers 3.60+
@@ -193,6 +193,10 @@ public static class MetaFileWriter
 
     /// <summary>
     /// Write a Steam/GOG meta file (mf_*.hg) next to the save data file.
+    /// Note: Steam/GOG account data (accountdata.hg) does not use a meta file.
+    /// The caller must ensure this is not called for account data by passing
+    /// writeMeta=false in SaveToFile. Write meta for Steam account data even
+    /// though it is not required for the game to function (it accommodates).
     /// </summary>
     /// <param name="saveFilePath">Path to the save data file (e.g., save.hg).</param>
     /// <param name="compressedData">The compressed save data bytes that were written.</param>
@@ -232,9 +236,8 @@ public static class MetaFileWriter
 
         if (metaFormat >= META_FORMAT_2)
         {
-            // Hashes: write zeroes - the game writes zero hashes here.
-            // Non-zero hashes are not required and may confuse
-            // older game builds or cross-save validation?
+            // Hashes: Frontiers+ (META_FORMAT_2+) does not use
+            // SpookyHash or SHA256 in the meta file. Write zeros.
             writer.Write(new byte[48]); // 48 bytes of zeros -> offset 8..55
 
             writer.Write(decompressedSize); // 4 -> offset 56
@@ -289,8 +292,11 @@ public static class MetaFileWriter
         }
         else
         {
-            // Pre-Frontiers format: zero hashes + decompressed size only
-            writer.Write(new byte[48]); // zero hashes
+            // Pre-Frontiers format (META_FORMAT_1):
+            // Write real SpookyHash + SHA256 hashes of the compressed data.
+            // Pre-Frontiers meta includes actual hashes.
+            byte[] metaHashes = MetaCrypto.ComputeMetaHashes(compressedData);
+            writer.Write(metaHashes); // 48 bytes: spookyHash1(8) + spookyHash2(8) + sha256(32)
             writer.Write(decompressedSize);
         }
 
@@ -305,37 +311,66 @@ public static class MetaFileWriter
 
     /// <summary>
     /// Write a Switch meta file (manifest*.hg) next to the save data file.
+    /// Account meta (metaIndex 0) only updates the decompressed size at offset 8,
+    /// preserving existing data. Save meta writes all fields from scratch.
     /// </summary>
     public static void WriteSwitchMeta(string saveFilePath, uint decompressedSize, SaveMetaInfo info, int metaIndex)
     {
         string metaPath = GetSwitchMetaPath(saveFilePath, metaIndex);
 
-        uint metaFormat = GetMetaFormat(info.BaseVersion);
-        int bufferLen = GetSwitchMetaLength(metaFormat);
-        byte[] buffer = new byte[bufferLen];
-
-        using var ms = new MemoryStream(buffer);
-        using var writer = new BinaryWriter(ms);
-
-        writer.Write(META_HEADER_SWITCH_PS); // 4
-        writer.Write(metaFormat);            // 4
-        writer.Write(decompressedSize);      // 4
-        writer.Write(metaIndex);             // 4
-        writer.Write((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()); // 4
-        writer.Write(info.BaseVersion);      // 4
-        writer.Write((ushort)info.GameMode); // 2
-        writer.Write((ushort)info.Season);   // 2
-        writer.Write(info.TotalPlayTime);    // 8
-        // Total so far: 36 bytes
-
-        if (bufferLen > SWITCH_META_BEFORE_NAME)
+        // Account meta (metaIndex 0): only write decompressed size at offset 8.
+        // Account meta preserves existing bytes and only updates size.
+        if (metaIndex == 0)
         {
-            // Pad to name position
-            ms.Position = SWITCH_META_BEFORE_NAME;
-            WriteSaveNameAndSummary(writer, info, ms, SWITCH_META_BEFORE_DIFFICULTY, bufferLen);
+            uint metaFormat = GetMetaFormat(info.BaseVersion);
+            int bufLen = GetSwitchMetaLength(metaFormat);
+            byte[] buffer;
+            if (File.Exists(metaPath))
+            {
+                buffer = File.ReadAllBytes(metaPath);
+                if (buffer.Length < bufLen)
+                    Array.Resize(ref buffer, bufLen);
+            }
+            else
+            {
+                buffer = new byte[bufLen];
+            }
+            using var ms = new MemoryStream(buffer);
+            using var writer = new BinaryWriter(ms);
+            ms.Position = 8;
+            writer.Write(decompressedSize);
+            File.WriteAllBytes(metaPath, buffer);
+            return;
         }
 
-        File.WriteAllBytes(metaPath, buffer);
+        // Save meta: write all fields.
+        {
+            uint metaFormat = GetMetaFormat(info.BaseVersion);
+            int bufferLen = GetSwitchMetaLength(metaFormat);
+            byte[] buffer = new byte[bufferLen];
+
+            using var ms = new MemoryStream(buffer);
+            using var writer = new BinaryWriter(ms);
+
+            writer.Write(META_HEADER_SWITCH_PS); // 4
+            writer.Write(metaFormat);            // 4
+            writer.Write(decompressedSize);      // 4
+            writer.Write(metaIndex);             // 4
+            writer.Write((uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds()); // 4
+            writer.Write(info.BaseVersion);      // 4
+            writer.Write((ushort)info.GameMode); // 2
+            writer.Write((ushort)info.Season);   // 2
+            writer.Write(info.TotalPlayTime);    // 8
+            // Total so far: 36 bytes
+
+            if (bufferLen > SWITCH_META_BEFORE_NAME)
+            {
+                ms.Position = SWITCH_META_BEFORE_NAME;
+                WriteSaveNameAndSummary(writer, info, ms, SWITCH_META_BEFORE_DIFFICULTY, bufferLen);
+            }
+
+            File.WriteAllBytes(metaPath, buffer);
+        }
     }
 
     /// <summary>
@@ -347,24 +382,35 @@ public static class MetaFileWriter
         string dir = Path.GetDirectoryName(saveFilePath)!;
         string metaPath = Path.Combine(dir, $"manifest{metaIndex:D2}.hg");
 
-        uint metaFormat = GetMetaFormat(info.BaseVersion);
-
-        // PS4 streaming account meta: header + format + decompressedSize
+        // PS4 streaming account meta: header + format (always 2002) + decompressedSize.
+        // PS streaming account meta uses META_FORMAT_2 unconditionally
+        // and uses Switch-equivalent buffer sizes.
         if (metaIndex == 0)
         {
+            uint metaFormat = GetMetaFormat(info.BaseVersion);
             int bufLen = metaFormat >= META_FORMAT_2 ? SWITCH_META_LENGTH_WAYPOINT : SWITCH_META_LENGTH_VANILLA;
-            byte[] buffer = new byte[bufLen];
+            byte[] buffer;
+            if (File.Exists(metaPath))
+            {
+                buffer = File.ReadAllBytes(metaPath);
+                if (buffer.Length < bufLen)
+                    Array.Resize(ref buffer, bufLen);
+            }
+            else
+            {
+                buffer = new byte[bufLen];
+            }
             using var ms = new MemoryStream(buffer);
             using var writer = new BinaryWriter(ms);
             writer.Write(META_HEADER_SWITCH_PS);
-            writer.Write(metaFormat);
+            writer.Write(META_FORMAT_2);
             writer.Write(decompressedSize);
             File.WriteAllBytes(metaPath, buffer);
             return;
         }
 
-        // PS4 streaming save meta is not written for non-SaveWizard files
-        // (the game reads metadata from the data file itself in homebrew mode)
+        // PS4 streaming save meta is not written for non-SaveWizard files.
+        // The game reads metadata from the data file itself in homebrew mode.
     }
 
     /// <summary>
