@@ -26,7 +26,7 @@ You can see a set of thorough comparisons between the two most popular editors [
 
 <br />
 
-> **Latest Supported Game Version:** 6.30 *Xeno Arena* (6.30.0.1)
+> **Latest Supported Game Version:** 6.32 *Xeno Arena*
 
 </div>
 
