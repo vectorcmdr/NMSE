@@ -13,7 +13,7 @@ public partial class MainFormResources : Form
 {
     public const string AppName = "NMSE (NO MAN'S SAVE EDITOR)";
     // VerMajor, VerMinor, VerPatch are generated from version.json into BuildInfo.g.cs
-    public const string SuppGameRel = "6.20 Remnant";
+    public const string SuppGameRel = "6.32 Xeno Arena";
     public const string IconPath = "Resources/app/NMSE.ico";
     public const string GitHubUrl = "https://github.com/vectorcmdr/NMSE";
     public const string SponsorUrl = "https://github.com/sponsors/vectorcmdr";
