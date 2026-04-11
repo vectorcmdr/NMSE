@@ -138,7 +138,7 @@ internal static class NpcRaceLocKeys
 
 /// <summary>
 /// Bases sub-panel: base selector, name, items count, NPC management,
-/// and backup/restore/move base computer buttons.
+/// and export/import/move base computer buttons.
 /// </summary>
 internal class BasesSubPanel : UserControl
 {
@@ -158,8 +158,8 @@ internal class BasesSubPanel : UserControl
     private readonly Button _summonWorkerBtn;
 
     // Buttons
-    private readonly Button _backupBtn;
-    private readonly Button _restoreBtn;
+    private readonly Button _exportBtn;
+    private readonly Button _importBtn;
     private readonly Button _moveBaseComputerBtn;
 
     // Labels for localisation
@@ -271,14 +271,14 @@ internal class BasesSubPanel : UserControl
             FlowDirection = FlowDirection.LeftToRight,
             Padding = new Padding(0, 6, 0, 0)
         };
-        _backupBtn = new Button { Text = UiStrings.Get("base.backup"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(80, 0), Enabled = false };
-        _backupBtn.Click += OnBackup;
-        _restoreBtn = new Button { Text = UiStrings.Get("base.restore"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(80, 0), Enabled = false };
-        _restoreBtn.Click += OnRestore;
+        _exportBtn = new Button { Text = UiStrings.Get("base.export"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(80, 0), Enabled = false };
+        _exportBtn.Click += OnExport;
+        _importBtn = new Button { Text = UiStrings.Get("base.import"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(80, 0), Enabled = false };
+        _importBtn.Click += OnImport;
         _moveBaseComputerBtn = new Button { Text = UiStrings.Get("base.move_basecomp"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(140, 0), Enabled = false };
         _moveBaseComputerBtn.Click += OnMoveBaseComputer;
-        buttonPanel.Controls.Add(_backupBtn);
-        buttonPanel.Controls.Add(_restoreBtn);
+        buttonPanel.Controls.Add(_exportBtn);
+        buttonPanel.Controls.Add(_importBtn);
         buttonPanel.Controls.Add(_moveBaseComputerBtn);
         layout.Controls.Add(buttonPanel, 0, row);
         layout.SetColumnSpan(buttonPanel, 3);
@@ -303,8 +303,8 @@ internal class BasesSubPanel : UserControl
         _npcSeed.Text = "";
         _baseName.Text = "";
         _baseItems.Text = "";
-        _backupBtn.Enabled = false;
-        _restoreBtn.Enabled = false;
+        _exportBtn.Enabled = false;
+        _importBtn.Enabled = false;
         _moveBaseComputerBtn.Enabled = false;
 
         try
@@ -580,8 +580,8 @@ internal class BasesSubPanel : UserControl
             _baseName.Text = "";
             _baseName.Enabled = false;
             _baseItems.Text = "";
-            _backupBtn.Enabled = false;
-            _restoreBtn.Enabled = false;
+            _exportBtn.Enabled = false;
+            _importBtn.Enabled = false;
             _moveBaseComputerBtn.Enabled = false;
             _pendingBaseName = null;
             UpdateSummonButtonState();
@@ -600,8 +600,8 @@ internal class BasesSubPanel : UserControl
         }
         catch { }
         _baseItems.Text = objectCount.ToString();
-        _backupBtn.Enabled = true;
-        _restoreBtn.Enabled = true;
+        _exportBtn.Enabled = true;
+        _importBtn.Enabled = true;
         _moveBaseComputerBtn.Enabled = true;
         UpdateSummonButtonState();
     }
@@ -652,55 +652,63 @@ internal class BasesSubPanel : UserControl
         }
     }
 
-    private void OnBackup(object? sender, EventArgs e)
+    private void OnExport(object? sender, EventArgs e)
     {
         if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
         try
         {
             string defaultName = item.Data.GetString("Name") ?? "Base";
+            var config = ExportConfig.Instance;
+            var vars = new Dictionary<string, string>
+            {
+                ["base_name"] = defaultName
+            };
+
             using var dialog = new SaveFileDialog
             {
-                Filter = "NMS Base Backup (*.json)|*.json|All Files (*.*)|*.*",
-                Title = "Backup Base",
-                FileName = $"{defaultName}.json"
+                Filter = ExportConfig.BuildDialogFilter(config.BaseExt, "Base files"),
+                DefaultExt = config.BaseExt.TrimStart('.'),
+                FileName = ExportConfig.BuildFileName(config.BaseTemplate, config.BaseExt, vars),
+                Title = UiStrings.Get("base.export_title")
             };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 item.Data.ExportToFile(dialog.FileName);
-                MessageBox.Show(UiStrings.Get("base.backup_success"), UiStrings.Get("base.backup_title"),
+                MessageBox.Show(UiStrings.Get("base.export_success"), UiStrings.Get("base.export_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.backup_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(UiStrings.Format("base.export_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
-    private void OnRestore(object? sender, EventArgs e)
+    private void OnImport(object? sender, EventArgs e)
     {
         if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
         try
         {
+            var config = ExportConfig.Instance;
             using var dialog = new OpenFileDialog
             {
-                Filter = "NMS Base Backup (*.json)|*.json|All Files (*.*)|*.*",
-                Title = "Restore Base"
+                Filter = ExportConfig.BuildImportFilter(config.BaseExt, "Base files"),
+                Title = UiStrings.Get("base.import_title")
             };
 
             if (dialog.ShowDialog() != DialogResult.OK) return;
 
             var result = MessageBox.Show(
-                UiStrings.Get("base.restore_confirm"),
-                UiStrings.Get("base.confirm_restore_title"),
+                UiStrings.Get("base.import_confirm"),
+                UiStrings.Get("base.confirm_import_title"),
                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (result != DialogResult.Yes) return;
 
             var imported = JsonObject.ImportFromFile(dialog.FileName);
 
-            // Copy restored base data: primarily the Objects array
+            // Copy imported base data: primarily the Objects array
             if (imported.Contains("Objects"))
             {
                 item.Data.Set("Objects", imported.Get("Objects"));
@@ -716,12 +724,12 @@ internal class BasesSubPanel : UserControl
 
             // Refresh display
             OnBaseSelected(this, EventArgs.Empty);
-            MessageBox.Show(UiStrings.Get("base.restore_success"), UiStrings.Get("base.restore_title"),
+            MessageBox.Show(UiStrings.Get("base.import_success"), UiStrings.Get("base.import_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.restore_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(UiStrings.Format("base.import_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -845,8 +853,8 @@ internal class BasesSubPanel : UserControl
         if (_itemsLabel != null) _itemsLabel.Text = UiStrings.Get("base.items_label");
         _generateNpcSeedBtn.Text = UiStrings.Get("common.generate");
         _summonWorkerBtn.Text = UiStrings.Get("base.summon_npc");
-        _backupBtn.Text = UiStrings.Get("base.backup");
-        _restoreBtn.Text = UiStrings.Get("base.restore");
+        _exportBtn.Text = UiStrings.Get("base.export");
+        _importBtn.Text = UiStrings.Get("base.import");
         _moveBaseComputerBtn.Text = UiStrings.Get("base.move_basecomp");
 
         // Refresh NPC race combo with localised display names
