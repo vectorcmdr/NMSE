@@ -5458,6 +5458,105 @@ public class LogicTests
         Assert.Equal("B_WNG_R", result);
     }
 
+    // --- RawJsonLogic: SerializeValue ---
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_JsonObject_ProducesFormattedJson()
+    {
+        var obj = new JsonObject();
+        obj.Add("Name", "TestBase");
+        obj.Add("Version", 8);
+        string json = RawJsonLogic.SerializeValue(obj);
+        Assert.Contains("\"Name\": \"TestBase\"", json);
+        Assert.Contains("\"Version\": 8", json);
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_JsonArray_ProducesFormattedJson()
+    {
+        var arr = new JsonArray();
+        arr.Add(1);
+        arr.Add(2);
+        arr.Add(3);
+        string json = RawJsonLogic.SerializeValue(arr);
+        Assert.StartsWith("[", json.Trim());
+        Assert.Contains("1", json);
+        Assert.Contains("3", json);
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_String_ProducesQuotedString()
+    {
+        string json = RawJsonLogic.SerializeValue("hello world");
+        Assert.Equal("\"hello world\"", json);
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_Integer_ProducesNumber()
+    {
+        string json = RawJsonLogic.SerializeValue(42);
+        Assert.Equal("42", json);
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_Boolean_ProducesLiteral()
+    {
+        Assert.Equal("true", RawJsonLogic.SerializeValue(true));
+        Assert.Equal("false", RawJsonLogic.SerializeValue(false));
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_Null_ProducesNull()
+    {
+        Assert.Equal("null", RawJsonLogic.SerializeValue(null));
+    }
+
+    [Fact]
+    public void RawJsonLogic_SerializeValue_RoundTrips_WithParseValue()
+    {
+        var obj = new JsonObject();
+        obj.Add("Key", "Value");
+        obj.Add("Count", 5);
+        var arr = new JsonArray();
+        arr.Add(obj);
+
+        string json = RawJsonLogic.SerializeValue(arr);
+        object? parsed = RawJsonLogic.ParseValue(json);
+        Assert.IsType<JsonArray>(parsed);
+        var parsedArr = (JsonArray)parsed;
+        Assert.Equal(1, parsedArr.Length);
+        var innerObj = parsedArr.Get(0) as JsonObject;
+        Assert.NotNull(innerObj);
+        Assert.Equal("Value", innerObj.GetString("Key"));
+        Assert.Equal(5, innerObj.GetInt("Count"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseValue_PrimitiveTypes()
+    {
+        Assert.Equal(42, RawJsonLogic.ParseValue("42"));
+        Assert.Equal("hello", RawJsonLogic.ParseValue("\"hello\""));
+        Assert.Equal(true, RawJsonLogic.ParseValue("true"));
+        Assert.Equal(false, RawJsonLogic.ParseValue("false"));
+        Assert.Null(RawJsonLogic.ParseValue("null"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseValue_Object_ReturnsJsonObject()
+    {
+        var result = RawJsonLogic.ParseValue("{\"Name\": \"Test\"}");
+        Assert.IsType<JsonObject>(result);
+        Assert.Equal("Test", ((JsonObject)result).GetString("Name"));
+    }
+
+    [Fact]
+    public void RawJsonLogic_ParseValue_Array_ReturnsJsonArray()
+    {
+        var result = RawJsonLogic.ParseValue("[1, 2, 3]");
+        Assert.IsType<JsonArray>(result);
+        Assert.Equal(3, ((JsonArray)result).Length);
+    }
+
     // --- RawJsonLogic: ComputeSimpleDiff ---
 
     [Fact]

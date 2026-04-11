@@ -428,4 +428,105 @@ public class UiStringsTests : IDisposable
         string value = UiStrings.Get("companion.battle_mutation_heading");
         Assert.DoesNotContain("Mutation Progress", value);
     }
+
+    // --- Base panel export/import locale tests ---
+
+    [Fact]
+    public void UiStrings_BaseExportImport_KeysExistInEnGB()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        UiStrings.SetDirectory(langDir);
+        UiStrings.Load("en-GB");
+
+        Assert.Equal("Export", UiStrings.Get("base.export"));
+        Assert.Equal("Import", UiStrings.Get("base.import"));
+        Assert.Equal("Export", UiStrings.Get("base.export_title"));
+        Assert.Equal("Import", UiStrings.Get("base.import_title"));
+        Assert.Equal("Confirm Import", UiStrings.Get("base.confirm_import_title"));
+    }
+
+    [Fact]
+    public void UiStrings_BaseExportImport_OldBackupRestoreKeysRemovedFromEnGB()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        UiStrings.SetDirectory(langDir);
+        UiStrings.Load("en-GB");
+
+        // Old keys should fall back to the raw key name (indicating they are missing)
+        Assert.Equal("base.backup", UiStrings.Get("base.backup"));
+        Assert.Equal("base.restore", UiStrings.Get("base.restore"));
+    }
+
+    [Fact]
+    public void UiStrings_BaseExportImport_KeysExistInAllLanguages()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        string[] requiredKeys =
+        [
+            "base.export", "base.export_failed", "base.export_success", "base.export_title",
+            "base.confirm_import_title", "base.import", "base.import_confirm",
+            "base.import_failed", "base.import_success", "base.import_title"
+        ];
+
+        foreach (var lang in AllLanguages)
+        {
+            UiStrings.SetDirectory(langDir);
+            UiStrings.Load(lang);
+
+            foreach (var key in requiredKeys)
+            {
+                string value = UiStrings.Get(key);
+                Assert.NotEqual(key, value);
+            }
+        }
+    }
+
+    // --- Raw JSON Editor node export/import locale tests ---
+
+    [Fact]
+    public void UiStrings_RawJsonNodeExportImport_KeysExistInEnGB()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        UiStrings.SetDirectory(langDir);
+        UiStrings.Load("en-GB");
+
+        Assert.Equal("Export Node...", UiStrings.Get("raw_json.ctx_export_node"));
+        Assert.Equal("Import Node...", UiStrings.Get("raw_json.ctx_import_node"));
+        Assert.Equal("Export Node", UiStrings.Get("raw_json.export_node_title"));
+        Assert.Equal("Import Node", UiStrings.Get("raw_json.import_node_title"));
+    }
+
+    [Fact]
+    public void UiStrings_RawJsonNodeExportImport_KeysExistInAllLanguages()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        string[] requiredKeys =
+        [
+            "raw_json.ctx_export_node", "raw_json.ctx_import_node",
+            "raw_json.exported_node", "raw_json.export_node_title",
+            "raw_json.imported_node", "raw_json.import_node_title"
+        ];
+
+        foreach (var lang in AllLanguages)
+        {
+            UiStrings.SetDirectory(langDir);
+            UiStrings.Load(lang);
+
+            foreach (var key in requiredKeys)
+            {
+                string value = UiStrings.Get(key);
+                Assert.NotEqual(key, value);
+            }
+        }
+    }
 }
