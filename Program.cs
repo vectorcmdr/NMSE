@@ -17,7 +17,18 @@ static class Program
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainFormResources());
+
+        // Show a lightweight splash screen so the user gets immediate
+        // visual feedback while the main form performs heavy initialisation
+        // (database loading, icon preloading, panel construction).
+        using var splash = new SplashForm();
+        splash.Show();
+        splash.Update(); // Force synchronous repaint before the heavy work.
+
+        var mainForm = new MainFormResources();
+        mainForm.SetSplash(splash);
+
+        Application.Run(mainForm);
     }
 
     private static void OnThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)

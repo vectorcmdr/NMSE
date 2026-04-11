@@ -95,6 +95,12 @@ public partial class MainFormResources : Form
     /// (e.g. the Opacity 0 to 1 transition that removes WS_EX_LAYERED).</summary>
     private Icon? _appIcon;
 
+    /// <summary>Startup splash screen to close once the main form is visible.</summary>
+    private SplashForm? _splashForm;
+
+    /// <summary>Set the startup splash screen that will be closed once the main form is ready.</summary>
+    internal void SetSplash(SplashForm splash) => _splashForm = splash;
+
     public MainFormResources()
     {
         SuspendLayout();
@@ -195,6 +201,14 @@ public partial class MainFormResources : Form
             {
                 Icon = _appIcon;
                 ShowIcon = true;
+            }
+
+            // Close the startup splash screen now that the main form is visible.
+            // Disposal is handled by the using statement in Program.Main().
+            if (_splashForm != null)
+            {
+                _splashForm.Close();
+                _splashForm = null;
             }
 
             // Non-blocking background update check after startup
