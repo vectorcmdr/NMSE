@@ -1133,8 +1133,10 @@ public partial class InventoryGridPanel : UserControl
         RedrawHelper.Resume(_gridContainer);
         UpdateToolbarActionEnabledState();
 
+        // Reset sort mode to None on every load so sorting is never "sticky".
+        // The user must explicitly select a sort option from the dropdown each time.
         if (_sortingEnabled && _currentSortMode != InventorySortMode.None && !_isApplyingSort)
-            ApplyCurrentSortMode(false);
+            SetSortMode(InventorySortMode.None, applySort: false, raiseModified: false);
     }
 
     /// <summary>
