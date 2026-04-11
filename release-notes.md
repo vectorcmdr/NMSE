@@ -1,8 +1,14 @@
-## NMSE — No Man's Save Editor v1.1.14 (preview)
+## NMSE — No Man's Save Editor v1.1.17 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+### This preview build includes new support for Game Update 6.32 (Xeno Arena)
+
+> ⚠️ _Please use the companion editing responsibly for PvP. Don't have fun at the expense of other players._
+
+> _Game table companion pet battle features are based on available data and testing. As always, I welcome additional input on the implementation via Issues._
 
 #### Features:
 
@@ -13,15 +19,16 @@
 - Added new 'Battle' tab to the companion panel that supports editing:
     - Stats class override support (Health, Agility, Combat Effectiveness).
     - Holo-Arena victories count.
-    - Mutation progress (XP).
+    - Mutation progress.
     - Gene edits available (points you can use for leveling stats, or rerolling skills).
-    - Health / Agility / Combat gene modification (10 each = max level 30).
-    - 5x move slots editing (selection of base skill types by ID with description) and their cooldown and score boost value.
+    - Health / Agility / Combat gene modification.
+    - 5x Ability slots editing (selection of base ability types by ID with description) and their cooldown and score boost value.
     - Displays companion affinity and move information.
 - Account rewards reworked to better sync reward states:
     - Added a sync check between seen/unlocked state arrays.
     - Added a check consistency button that gives feedback with adjustment buttons (based on sync state).
     - Added Known Specials tab in Catalogue that lists the seen/redeemed/known special items from account rewards for extra use.
+- Added Export / Import JSON node to the Raw JSON Editor via the right click context menu.
 
 #### Bug Fixes:
 
@@ -30,6 +37,7 @@
 - Fix for "Repair" and "Repair All" in inventories not removing the damaged items from the slot (but still repairing on load to game).
 - Fix for accountdata.hg accidental compression (game gracefully loaded, so was non-breaking).
 - Fix for inventory sorting to stop inventories from sorting based on the previous selection on a same session save reload / panel switch. Now defaults to "None" between same session load / switch.
+- Changed "Backup" and "Restore" button naming in the Bases tab so they match the Export / Import naming of the other panels.
 - Numerous internal fixes and changes (non user facing).
 
 <br />
