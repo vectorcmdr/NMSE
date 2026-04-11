@@ -1,23 +1,51 @@
-## NMSE — No Man's Save Editor v1.0.397 (preview)
+## NMSE — No Man's Save Editor v1.1.14 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
-
-### This is a quick build for initial game update 6.30.0.1 support!
 
 ### Changelog
 
 #### Features:
 
-_Work for supporting the new pet battle system is currently underway._
+- Updated for 6.32 Xeno Arena.
+- Added small, simple loading splash for better loading feedback.
+- Added accessory customisation to companion panel:
+    - Change left / right / chest accessories and their colors and scale.
+- Added new 'Battle' tab to the companion panel that supports editing:
+    - Stats class override support (Health, Agility, Combat Effectiveness).
+    - Holo-Arena victories count.
+    - Mutation progress (XP).
+    - Gene edits available (points you can use for leveling stats, or rerolling skills).
+    - Health / Agility / Combat gene modification (10 each = max level 30).
+    - 5x move slots editing (selection of base skill types by ID with description) and their cooldown and score boost value.
+    - Displays companion affinity and move information.
+- Account rewards reworked to better sync reward states:
+    - Added a sync check between seen/unlocked state arrays.
+    - Added a check consistency button that gives feedback with adjustment buttons (based on sync state).
+    - Added Known Specials tab in Catalogue that lists the seen/redeemed/known special items from account rewards for extra use.
+
+#### Bug Fixes:
+
+- Fix for Technology Module and Upgrades filtering in inventory types (via DB re-categorisation).
+- Fix for delete key not working in Raw JSON Editor.
+- Fix for "Repair" and "Repair All" in inventories not removing the damaged items from the slot (but still repairing on load to game).
+- Fix for accountdata.hg accidental compression (game gracefully loaded, so was non-breaking).
+- Fix for inventory sorting to stop inventories from sorting based on the previous selection on a same session save reload / panel switch. Now defaults to "None" between same session load / switch.
+- Numerous internal fixes and changes (non user facing).
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.0.397 (preview)
+
+#### Features:
 
 - Database updated with 6.30.0.1 items, titles, etc.
 - JSON key mappings updated for 6.30.0.1.
 - Companion count updated to new limit of 30.
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.396 (preview)
 
@@ -38,7 +66,7 @@ _Work for supporting the new pet battle system is currently underway._
 
 #### Features:
 
-- Inventory grids now have additional sorting/stacking functionality (thanks @thiago-rcarvalho):
+- Inventory grids now have additional sorting/stacking functionality (thanks thiago-rcarvalho):
     - Inventory grids now support sorting by name/category.
     - Inventory grids can have items sent to other inventories to auto-stack (such as exosuit to chest, ship or freighter).
     - Inventory grid slots/cells have a new pin button to protect the slot from auto stacking.
