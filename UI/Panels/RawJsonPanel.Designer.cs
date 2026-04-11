@@ -160,6 +160,9 @@ partial class RawJsonPanel
         _contextMenu.Items.Add("Copy Key", null, (_, _) => CopyKey());
         _contextMenu.Items.Add("Copy Value", null, (_, _) => CopyValue());
         _contextMenu.Items.Add("Copy Path", null, (_, _) => CopyPath());
+        _contextMenu.Items.Add(new ToolStripSeparator());
+        _contextMenu.Items.Add("Export Node...", null, (_, _) => ExportSelectedNode());
+        _contextMenu.Items.Add("Import Node...", null, (_, _) => ImportSelectedNode());
         _contextMenu.Opening += OnContextMenuOpening;
         _treeView.ContextMenuStrip = _contextMenu;
 

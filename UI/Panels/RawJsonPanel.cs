@@ -816,11 +816,15 @@ public partial class RawJsonPanel : UserControl
         bool isArr = node?.Tag is NodeTag { Value: JsonArray };
         bool isLeaf = node?.Tag is NodeTag t && t.Value is not JsonObject && t.Value is not JsonArray;
         bool isRoot = node?.Parent == null;
+        bool hasNode = node != null;
+        bool hasParent = node?.Tag is NodeTag { Parent: not null };
 
         _contextMenu.Items[0].Visible = isLeaf;     // Edit Value
         _contextMenu.Items[2].Visible = isObj;       // Add Property
         _contextMenu.Items[3].Visible = isArr;       // Add Array Item
         _contextMenu.Items[5].Visible = !isRoot;     // Delete
+        _contextMenu.Items[11].Visible = hasNode;    // Export Node
+        _contextMenu.Items[12].Visible = hasParent;  // Import Node (needs parent to replace into)
     }
 
     #endregion
@@ -1167,6 +1171,104 @@ public partial class RawJsonPanel : UserControl
                 MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
                     UiStrings.Get("raw_json.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+    }
+
+    /// <summary>
+    /// Exports the selected tree node's value (with all children) to a JSON file
+    /// using deobfuscated (human-readable) keys.
+    /// </summary>
+    private void ExportSelectedNode()
+    {
+        var node = _treeView.SelectedNode;
+        if (node?.Tag is not NodeTag tag) return;
+
+        string nodeName = tag.Key ?? "root";
+        string safeName = nodeName.Trim('[', ']');
+        if (string.IsNullOrWhiteSpace(safeName)) safeName = "node";
+
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            FileName = $"{safeName}.json",
+            Title = UiStrings.Get("raw_json.export_node_title")
+        };
+
+        if (dialog.ShowDialog() != DialogResult.OK) return;
+
+        try
+        {
+            string json = RawJsonLogic.SerializeValue(tag.Value);
+            File.WriteAllText(dialog.FileName, json);
+            _statusLabel.Text = UiStrings.Format("raw_json.exported_node", Path.GetFileName(dialog.FileName));
+            _statusLabel.ForeColor = Color.Green;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
+                UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    /// <summary>
+    /// Imports a JSON file and replaces the selected tree node's value with the
+    /// parsed content, preserving the node's key/position within its parent container.
+    /// </summary>
+    private void ImportSelectedNode()
+    {
+        var node = _treeView.SelectedNode;
+        if (node?.Tag is not NodeTag tag || tag.Parent == null || tag.Key == null) return;
+
+        using var dialog = new OpenFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            Title = UiStrings.Get("raw_json.import_node_title")
+        };
+
+        if (dialog.ShowDialog() != DialogResult.OK) return;
+
+        try
+        {
+            string json = File.ReadAllText(dialog.FileName);
+            object? newValue = RawJsonLogic.ParseValue(json);
+
+            // Record undo before modifying
+            _undoStack.Push(new UndoAction(UndoActionType.Edit, tag.Parent, tag.Key, tag.Value, newValue));
+            _redoStack.Clear();
+
+            // Replace the value in the parent container
+            if (tag.Parent is JsonObject parentObj && !tag.Key.StartsWith('['))
+            {
+                parentObj.Set(tag.Key, newValue);
+            }
+            else if (tag.Parent is JsonArray parentArr && tag.Key.StartsWith('['))
+            {
+                int idx = int.Parse(tag.Key.Trim('[', ']'), System.Globalization.CultureInfo.InvariantCulture);
+                parentArr.Set(idx, newValue);
+            }
+
+            // Rebuild the tree node in place
+            var parentNode = node.Parent;
+            if (parentNode != null)
+            {
+                int nodeIndex = parentNode.Nodes.IndexOf(node);
+                var replacement = CreateValueNode(tag.Key, newValue, tag.Parent, 2, 0);
+                _treeView.BeginUpdate();
+                parentNode.Nodes.RemoveAt(nodeIndex);
+                parentNode.Nodes.Insert(nodeIndex, replacement);
+                UpdateContainerNodeText(parentNode);
+                _treeView.SelectedNode = replacement;
+                _treeView.EndUpdate();
+            }
+
+            _treeModified = true;
+            _statusLabel.Text = UiStrings.Format("raw_json.imported_node", Path.GetFileName(dialog.FileName));
+            _statusLabel.ForeColor = Color.Green;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
+                UiStrings.Get("raw_json.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1629,7 +1731,7 @@ public partial class RawJsonPanel : UserControl
         _diffButton.Text = UiStrings.Get("raw_json.diff");
 
         // Context menu items (by position, skipping separators)
-        if (_contextMenu.Items.Count >= 10)
+        if (_contextMenu.Items.Count >= 13)
         {
             _contextMenu.Items[0].Text = UiStrings.Get("raw_json.ctx_edit_value");
             _contextMenu.Items[2].Text = UiStrings.Get("raw_json.ctx_add_property");
@@ -1638,6 +1740,8 @@ public partial class RawJsonPanel : UserControl
             _contextMenu.Items[7].Text = UiStrings.Get("raw_json.ctx_copy_key");
             _contextMenu.Items[8].Text = UiStrings.Get("raw_json.ctx_copy_value");
             _contextMenu.Items[9].Text = UiStrings.Get("raw_json.ctx_copy_path");
+            _contextMenu.Items[11].Text = UiStrings.Get("raw_json.ctx_export_node");
+            _contextMenu.Items[12].Text = UiStrings.Get("raw_json.ctx_import_node");
         }
     }
 }

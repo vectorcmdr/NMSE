@@ -39,6 +39,23 @@ internal static class RawJsonLogic
     }
 
     /// <summary>
+    /// Serializes any JSON value (object, array, or primitive) to a formatted
+    /// display string with human-readable (deobfuscated) keys.
+    /// </summary>
+    internal static string SerializeValue(object? value)
+    {
+        return JsonParser.Serialize(value, formatted: true, skipReverseMapping: true);
+    }
+
+    /// <summary>
+    /// Parses a JSON string into a typed value (JsonObject, JsonArray, or primitive).
+    /// </summary>
+    internal static object? ParseValue(string jsonText)
+    {
+        return JsonParser.ParseValue(jsonText);
+    }
+
+    /// <summary>
     /// Formats a JSON value for display in an edit dialog.
     /// Unlike tree-display formatting, this does NOT wrap strings in quotation marks
     /// so users edit the raw value without needing to handle surrounding quotes.
