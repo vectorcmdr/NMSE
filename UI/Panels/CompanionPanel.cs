@@ -18,6 +18,15 @@ public partial class CompanionPanel : UserControl
 
     private bool _moveSlotDataInitialised;
 
+    /// <summary>Raw (unclamped) battle int values read from JSON at load time, keyed by field name.</summary>
+    private readonly Dictionary<string, int> _rawBattleIntValues = new();
+
+    /// <summary>Raw (unclamped) battle decimal values read from JSON at load time, keyed by field name.</summary>
+    private readonly Dictionary<string, decimal> _rawBattleDecimalValues = new();
+
+    /// <summary>Raw (unclamped) battle double values read from JSON at load time, keyed by field name.</summary>
+    private readonly Dictionary<string, double> _rawBattleDoubleValues = new();
+
     public CompanionPanel()
     {
         InitializeComponent();
@@ -1275,25 +1284,59 @@ public partial class CompanionPanel : UserControl
         UpdateClassOverrideEnabled();
         UpdateAverageClass();
 
+        // Clear raw battle values for the newly selected companion
+        _rawBattleIntValues.Clear();
+        _rawBattleDecimalValues.Clear();
+        _rawBattleDoubleValues.Clear();
+
         // Treats
         try
         {
             var treats = comp.GetArray("PetBattlerTreatsEaten");
-            _battleTreatHealth.Value = treats != null && treats.Length > 0 ? Math.Clamp(treats.GetInt(0), 0, 10) : 0;
-            _battleTreatAgility.Value = treats != null && treats.Length > 1 ? Math.Clamp(treats.GetInt(1), 0, 10) : 0;
-            _battleTreatCombat.Value = treats != null && treats.Length > 2 ? Math.Clamp(treats.GetInt(2), 0, 10) : 0;
+            int rawHealth = treats != null && treats.Length > 0 ? treats.GetInt(0) : 0;
+            int rawAgility = treats != null && treats.Length > 1 ? treats.GetInt(1) : 0;
+            int rawCombat = treats != null && treats.Length > 2 ? treats.GetInt(2) : 0;
+            _rawBattleIntValues["TreatHealth"] = rawHealth;
+            _rawBattleIntValues["TreatAgility"] = rawAgility;
+            _rawBattleIntValues["TreatCombat"] = rawCombat;
+            _battleTreatHealth.Value = Math.Clamp(rawHealth, 0, 10);
+            _battleTreatAgility.Value = Math.Clamp(rawAgility, 0, 10);
+            _battleTreatCombat.Value = Math.Clamp(rawCombat, 0, 10);
         }
         catch
         {
+            _rawBattleIntValues["TreatHealth"] = 0;
+            _rawBattleIntValues["TreatAgility"] = 0;
+            _rawBattleIntValues["TreatCombat"] = 0;
             _battleTreatHealth.Value = 0;
             _battleTreatAgility.Value = 0;
             _battleTreatCombat.Value = 0;
         }
         UpdateGenesLevel();
 
-        try { _battleGenesAvailable.Value = Math.Clamp(comp.GetInt("PetBattlerTreatsAvailable"), 0, 100); } catch { _battleGenesAvailable.Value = 0; }
-        try { _battleMutationProgress.Text = comp.GetDouble("PetBattleProgressToTreat").ToString(CultureInfo.InvariantCulture); } catch { _battleMutationProgress.Text = "0"; }
-        try { _battleVictories.Value = Math.Clamp(comp.GetInt("PetBattlerVictories"), 0, 999999); } catch { _battleVictories.Value = 0; }
+        try
+        {
+            int rawGenes = comp.GetInt("PetBattlerTreatsAvailable");
+            _rawBattleIntValues["GenesAvailable"] = rawGenes;
+            _battleGenesAvailable.Value = Math.Clamp(rawGenes, 0, 100);
+        }
+        catch { _rawBattleIntValues["GenesAvailable"] = 0; _battleGenesAvailable.Value = 0; }
+
+        try
+        {
+            double rawMutation = comp.GetDouble("PetBattleProgressToTreat");
+            _rawBattleDoubleValues["MutationProgress"] = rawMutation;
+            _battleMutationProgress.Text = rawMutation.ToString(CultureInfo.InvariantCulture);
+        }
+        catch { _rawBattleDoubleValues["MutationProgress"] = 0; _battleMutationProgress.Text = "0"; }
+
+        try
+        {
+            int rawVictories = comp.GetInt("PetBattlerVictories");
+            _rawBattleIntValues["Victories"] = rawVictories;
+            _battleVictories.Value = Math.Clamp(rawVictories, 0, 999999);
+        }
+        catch { _rawBattleIntValues["Victories"] = 0; _battleVictories.Value = 0; }
 
         // Move list
         LoadMoveSlots(comp);
@@ -1354,7 +1397,9 @@ public partial class CompanionPanel : UserControl
             var (cdMin, cdMax) = GetCooldownRange(moveId, i);
             _moveSlotCooldowns[i].Minimum = cdMin;
             _moveSlotCooldowns[i].Maximum = cdMax;
+            _rawBattleIntValues[$"Cooldown_{i}"] = cooldown;
             _moveSlotCooldowns[i].Value = Math.Clamp(cooldown, cdMin, cdMax);
+            _rawBattleDecimalValues[$"ScoreBoost_{i}"] = (decimal)scoreBoost;
             _moveSlotScoreBoosts[i].Value = Math.Clamp((decimal)scoreBoost, 0, 10);
 
             // Moveset label and detail
@@ -1566,6 +1611,10 @@ public partial class CompanionPanel : UserControl
         var comp = SelectedCompanion;
         if (comp == null) return;
 
+        // Skip write if user didn't change it from the clamped display value
+        if (!WasBattleIntChangedByUser($"Cooldown_{slotIndex}", (int)_moveSlotCooldowns[slotIndex].Value, _moveSlotCooldowns[slotIndex]))
+            return;
+
         try
         {
             var moveList = comp.GetArray("PetBattlerMoveList");
@@ -1595,6 +1644,10 @@ public partial class CompanionPanel : UserControl
             try { nud.Value = rounded; }
             finally { _loading = false; }
         }
+
+        // Skip write if user didn't change it from the clamped display value
+        if (!WasBattleDecimalChangedByUser($"ScoreBoost_{slotIndex}", rounded, nud))
+            return;
 
         double val = Math.Clamp((double)rounded, 0, 9.999999);
         try
@@ -1687,9 +1740,12 @@ public partial class CompanionPanel : UserControl
             var treats = comp.GetArray("PetBattlerTreatsEaten");
             if (treats != null)
             {
-                if (treats.Length > 0) treats.Set(0, (int)_battleTreatHealth.Value);
-                if (treats.Length > 1) treats.Set(1, (int)_battleTreatAgility.Value);
-                if (treats.Length > 2) treats.Set(2, (int)_battleTreatCombat.Value);
+                if (treats.Length > 0 && WasBattleIntChangedByUser("TreatHealth", (int)_battleTreatHealth.Value, _battleTreatHealth))
+                    treats.Set(0, (int)_battleTreatHealth.Value);
+                if (treats.Length > 1 && WasBattleIntChangedByUser("TreatAgility", (int)_battleTreatAgility.Value, _battleTreatAgility))
+                    treats.Set(1, (int)_battleTreatAgility.Value);
+                if (treats.Length > 2 && WasBattleIntChangedByUser("TreatCombat", (int)_battleTreatCombat.Value, _battleTreatCombat))
+                    treats.Set(2, (int)_battleTreatCombat.Value);
             }
         }
         catch { }
@@ -1709,6 +1765,8 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null || _loading) return;
+        if (!WasBattleIntChangedByUser("GenesAvailable", (int)_battleGenesAvailable.Value, _battleGenesAvailable))
+            return;
         comp.Set("PetBattlerTreatsAvailable", (int)_battleGenesAvailable.Value);
     }
 
@@ -1719,7 +1777,12 @@ public partial class CompanionPanel : UserControl
         var comp = SelectedCompanion;
         if (comp == null) return;
         if (double.TryParse(_battleMutationProgress.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double val))
+        {
+            // Skip write if user didn't change the value from what was loaded
+            if (_rawBattleDoubleValues.TryGetValue("MutationProgress", out double raw) && val == raw)
+                return;
             comp.Set("PetBattleProgressToTreat", val);
+        }
     }
 
     /// <summary>Writes the victories value.</summary>
@@ -1727,6 +1790,8 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null || _loading) return;
+        if (!WasBattleIntChangedByUser("Victories", (int)_battleVictories.Value, _battleVictories))
+            return;
         comp.Set("PetBattlerVictories", (int)_battleVictories.Value);
     }
 
@@ -1886,6 +1951,34 @@ public partial class CompanionPanel : UserControl
         {
             MessageBox.Show(UiStrings.Format("companion.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    /// <summary>
+    /// Returns true if the user actually changed an int battle value from its clamped display.
+    /// When the displayed (clamped) value still matches what we'd show for the raw value,
+    /// we know the user hasn't interacted, so we preserve the original JSON value.
+    /// </summary>
+    private bool WasBattleIntChangedByUser(string key, int displayValue, NumericUpDown nud)
+    {
+        if (_rawBattleIntValues.TryGetValue(key, out int raw))
+        {
+            int clamped = Math.Clamp(raw, (int)nud.Minimum, (int)nud.Maximum);
+            return displayValue != clamped;
+        }
+        return true; // No raw value recorded – assume user set it
+    }
+
+    /// <summary>
+    /// Returns true if the user actually changed a decimal battle value from its clamped display.
+    /// </summary>
+    private bool WasBattleDecimalChangedByUser(string key, decimal displayValue, NumericUpDown nud)
+    {
+        if (_rawBattleDecimalValues.TryGetValue(key, out decimal raw))
+        {
+            decimal clamped = Math.Clamp(raw, nud.Minimum, nud.Maximum);
+            return displayValue != clamped;
+        }
+        return true;
     }
 
     private JsonObject? FindSaveDataRoot()
