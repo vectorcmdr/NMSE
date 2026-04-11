@@ -1318,17 +1318,19 @@ public partial class CompanionPanel : UserControl
         {
             int rawGenes = comp.GetInt("PetBattlerTreatsAvailable");
             _rawBattleIntValues["GenesAvailable"] = rawGenes;
-            _battleGenesAvailable.Value = Math.Clamp(rawGenes, 0, 100);
+            _battleGenesAvailable.Value = Math.Clamp(rawGenes, 0, 1000);
         }
         catch { _rawBattleIntValues["GenesAvailable"] = 0; _battleGenesAvailable.Value = 0; }
 
         try
         {
             double rawMutation = comp.GetDouble("PetBattleProgressToTreat");
-            _rawBattleDoubleValues["MutationProgress"] = rawMutation;
-            _battleMutationProgress.Text = rawMutation.ToString(CultureInfo.InvariantCulture);
+            // Store the unclamped raw value so we only write back when the user
+            // explicitly changes it via the NUD (preserves out-of-range / Raw JSON Editor values).
+            _rawBattleDecimalValues["MutationProgress"] = (decimal)rawMutation;
+            _battleMutationProgress.Value = Math.Clamp((decimal)rawMutation, 0, 1.0m);
         }
-        catch { _rawBattleDoubleValues["MutationProgress"] = 0; _battleMutationProgress.Text = "0"; }
+        catch { _rawBattleDecimalValues["MutationProgress"] = 0; _battleMutationProgress.Value = 0; }
 
         try
         {
@@ -1770,19 +1772,28 @@ public partial class CompanionPanel : UserControl
         comp.Set("PetBattlerTreatsAvailable", (int)_battleGenesAvailable.Value);
     }
 
-    /// <summary>Writes the mutation progress value.</summary>
-    private void WriteBattleMutationProgress()
+    /// <summary>Handles mutation progress value change.
+    /// Snaps the value to the nearest 0.1 increment so that e.g. 0.660000
+    /// with an up-arrow press results in 0.700000 rather than 0.760000.</summary>
+    private void OnMutationProgressChanged()
     {
         if (_loading) return;
         var comp = SelectedCompanion;
         if (comp == null) return;
-        if (double.TryParse(_battleMutationProgress.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double val))
+
+        decimal rounded = Math.Round(_battleMutationProgress.Value, 1, MidpointRounding.AwayFromZero);
+        if (_battleMutationProgress.Value != rounded)
         {
-            // Skip write if user didn't change the value from what was loaded
-            if (_rawBattleDoubleValues.TryGetValue("MutationProgress", out double raw) && val == raw)
-                return;
-            comp.Set("PetBattleProgressToTreat", val);
+            _loading = true;
+            try { _battleMutationProgress.Value = rounded; }
+            finally { _loading = false; }
         }
+
+        if (!WasBattleDecimalChangedByUser("MutationProgress", rounded, _battleMutationProgress))
+            return;
+
+        double val = Math.Clamp((double)rounded, 0, 1.0);
+        comp.Set("PetBattleProgressToTreat", val);
     }
 
     /// <summary>Writes the victories value.</summary>
@@ -2076,9 +2087,10 @@ public partial class CompanionPanel : UserControl
         _battleTreatHealthLabel.Text = UiStrings.GetOrNull("companion.battle_treats_health") ?? "Health:";
         _battleTreatAgilityLabel.Text = UiStrings.GetOrNull("companion.battle_treats_agility") ?? "Agility:";
         _battleTreatCombatLabel.Text = UiStrings.GetOrNull("companion.battle_treats_combat") ?? "Combat:";
-        _battleGenesLevelLabel.Text = UiStrings.GetOrNull("companion.battle_genes_level") ?? "Genes Improved / Level:";
+        _battleGenesLevelLabel.Text = UiStrings.GetOrNull("companion.battle_genes_level") ?? "Genes Improved:";
         _battleGenesAvailableLabel.Text = UiStrings.GetOrNull("companion.battle_genes_available") ?? "Gene Edits Available:";
         _battleMutationProgressLabel.Text = UiStrings.GetOrNull("companion.battle_mutation_progress") ?? "Mutation Progress:";
+        _battleMutationHeadingLabel.Text = UiStrings.GetOrNull("companion.battle_mutation_heading") ?? "Genetic Profile";
         _battleVictoriesLabel.Text = UiStrings.GetOrNull("companion.battle_victories") ?? "Holo-Arena Victories:";
         _battleMoveListLabel.Text = UiStrings.GetOrNull("companion.battle_move_list") ?? "Move List";
 

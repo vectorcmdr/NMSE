@@ -606,9 +606,9 @@ partial class CompanionPanel
     /// <summary>
     /// Builds all controls for the Battle tab.
     /// Layout from top to bottom:
-    ///   Row 0: [Stat Class Overrides (left) | Mutation Progress (right)]
+    ///   Row 0: [Stat Class Overrides (left) | Genetic Profile (right)]
     ///   Row 1: Affinity
-    ///   Row 2+: Move Slots (single column, per-slot two-column: left=controls, right=detail panel)
+    ///   Row 2+: Ability Slots (single column, per-slot two-column: left=controls, right=detail panel)
     /// </summary>
     private void BuildBattleTab()
     {
@@ -703,22 +703,22 @@ partial class CompanionPanel
 
         topRow.Controls.Add(statClassPanel, 0, 0);
 
-        // == Right column: Mutation Progress ==
+        // == Right column: Genetic Profile ==
         var mutationPanel = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(0, 0, 0, 0), Margin = new Padding(12, 0, 0, 0) };
         mutationPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         mutationPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
         int mpRow = 0;
-        var mutationHeading = new Label { Text = "Mutation Progress", AutoSize = true, Padding = new Padding(0, 0, 0, 3) };
-        FontManager.ApplyHeadingFont(mutationHeading, 10);
+        _battleMutationHeadingLabel = new Label { Text = "Genetic Profile", AutoSize = true, Padding = new Padding(0, 0, 0, 3) };
+        FontManager.ApplyHeadingFont(_battleMutationHeadingLabel, 10);
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        mutationPanel.Controls.Add(mutationHeading, 0, mpRow);
-        mutationPanel.SetColumnSpan(mutationHeading, 2);
+        mutationPanel.Controls.Add(_battleMutationHeadingLabel, 0, mpRow);
+        mutationPanel.SetColumnSpan(_battleMutationHeadingLabel, 2);
         mpRow++;
 
-        // Genes Improved / Level (read-only)
+        // Genes Improved (read-only)
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _battleGenesLevelLabel = new Label { Text = "Genes Improved / Level:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
+        _battleGenesLevelLabel = new Label { Text = "Genes Improved:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
         _battleGenesLevelValue = new Label { Text = "0 / 30", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
         mutationPanel.Controls.Add(_battleGenesLevelLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleGenesLevelValue, 1, mpRow);
@@ -727,8 +727,16 @@ partial class CompanionPanel
         // Mutation Progress
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleMutationProgressLabel = new Label { Text = "Mutation Progress:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleMutationProgress = new TextBox { Width = 110, Text = "0.0" };
-        _battleMutationProgress.Leave += (s, e) => WriteBattleMutationProgress();
+        _battleMutationProgress = new NumericUpDown
+        {
+            Minimum = 0,
+            Maximum = 1.0m,
+            DecimalPlaces = 16,
+            Increment = 0.1m,
+            Width = 170,
+            Value = 0,
+        };
+        _battleMutationProgress.ValueChanged += (s, e) => OnMutationProgressChanged();
         mutationPanel.Controls.Add(_battleMutationProgressLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleMutationProgress, 1, mpRow);
         mpRow++;
@@ -736,7 +744,7 @@ partial class CompanionPanel
         // Gene Edits Available
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleGenesAvailableLabel = new Label { Text = "Gene Edits Available:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleGenesAvailable = new NumericUpDown { Minimum = 0, Maximum = 100, Width = 55 };
+        _battleGenesAvailable = new NumericUpDown { Minimum = 0, Maximum = 1000, Width = 55 };
         _battleGenesAvailable.ValueChanged += (s, e) => { if (!_loading) WriteBattleTreatsAvailable(); };
         mutationPanel.Controls.Add(_battleGenesAvailableLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleGenesAvailable, 1, mpRow);
@@ -781,7 +789,7 @@ partial class CompanionPanel
         affinityRow.Controls.Add(_battleAffinityValue);
         battleLayout.Controls.Add(affinityRow, 0, bRow++);
 
-        // == Move Slots list ==
+        // == Ability Slots list ==
         // (two-column grid, left to right order)
         // Move slot controls on the left, per-slot detail panels on the right
         // Details split by type (phase on right)
@@ -805,7 +813,7 @@ partial class CompanionPanel
             battleLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
             // Move slot heading
-            _moveSlotLabels[i] = new Label { Text = $"Move Slot {i + 1}:", AutoSize = true, Padding = new Padding(0, 2, 5, 0) };
+            _moveSlotLabels[i] = new Label { Text = $"Ability Slot {i + 1}:", AutoSize = true, Padding = new Padding(0, 2, 5, 0) };
             FontManager.ApplyHeadingFont(_moveSlotLabels[i], 9);
 
             _moveSlotCombos[i] = new ComboBox
@@ -1042,8 +1050,9 @@ partial class CompanionPanel
     private Label _battleGenesLevelValue = null!;
     private Label _battleGenesAvailableLabel = null!;
     private NumericUpDown _battleGenesAvailable = null!;
+    private Label _battleMutationHeadingLabel = null!;
     private Label _battleMutationProgressLabel = null!;
-    private TextBox _battleMutationProgress = null!;
+    private NumericUpDown _battleMutationProgress = null!;
     private Label _battleVictoriesLabel = null!;
     private NumericUpDown _battleVictories = null!;
     private Label _battleMoveListLabel = null!;
