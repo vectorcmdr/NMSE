@@ -263,7 +263,7 @@ internal sealed class ConsistencyDialog : Form
 
         _grid.Rows.Clear();
 
-        MessageBox.Show(
+        MessageBox.Show(this, 
             UiStrings.Get("account.consistency_all_added"),
             UiStrings.Get("account.consistency_check"),
             MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -276,7 +276,7 @@ internal sealed class ConsistencyDialog : Form
 
         _grid.Rows.Clear();
 
-        MessageBox.Show(
+        MessageBox.Show(this, 
             UiStrings.Get("account.consistency_all_removed"),
             UiStrings.Get("account.consistency_check"),
             MessageBoxButtons.OK, MessageBoxIcon.Information);

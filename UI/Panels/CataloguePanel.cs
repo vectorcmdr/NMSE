@@ -947,7 +947,7 @@ public partial class CataloguePanel : UserControl
         string msg = count == 1
             ? UiStrings.Get("discovery.delete_location_single")
             : UiStrings.Format("discovery.delete_location_multi", count);
-        var result = MessageBox.Show(msg, UiStrings.Get("discovery.delete_location_title"),
+        var result = MessageBox.Show(this, msg, UiStrings.Get("discovery.delete_location_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
 
@@ -980,7 +980,7 @@ public partial class CataloguePanel : UserControl
         int rowIdx = _locationsGrid.SelectedRows[0].Index;
         if (rowIdx < 0 || rowIdx >= _teleportEndpoints.Length) return;
 
-        var result = MessageBox.Show(UiStrings.Get("discovery.travel_confirm"),
+        var result = MessageBox.Show(this, UiStrings.Get("discovery.travel_confirm"),
             UiStrings.Get("discovery.travel_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
@@ -1030,13 +1030,13 @@ public partial class CataloguePanel : UserControl
                 catch { }
             }
 
-            MessageBox.Show(UiStrings.Get("discovery.travel_complete"),
+            MessageBox.Show(this, UiStrings.Get("discovery.travel_complete"),
                 UiStrings.Get("discovery.travel_complete_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             RaiseDataModified();
         }
         catch
         {
-            MessageBox.Show(UiStrings.Get("discovery.travel_failed"), UiStrings.Get("common.error"),
+            MessageBox.Show(this, UiStrings.Get("discovery.travel_failed"), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1156,7 +1156,7 @@ public partial class CataloguePanel : UserControl
         }
         if (emptySlot < 0)
         {
-            MessageBox.Show(UiStrings.Get("discovery.no_fish_slots"), UiStrings.Get("discovery.add_fish_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("discovery.no_fish_slots"), UiStrings.Get("discovery.add_fish_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -1327,7 +1327,7 @@ public partial class CataloguePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1351,7 +1351,7 @@ public partial class CataloguePanel : UserControl
             }
             if (arr == null || arr.Length == 0)
             {
-                MessageBox.Show(UiStrings.Get("discovery.import_no_items"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("discovery.import_no_items"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1374,12 +1374,12 @@ public partial class CataloguePanel : UserControl
                 added++;
             }
 
-            MessageBox.Show(UiStrings.Format("discovery.import_success_items", added), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_success_items", added), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             RaiseDataModified();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1402,7 +1402,7 @@ public partial class CataloguePanel : UserControl
             }
             if (arr == null || arr.Length == 0)
             {
-                MessageBox.Show(UiStrings.Get("discovery.import_no_words"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("discovery.import_no_words"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1429,12 +1429,12 @@ public partial class CataloguePanel : UserControl
                 added++;
             }
 
-            MessageBox.Show(UiStrings.Format("discovery.import_words_success", added), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_words_success", added), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             RaiseDataModified();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1461,7 +1461,7 @@ public partial class CataloguePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1492,7 +1492,7 @@ public partial class CataloguePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1518,7 +1518,7 @@ public partial class CataloguePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1539,7 +1539,7 @@ public partial class CataloguePanel : UserControl
             var arr = imported.GetArray("TeleportEndpoints");
             if (arr == null || arr.Length == 0)
             {
-                MessageBox.Show(UiStrings.Get("discovery.import_no_locations"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("discovery.import_no_locations"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1555,12 +1555,12 @@ public partial class CataloguePanel : UserControl
 
             // Refresh the grid
             LoadKnownLocations(_savedPlayerState);
-            MessageBox.Show(UiStrings.Format("discovery.import_locations_success", arr.Length), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_locations_success", arr.Length), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             RaiseDataModified();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1586,7 +1586,7 @@ public partial class CataloguePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1607,7 +1607,7 @@ public partial class CataloguePanel : UserControl
             var record = imported.GetObject("FishingRecord");
             if (record == null)
             {
-                MessageBox.Show(UiStrings.Get("discovery.import_no_fish"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("discovery.import_no_fish"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1617,12 +1617,12 @@ public partial class CataloguePanel : UserControl
 
             // Refresh
             LoadKnownFish(_savedPlayerState);
-            MessageBox.Show(UiStrings.Get("discovery.import_fish_success"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("discovery.import_fish_success"), UiStrings.Get("discovery.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             RaiseDataModified();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("discovery.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

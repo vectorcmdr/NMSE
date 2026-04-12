@@ -293,12 +293,12 @@ public partial class MultitoolPanel : UserControl
             // Prevent deleting the last valid multitool
             if (MultitoolLogic.CountValidTools(_multitools) <= 1)
             {
-                MessageBox.Show(UiStrings.Get("multitool.cannot_delete_only"), UiStrings.Get("multitool.delete_title"),
+                MessageBox.Show(this, UiStrings.Get("multitool.cannot_delete_only"), UiStrings.Get("multitool.delete_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this, 
                 UiStrings.Get("multitool.delete_confirm"),
                 UiStrings.Get("multitool.delete_title"),
                 MessageBoxButtons.YesNo,
@@ -391,7 +391,7 @@ public partial class MultitoolPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -417,7 +417,7 @@ public partial class MultitoolPanel : UserControl
 
             if (emptyIdx < 0)
             {
-                MessageBox.Show(UiStrings.Get("multitool.no_empty_slots"), UiStrings.Get("multitool.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("multitool.no_empty_slots"), UiStrings.Get("multitool.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -445,7 +445,7 @@ public partial class MultitoolPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

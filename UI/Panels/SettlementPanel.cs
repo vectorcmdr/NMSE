@@ -717,7 +717,7 @@ public partial class SettlementPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("settlement.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("settlement.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -775,7 +775,7 @@ public partial class SettlementPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("settlement.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("settlement.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

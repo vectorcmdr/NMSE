@@ -525,7 +525,7 @@ internal class BasesSubPanel : UserControl
         if (_npcSelector.SelectedItem is not NpcWorkerItem npcItem) return;
         if (_baseSelector.SelectedItem is not BaseInfoItem baseItem) return;
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Format("base.summon_worker_confirm", npcItem.ToString(), baseItem.DisplayName),
             UiStrings.Get("base.summon_worker_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Question);
@@ -562,13 +562,13 @@ internal class BasesSubPanel : UserControl
             // Set FreighterBase flag
             worker.Set("FreighterBase", isFreighterBase);
 
-            MessageBox.Show(
+            MessageBox.Show(this, 
                 UiStrings.Format("base.summon_complete_msg", npcItem.ToString(), baseItem.DisplayName),
                 UiStrings.Get("base.summon_complete_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.summon_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(this, UiStrings.Format("base.summon_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -675,13 +675,13 @@ internal class BasesSubPanel : UserControl
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 item.Data.ExportToFile(dialog.FileName);
-                MessageBox.Show(UiStrings.Get("base.export_success"), UiStrings.Get("base.export_title"),
+                MessageBox.Show(this, UiStrings.Get("base.export_success"), UiStrings.Get("base.export_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.export_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(this, UiStrings.Format("base.export_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -700,7 +700,7 @@ internal class BasesSubPanel : UserControl
 
             if (dialog.ShowDialog() != DialogResult.OK) return;
 
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this, 
                 UiStrings.Get("base.import_confirm"),
                 UiStrings.Get("base.confirm_import_title"),
                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
@@ -724,12 +724,12 @@ internal class BasesSubPanel : UserControl
 
             // Refresh display
             OnBaseSelected(this, EventArgs.Empty);
-            MessageBox.Show(UiStrings.Get("base.import_success"), UiStrings.Get("base.import_title"),
+            MessageBox.Show(this, UiStrings.Get("base.import_success"), UiStrings.Get("base.import_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.import_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(this, UiStrings.Format("base.import_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -742,7 +742,7 @@ internal class BasesSubPanel : UserControl
             var objects = item.Data.GetArray("Objects");
             if (objects == null || objects.Length == 0)
             {
-                MessageBox.Show(
+                MessageBox.Show(this, 
                     UiStrings.Get("base.move_basecomp_warning"),
                     UiStrings.Get("base.move_basecomp_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -767,7 +767,7 @@ internal class BasesSubPanel : UserControl
 
             if (candidates.Count == 0)
             {
-                MessageBox.Show(
+                MessageBox.Show(this, 
                     UiStrings.Get("base.move_basecomp_no_objects"),
                     UiStrings.Get("base.move_basecomp_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -815,7 +815,7 @@ internal class BasesSubPanel : UserControl
 
             if (baseFlag == null)
             {
-                MessageBox.Show(UiStrings.Get("base.move_basecomp_not_found"), UiStrings.Get("common.error"),
+                MessageBox.Show(this, UiStrings.Get("base.move_basecomp_not_found"), UiStrings.Get("common.error"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -823,12 +823,12 @@ internal class BasesSubPanel : UserControl
             // Swap positions between base computer and target object
             BaseLogic.SwapPositions(baseFlag, target.Data);
             OnBaseSelected(this, EventArgs.Empty);
-            MessageBox.Show(UiStrings.Get("base.move_basecomp_success"), UiStrings.Get("base.move_basecomp_success_title"),
+            MessageBox.Show(this, UiStrings.Get("base.move_basecomp_success"), UiStrings.Get("base.move_basecomp_success_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("base.move_basecomp_failed", ex.Message), UiStrings.Get("common.error"),
+            MessageBox.Show(this, UiStrings.Format("base.move_basecomp_failed", ex.Message), UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }

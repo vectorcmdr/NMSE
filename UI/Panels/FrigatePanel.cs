@@ -297,12 +297,12 @@ public partial class FrigatePanel : UserControl
         // (checks AllFrigateIndices)
         if (_expeditions != null && FrigateLogic.FindExpeditionIndex(idx, _expeditions) >= 0)
         {
-            MessageBox.Show(UiStrings.Get("frigate.delete_on_mission"),
+            MessageBox.Show(this, UiStrings.Get("frigate.delete_on_mission"),
                 UiStrings.Get("frigate.delete_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        var result = MessageBox.Show(UiStrings.Get("frigate.delete_confirm"), UiStrings.Get("frigate.delete_title"),
+        var result = MessageBox.Show(this, UiStrings.Get("frigate.delete_confirm"), UiStrings.Get("frigate.delete_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
 
@@ -327,7 +327,7 @@ public partial class FrigatePanel : UserControl
         if (_frigates == null || _frigateList.SelectedIndex < 0) return;
         if (_frigates.Length >= MaxFrigates)
         {
-            MessageBox.Show(UiStrings.Get("frigate.max_reached"), UiStrings.Get("frigate.copy_title"),
+            MessageBox.Show(this, UiStrings.Get("frigate.max_reached"), UiStrings.Get("frigate.copy_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -624,7 +624,7 @@ public partial class FrigatePanel : UserControl
             try { frigate.ExportToFile(dialog.FileName); }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -634,7 +634,7 @@ public partial class FrigatePanel : UserControl
         if (_frigates == null) return;
         if (_frigates.Length >= MaxFrigates)
         {
-            MessageBox.Show(UiStrings.Get("frigate.max_reached"), UiStrings.Get("frigate.import_title"),
+            MessageBox.Show(this, UiStrings.Get("frigate.max_reached"), UiStrings.Get("frigate.import_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -659,7 +659,7 @@ public partial class FrigatePanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

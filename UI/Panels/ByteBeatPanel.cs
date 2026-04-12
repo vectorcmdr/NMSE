@@ -201,7 +201,7 @@ public partial class ByteBeatPanel : UserControl
         var song = SelectedSong();
         if (song == null)
         {
-            MessageBox.Show(UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -226,11 +226,11 @@ public partial class ByteBeatPanel : UserControl
             try
             {
                 song.ExportToFile(dialog.FileName);
-                MessageBox.Show(UiStrings.Get("bytebeat.export_success"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, UiStrings.Get("bytebeat.export_success"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -240,7 +240,7 @@ public partial class ByteBeatPanel : UserControl
         int idx = _songList.SelectedIndex;
         if (idx < 0 || _mySongs == null || idx >= _mySongs.Length)
         {
-            MessageBox.Show(UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -262,11 +262,11 @@ public partial class ByteBeatPanel : UserControl
 
             OnSongSelected(null, EventArgs.Empty);
             RefreshList();
-            MessageBox.Show(UiStrings.Get("bytebeat.import_success"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("bytebeat.import_success"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -275,11 +275,11 @@ public partial class ByteBeatPanel : UserControl
         int idx = _songList.SelectedIndex;
         if (idx < 0 || _mySongs == null || idx >= _mySongs.Length)
         {
-            MessageBox.Show(UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.delete"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("bytebeat.no_song_selected"), UiStrings.Get("common.delete"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
-        var result = MessageBox.Show(UiStrings.Get("bytebeat.delete_confirm"),
+        var result = MessageBox.Show(this, UiStrings.Get("bytebeat.delete_confirm"),
             UiStrings.Get("bytebeat.delete_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
 
@@ -303,7 +303,7 @@ public partial class ByteBeatPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("bytebeat.delete_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("bytebeat.delete_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

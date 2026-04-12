@@ -592,7 +592,7 @@ public partial class AccountPanel : UserControl
     {
         if (_currentSaveData == null)
         {
-            MessageBox.Show(UiStrings.Get("account.consistency_no_save"),
+            MessageBox.Show(this, UiStrings.Get("account.consistency_no_save"),
                 UiStrings.Get("account.consistency_check"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
@@ -601,7 +601,7 @@ public partial class AccountPanel : UserControl
         var issues = AccountLogic.CheckConsistencyStructured(_currentSaveData, _database);
         if (issues.Count == 0)
         {
-            MessageBox.Show(UiStrings.Get("account.consistency_ok"),
+            MessageBox.Show(this, UiStrings.Get("account.consistency_ok"),
                 UiStrings.Get("account.consistency_check"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

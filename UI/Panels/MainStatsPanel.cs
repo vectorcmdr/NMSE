@@ -635,14 +635,14 @@ public partial class MainStatsPanel : UserControl
         string portalCode = _portalHexInput.Text.Trim().ToUpperInvariant();
         if (string.IsNullOrEmpty(portalCode))
         {
-            MessageBox.Show(UiStrings.Get("player.portal_code_msg_12"), UiStrings.Get("player.invalid_portal_title"),
+            MessageBox.Show(this, UiStrings.Get("player.portal_code_msg_12"), UiStrings.Get("player.invalid_portal_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
         if (!CoordinateHelper.PortalCodeToVoxel(portalCode, out int voxelX, out int voxelY, out int voxelZ, out int systemIndex, out int planetIndex))
         {
-            MessageBox.Show(UiStrings.Get("player.invalid_portal_format"), UiStrings.Get("player.invalid_portal_title"),
+            MessageBox.Show(this, UiStrings.Get("player.invalid_portal_format"), UiStrings.Get("player.invalid_portal_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
@@ -669,14 +669,14 @@ public partial class MainStatsPanel : UserControl
         // Parse the portal code into voxel coordinates (should always succeed for valid hex)
         if (!CoordinateHelper.PortalCodeToVoxel(portalCode, out int voxelX, out int voxelY, out int voxelZ, out int systemIndex, out int planetIndex))
         {
-            MessageBox.Show(UiStrings.Get("player.roulette_failed"), UiStrings.Get("player.roulette_title"),
+            MessageBox.Show(this, UiStrings.Get("player.roulette_failed"), UiStrings.Get("player.roulette_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
         string galaxyName = GalaxyDatabase.GetGalaxyDisplayName(galaxy);
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Format("player.roulette_confirm", portalCode, galaxyName, galaxy),
             UiStrings.Get("player.roulette_title"),
             MessageBoxButtons.OKCancel,
@@ -711,7 +711,7 @@ public partial class MainStatsPanel : UserControl
             _warpsToNextBattleField.Value = 0;
             _timeToNextBattleField.Text = UiStrings.Format("player.time_format", 0, 0, 0);
 
-            MessageBox.Show(UiStrings.Get("player.space_battle_triggered"), UiStrings.Get("player.space_battle_title"),
+            MessageBox.Show(this, UiStrings.Get("player.space_battle_triggered"), UiStrings.Get("player.space_battle_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch { }
@@ -745,21 +745,21 @@ public partial class MainStatsPanel : UserControl
         int src = _slotSourceCombo.SelectedIndex;
         int dst = _slotDestCombo.SelectedIndex;
         if (src < 0 || dst < 0) return;
-        if (src == dst) { MessageBox.Show(UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (src == dst) { MessageBox.Show(this, UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
         var platform = GetDetectedPlatform();
-        var result = MessageBox.Show(UiStrings.Format("player.copy_slot_confirm", src + 1, dst + 1),
+        var result = MessageBox.Show(this, UiStrings.Format("player.copy_slot_confirm", src + 1, dst + 1),
             UiStrings.Get("player.copy_slot"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
         try
         {
             SaveSlotManager.CopySlot(dir, src, dst, platform);
-            MessageBox.Show(UiStrings.Format("player.copy_slot_success", src + 1, dst + 1), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("player.copy_slot_success", src + 1, dst + 1), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("player.copy_slot_failed", ex.Message), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("player.copy_slot_failed", ex.Message), UiStrings.Get("player.copy_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -770,22 +770,22 @@ public partial class MainStatsPanel : UserControl
         int src = _slotSourceCombo.SelectedIndex;
         int dst = _slotDestCombo.SelectedIndex;
         if (src < 0 || dst < 0) return;
-        if (src == dst) { MessageBox.Show(UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (src == dst) { MessageBox.Show(this, UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
         var platform = GetDetectedPlatform();
-        var result = MessageBox.Show(UiStrings.Format("player.move_slot_confirm", src + 1, dst + 1),
+        var result = MessageBox.Show(this, UiStrings.Format("player.move_slot_confirm", src + 1, dst + 1),
             UiStrings.Get("player.move_slot"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
         try
         {
             SaveSlotManager.MoveSlot(dir, src, dst, platform);
-            MessageBox.Show(UiStrings.Format("player.move_slot_success", src + 1, dst + 1), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("player.move_slot_success", src + 1, dst + 1), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             ReloadRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("player.move_slot_failed", ex.Message), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("player.move_slot_failed", ex.Message), UiStrings.Get("player.move_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -796,22 +796,22 @@ public partial class MainStatsPanel : UserControl
         int src = _slotSourceCombo.SelectedIndex;
         int dst = _slotDestCombo.SelectedIndex;
         if (src < 0 || dst < 0) return;
-        if (src == dst) { MessageBox.Show(UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (src == dst) { MessageBox.Show(this, UiStrings.Get("player.slots_must_differ"), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
         var platform = GetDetectedPlatform();
-        var result = MessageBox.Show(UiStrings.Format("player.swap_slot_confirm", src + 1, dst + 1),
+        var result = MessageBox.Show(this, UiStrings.Format("player.swap_slot_confirm", src + 1, dst + 1),
             UiStrings.Get("player.swap_slots"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
         try
         {
             SaveSlotManager.SwapSlots(dir, src, dst, platform);
-            MessageBox.Show(UiStrings.Format("player.swap_slot_success", src + 1, dst + 1), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("player.swap_slot_success", src + 1, dst + 1), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             ReloadRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("player.swap_slot_failed", ex.Message), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("player.swap_slot_failed", ex.Message), UiStrings.Get("player.swap_slots"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -823,19 +823,19 @@ public partial class MainStatsPanel : UserControl
         if (src < 0) return;
 
         var platform = GetDetectedPlatform();
-        var result = MessageBox.Show(UiStrings.Format("player.delete_slot_confirm", src + 1),
+        var result = MessageBox.Show(this, UiStrings.Format("player.delete_slot_confirm", src + 1),
             UiStrings.Get("player.delete_slot"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
 
         try
         {
             SaveSlotManager.DeleteSlot(dir, src, platform);
-            MessageBox.Show(UiStrings.Format("player.delete_slot_success", src + 1), UiStrings.Get("player.delete_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Format("player.delete_slot_success", src + 1), UiStrings.Get("player.delete_slot"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             ReloadRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("player.delete_slot_failed", ex.Message), UiStrings.Get("player.delete_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("player.delete_slot_failed", ex.Message), UiStrings.Get("player.delete_slot"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -845,7 +845,7 @@ public partial class MainStatsPanel : UserControl
         int destPlatformIdx = _transferPlatformCombo.SelectedIndex;
         if (destPlatformIdx < 0) return;
         int destSlot = _slotDestCombo.SelectedIndex;
-        if (destSlot < 0) { MessageBox.Show(UiStrings.Get("player.transfer_select_dest"), UiStrings.Get("player.transfer_label"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (destSlot < 0) { MessageBox.Show(this, UiStrings.Get("player.transfer_select_dest"), UiStrings.Get("player.transfer_label"), MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
         var destPlatform = TransferPlatformFromIndex(destPlatformIdx);
 
@@ -856,7 +856,7 @@ public partial class MainStatsPanel : UserControl
         };
         if (dialog.ShowDialog() != DialogResult.OK) return;
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Format("player.transfer_cross_confirm", _transferPlatformCombo.Text, destSlot + 1, dialog.SelectedPath),
             UiStrings.Get("player.transfer_cross_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
@@ -864,11 +864,11 @@ public partial class MainStatsPanel : UserControl
         try
         {
             SaveSlotManager.TransferCrossPlatform(_saveFilePath, dialog.SelectedPath, destSlot, destPlatform);
-            MessageBox.Show(UiStrings.Get("player.transfer_cross_complete"), UiStrings.Get("player.transfer_cross_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("player.transfer_cross_complete"), UiStrings.Get("player.transfer_cross_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("player.transfer_cross_failed", ex.Message), UiStrings.Get("player.transfer_cross_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("player.transfer_cross_failed", ex.Message), UiStrings.Get("player.transfer_cross_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

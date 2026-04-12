@@ -573,7 +573,7 @@ public partial class StarshipPanel : UserControl
 
         if (pinned.Contains(sourceSlotFilter))
         {
-            MessageBox.Show(
+            MessageBox.Show(this, 
                 UiStrings.Get("inventory.auto_stack_pinned_slot_blocked"),
                 UiStrings.Get("dialog.info"),
                 MessageBoxButtons.OK,
@@ -605,12 +605,12 @@ public partial class StarshipPanel : UserControl
             // Use CountValidShips because the array may contain invalidated slots.
             if (StarshipLogic.CountValidShips(_shipOwnership) <= 1)
             {
-                MessageBox.Show(UiStrings.Get("starship.cannot_delete_only"), UiStrings.Get("starship.delete_title"),
+                MessageBox.Show(this, UiStrings.Get("starship.cannot_delete_only"), UiStrings.Get("starship.delete_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this, 
                 UiStrings.Get("starship.delete_confirm"),
                 UiStrings.Get("starship.delete_title"),
                 MessageBoxButtons.YesNo,
@@ -709,7 +709,7 @@ public partial class StarshipPanel : UserControl
                 int baseIdx = StarshipLogic.FindCorvetteBaseIndex(bases, idx);
                 if (baseIdx < 0)
                 {
-                    MessageBox.Show(UiStrings.Get("starship.corvette_no_base"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, UiStrings.Get("starship.corvette_no_base"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
                 baseObj = bases!.GetObject(baseIdx);
@@ -742,7 +742,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -813,7 +813,7 @@ public partial class StarshipPanel : UserControl
 
             if (importedShip == null)
             {
-                MessageBox.Show(
+                MessageBox.Show(this, 
                     UiStrings.Get("starship.no_valid_ship"),
                     UiStrings.Get("common.error"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -840,7 +840,7 @@ public partial class StarshipPanel : UserControl
                 if (targetIdx >= _shipOwnership.Length) return;
 
                 // Confirm before overwriting an existing ship
-                var overwriteResult = MessageBox.Show(
+                var overwriteResult = MessageBox.Show(this, 
                     UiStrings.Get("starship.import_overwrite_confirm"),
                     UiStrings.Get("starship.import_overwrite_title"),
                     MessageBoxButtons.YesNo,
@@ -940,7 +940,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -968,7 +968,7 @@ public partial class StarshipPanel : UserControl
             var ship = _shipOwnership.GetObject(idx);
             if (IsShipCorvette(ship))
             {
-                var result = MessageBox.Show(
+                var result = MessageBox.Show(this, 
                     UiStrings.Get("starship.corvette_primary_warning"),
                     UiStrings.Get("starship.corvette_warning_title"),
                     MessageBoxButtons.YesNo,
@@ -1044,7 +1044,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("starship.snapshot_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("starship.snapshot_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1068,7 +1068,7 @@ public partial class StarshipPanel : UserControl
             var importedShip = imported.GetObject("Ship");
             if (importedShip == null)
             {
-                MessageBox.Show(UiStrings.Get("starship.no_valid_ship"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Get("starship.no_valid_ship"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -1108,7 +1108,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1118,7 +1118,7 @@ public partial class StarshipPanel : UserControl
         var item = (StarshipLogic.ShipListItem)_shipSelector.Items[_shipSelector.SelectedIndex]!;
         if (item.DataIndex == _primaryShipIndex)
         {
-            MessageBox.Show(
+            MessageBox.Show(this, 
                 UiStrings.Format("starship.corvette_primary_corruption", action),
                 UiStrings.Get("starship.important_warning"),
                 MessageBoxButtons.OK,
@@ -1146,14 +1146,14 @@ public partial class StarshipPanel : UserControl
 
             if (result < 0)
             {
-                MessageBox.Show(UiStrings.Get("starship.corvette_no_base"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Get("starship.corvette_no_base"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             // After optimising, update indicator to green
             SetOptimiseIndicator(true);
 
-            MessageBox.Show(
+            MessageBox.Show(this, 
                 UiStrings.Format("starship.optimise_done", result),
                 UiStrings.Get("starship.optimise"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1162,7 +1162,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(string.Format("Optimisation failed: {0}", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, string.Format("Optimisation failed: {0}", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

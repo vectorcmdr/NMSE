@@ -208,7 +208,7 @@ public partial class ExosuitPanel : UserControl
 
         if (pinned.Contains(sourceSlotFilter))
         {
-            MessageBox.Show(
+            MessageBox.Show(this, 
                 UiStrings.Get("inventory.auto_stack_pinned_slot_blocked"),
                 UiStrings.Get("dialog.info"),
                 MessageBoxButtons.OK,

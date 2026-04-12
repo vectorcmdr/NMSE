@@ -164,7 +164,7 @@ public partial class SquadronPanel : UserControl
         var pilot = SelectedPilot();
         if (pilot == null) return;
 
-        var result = MessageBox.Show(UiStrings.Get("squadron.delete_confirm"), UiStrings.Get("squadron.delete_title"),
+        var result = MessageBox.Show(this, UiStrings.Get("squadron.delete_confirm"), UiStrings.Get("squadron.delete_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
 
@@ -285,7 +285,7 @@ public partial class SquadronPanel : UserControl
             try { pilot.ExportToFile(dialog.FileName); }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -327,7 +327,7 @@ public partial class SquadronPanel : UserControl
 
             if (targetIdx < 0)
             {
-                MessageBox.Show(UiStrings.Get("squadron.no_empty_slot"), UiStrings.Get("squadron.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, UiStrings.Get("squadron.no_empty_slot"), UiStrings.Get("squadron.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -340,7 +340,7 @@ public partial class SquadronPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

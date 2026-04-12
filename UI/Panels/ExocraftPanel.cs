@@ -228,7 +228,7 @@ public partial class ExocraftPanel : UserControl
         {
             if (_vehicleOwnership == null || _vehicleSelector.SelectedIndex < 0)
             {
-                MessageBox.Show(UiStrings.Get("exocraft.no_vehicle_selected"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, UiStrings.Get("exocraft.no_vehicle_selected"), UiStrings.Get("common.export"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             int selIdx = _vehicleSelector.SelectedIndex;
@@ -256,7 +256,7 @@ public partial class ExocraftPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -266,7 +266,7 @@ public partial class ExocraftPanel : UserControl
         {
             if (_vehicleOwnership == null || _vehicleSelector.SelectedIndex < 0)
             {
-                MessageBox.Show(UiStrings.Get("exocraft.no_vehicle_selected"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, UiStrings.Get("exocraft.no_vehicle_selected"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             int selIdx = _vehicleSelector.SelectedIndex;
@@ -295,11 +295,11 @@ public partial class ExocraftPanel : UserControl
             _inventoryGrid.LoadInventory(vehicle.GetObject("Inventory"));
             _techGrid.LoadInventory(vehicle.GetObject("Inventory_TechOnly"));
 
-            MessageBox.Show(UiStrings.Get("exocraft.import_success"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("exocraft.import_success"), UiStrings.Get("common.import"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("common.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -333,7 +333,7 @@ public partial class ExocraftPanel : UserControl
         if (selIdx >= _addedVehicleIndices.Count) return;
         int arrIdx = _addedVehicleIndices[selIdx];
 
-        var result = MessageBox.Show(UiStrings.Get("exocraft.undeploy_confirm"), UiStrings.Get("exocraft.undeploy_title"),
+        var result = MessageBox.Show(this, UiStrings.Get("exocraft.undeploy_confirm"), UiStrings.Get("exocraft.undeploy_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
@@ -374,7 +374,7 @@ public partial class ExocraftPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("exocraft.undeploy_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("exocraft.undeploy_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

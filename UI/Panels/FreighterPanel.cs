@@ -203,7 +203,7 @@ public partial class FreighterPanel : UserControl
         {
             if (_freighterBase == null)
             {
-                MessageBox.Show(UiStrings.Get("freighter.backup_no_base"), UiStrings.Get("freighter.backup_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, UiStrings.Get("freighter.backup_no_base"), UiStrings.Get("freighter.backup_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -228,7 +228,7 @@ public partial class FreighterPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("freighter.backup_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("freighter.backup_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -274,18 +274,18 @@ public partial class FreighterPanel : UserControl
                         }
                         catch { _baseItemsField.Text = "0"; }
 
-                        MessageBox.Show(UiStrings.Get("freighter.restore_success"), UiStrings.Get("freighter.restore_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(this, UiStrings.Get("freighter.restore_success"), UiStrings.Get("freighter.restore_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                         return;
                     }
                 }
                 catch { }
             }
 
-            MessageBox.Show(UiStrings.Get("freighter.restore_no_slot"), UiStrings.Get("freighter.restore_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, UiStrings.Get("freighter.restore_no_slot"), UiStrings.Get("freighter.restore_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("freighter.restore_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("freighter.restore_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

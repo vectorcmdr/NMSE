@@ -2217,7 +2217,7 @@ public partial class InventoryGridPanel : UserControl
         string newItemId = _detailItemId.Text.Trim();
         if (string.IsNullOrEmpty(newItemId))
         {
-            MessageBox.Show(UiStrings.Get("inventory.apply_enter_id"), UiStrings.Get("inventory.apply_changes_title"),
+            MessageBox.Show(this, UiStrings.Get("inventory.apply_enter_id"), UiStrings.Get("inventory.apply_changes_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -2398,7 +2398,7 @@ public partial class InventoryGridPanel : UserControl
 
         if (string.IsNullOrEmpty(itemId))
         {
-            MessageBox.Show(UiStrings.Get("inventory.add_select_first"),
+            MessageBox.Show(this, UiStrings.Get("inventory.add_select_first"),
                 UiStrings.Get("inventory.add_item_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -2500,7 +2500,7 @@ public partial class InventoryGridPanel : UserControl
     {
         if (_contextCell?.SlotData == null || _slots == null) return;
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Format("inventory.remove_confirm", _contextCell.DisplayName ?? _contextCell.ItemId, _contextCell.GridX, _contextCell.GridY),
             UiStrings.Get("inventory.remove_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
@@ -2541,7 +2541,7 @@ public partial class InventoryGridPanel : UserControl
             if (_contextCell.SlotData != null && !string.IsNullOrEmpty(_contextCell.ItemId)
                 && _contextCell.ItemId != "^" && _contextCell.ItemId != "^YOURSLOTITEM")
             {
-                MessageBox.Show(UiStrings.Get("inventory.cannot_disable"),
+                MessageBox.Show(this, UiStrings.Get("inventory.cannot_disable"),
                     UiStrings.Get("inventory.cannot_disable_title"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -2828,7 +2828,7 @@ public partial class InventoryGridPanel : UserControl
         if (_maxSuperchargeRow >= 0 && y > _maxSuperchargeRow)
         {
             if (showWarnings)
-                MessageBox.Show(
+                MessageBox.Show(this, 
                     UiStrings.Format("inventory.supercharge_max_msg", _maxSuperchargeRow + 1),
                     UiStrings.Get("inventory.supercharge_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return false;
@@ -2838,7 +2838,7 @@ public partial class InventoryGridPanel : UserControl
         if (_maxSuperchargedSlots >= 0 && CountSuperchargedSlots() >= _maxSuperchargedSlots)
         {
             if (showWarnings)
-                MessageBox.Show(
+                MessageBox.Show(this, 
                     UiStrings.Format("inventory.supercharge_added_msg", _maxSuperchargedSlots),
                     UiStrings.Get("inventory.supercharge_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return false;
@@ -3359,7 +3359,7 @@ public partial class InventoryGridPanel : UserControl
     {
         if (_currentInventory == null)
         {
-            MessageBox.Show(UiStrings.Get("inventory.no_inventory_export"), UiStrings.Get("inventory.export_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("inventory.no_inventory_export"), UiStrings.Get("inventory.export_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -3379,7 +3379,7 @@ public partial class InventoryGridPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("inventory.export_error", ex.Message), UiStrings.Get("inventory.export_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("inventory.export_error", ex.Message), UiStrings.Get("inventory.export_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -3387,7 +3387,7 @@ public partial class InventoryGridPanel : UserControl
     {
         if (_currentInventory == null)
         {
-            MessageBox.Show(UiStrings.Get("inventory.no_inventory_import"), UiStrings.Get("inventory.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, UiStrings.Get("inventory.no_inventory_import"), UiStrings.Get("inventory.import_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
 
@@ -3410,7 +3410,7 @@ public partial class InventoryGridPanel : UserControl
             var inventory = Core.InventoryImportHelper.FindInventoryObject(imported);
             if (inventory == null)
             {
-                MessageBox.Show(UiStrings.Get("inventory.import_bad_format"),
+                MessageBox.Show(this, UiStrings.Get("inventory.import_bad_format"),
                     UiStrings.Get("inventory.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -3445,7 +3445,7 @@ public partial class InventoryGridPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("inventory.import_failed", ex.Message), UiStrings.Get("inventory.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("inventory.import_failed", ex.Message), UiStrings.Get("inventory.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

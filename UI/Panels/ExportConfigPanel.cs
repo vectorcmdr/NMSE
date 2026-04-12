@@ -163,7 +163,7 @@ public partial class ExportConfigPanel : UserControl
 
     private void OnReset(object? sender, EventArgs e)
     {
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Get("export_config.reset_confirm"),
             UiStrings.Get("export_config.reset_title"),
             MessageBoxButtons.YesNo,

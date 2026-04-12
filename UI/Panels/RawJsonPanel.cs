@@ -164,7 +164,7 @@ public partial class RawJsonPanel : UserControl
         }
         catch (JsonException ex)
         {
-            MessageBox.Show(UiStrings.Format("raw_json.invalid_json", ex.Message), UiStrings.Get("raw_json.validation_error"),
+            MessageBox.Show(this, UiStrings.Format("raw_json.invalid_json", ex.Message), UiStrings.Get("raw_json.validation_error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return null;
         }
@@ -259,7 +259,7 @@ public partial class RawJsonPanel : UserControl
     /// </summary>
     private async Task ExpandAllBatchedAsync()
     {
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this, 
             UiStrings.Get("raw_json.expand_confirm"),
             UiStrings.Get("raw_json.expand_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (result != DialogResult.Yes) return;
@@ -651,7 +651,7 @@ public partial class RawJsonPanel : UserControl
             string newKey = keyBox.Text.Trim();
             if (obj.Contains(newKey))
             {
-                MessageBox.Show(UiStrings.Format("raw_json.duplicate_key", newKey), UiStrings.Get("raw_json.duplicate_key_title"),
+                MessageBox.Show(this, UiStrings.Format("raw_json.duplicate_key", newKey), UiStrings.Get("raw_json.duplicate_key_title"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -708,7 +708,7 @@ public partial class RawJsonPanel : UserControl
         var node = _treeView.SelectedNode;
         if (node?.Tag is not NodeTag tag || tag.Parent == null || tag.Key == null) return;
 
-        if (MessageBox.Show(UiStrings.Format("raw_json.confirm_delete", tag.Key), UiStrings.Get("raw_json.confirm_delete_title"),
+        if (MessageBox.Show(this, UiStrings.Format("raw_json.confirm_delete", tag.Key), UiStrings.Get("raw_json.confirm_delete_title"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
@@ -1168,7 +1168,7 @@ public partial class RawJsonPanel : UserControl
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
+                MessageBox.Show(this, UiStrings.Format("raw_json.import_error", ex.Message),
                     UiStrings.Get("raw_json.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -1205,7 +1205,7 @@ public partial class RawJsonPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
+            MessageBox.Show(this, UiStrings.Format("raw_json.import_error", ex.Message),
                 UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1267,7 +1267,7 @@ public partial class RawJsonPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("raw_json.import_error", ex.Message),
+            MessageBox.Show(this, UiStrings.Format("raw_json.import_error", ex.Message),
                 UiStrings.Get("raw_json.import_error_title"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1309,7 +1309,7 @@ public partial class RawJsonPanel : UserControl
         {
             _statusLabel.Text = UiStrings.Get("raw_json.diff_no_changes");
             _statusLabel.ForeColor = Color.Gray;
-            MessageBox.Show(UiStrings.Get("raw_json.diff_no_changes"), UiStrings.Get("raw_json.diff_title"),
+            MessageBox.Show(this, UiStrings.Get("raw_json.diff_no_changes"), UiStrings.Get("raw_json.diff_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
