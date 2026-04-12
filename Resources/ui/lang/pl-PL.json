@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Pobieranie aktualizacji... {0}%",
   "update.title": "Aktualizacja NMSE",
   "update.up_to_date": "NMSE jest aktualny.",
-  "update.up_to_date_msg": "Korzystasz z najnowszej wersji ({0})."
+  "update.up_to_date_msg": "Korzystasz z najnowszej wersji ({0}).",
+  "companion.battle_weak": "Slaby:",
+  "companion.battle_strong": "Silny:",
+  "companion.stats_warning": "Uwaga: zmiana niektórych wartości może zmienić proceduralnie wygenerowaną nazwę towarzysza.",
+  "companion.induce_egg": "Wywolaj jajko",
+  "companion.induce_egg_no_slots": "Nie znaleziono slotów na jajka w danych zapisu.",
+  "companion.induce_egg_select_title": "Sloty na jajka pełne, które zastąpić?",
+  "companion.induce_egg_replace_confirm": "Czy na pewno chcesz zastąpić {0} nowym jajkiem?",
+  "companion.induce_egg_error": "Nie udało się utworzyć jajka.",
+  "companion.induce_egg_place_prompt": "Jajko utworzone. Umieścić je w dostępnym slocie ładunkowym egzoskafandra?",
+  "companion.place_egg_in_exosuit": "Umieść jajko w egzoskafandrze",
+  "companion.place_egg_no_inventory": "Nie znaleziono inwentarza ladunkowego egzoskafandra.",
+  "companion.place_egg_full": "Inwentarz ładunkowy egzoskafandra jest pełny. Zwolnij miejsce i użyj przycisku 'Umieść jajko w egzoskafandrze'.",
+  "companion.place_egg_success": "Jajko umieszczone w ładunku egzoskafandra na pozycji ({0}, {1}).",
+  "companion.make_hatchable": "Zrob wykluwalnym",
+  "companion.make_hatchable_error": "Nie udalo sie zmodyfikowac czasu narodzin."
 }

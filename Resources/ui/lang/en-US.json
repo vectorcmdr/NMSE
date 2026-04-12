@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Downloading update... {0}%",
   "update.title": "NMSE Update",
   "update.up_to_date": "NMSE is up to date.",
-  "update.up_to_date_msg": "You are running the latest version ({0})."
+  "update.up_to_date_msg": "You are running the latest version ({0}).",
+  "companion.battle_weak": "Weak:",
+  "companion.battle_strong": "Strong:",
+  "companion.stats_warning": "Note: Changing certain values can change the procedurally generated name for the companion.",
+  "companion.induce_egg": "Induce Egg",
+  "companion.induce_egg_no_slots": "No egg slots found in save data.",
+  "companion.induce_egg_select_title": "Egg slots full, replace which egg?",
+  "companion.induce_egg_replace_confirm": "Are you sure you want to replace {0} with the new egg?",
+  "companion.induce_egg_error": "Failed to create egg.",
+  "companion.induce_egg_place_prompt": "Egg created. Place it into an available exosuit cargo slot?",
+  "companion.place_egg_in_exosuit": "Place Egg in Exosuit",
+  "companion.place_egg_no_inventory": "Exosuit cargo inventory not found.",
+  "companion.place_egg_full": "Exosuit cargo inventory is full. Free up a slot and use the 'Place Egg in Exosuit' button.",
+  "companion.place_egg_success": "Egg placed in exosuit cargo at position ({0}, {1}).",
+  "companion.make_hatchable": "Make Hatchable",
+  "companion.make_hatchable_error": "Could not modify birth time."
 }

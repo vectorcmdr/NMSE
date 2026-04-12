@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Download dell'aggiornamento... {0}%",
   "update.title": "Aggiornamento NMSE",
   "update.up_to_date": "NMSE è aggiornato.",
-  "update.up_to_date_msg": "Stai utilizzando l'ultima versione ({0})."
+  "update.up_to_date_msg": "Stai utilizzando l'ultima versione ({0}).",
+  "companion.battle_weak": "Debole:",
+  "companion.battle_strong": "Forte:",
+  "companion.stats_warning": "Nota: la modifica di alcuni valori può cambiare il nome generato proceduralmente del compagno.",
+  "companion.induce_egg": "Induci uovo",
+  "companion.induce_egg_no_slots": "Nessuno slot uovo trovato nei dati di salvataggio.",
+  "companion.induce_egg_select_title": "Slot uova pieni, quale sostituire?",
+  "companion.induce_egg_replace_confirm": "Sei sicuro di voler sostituire {0} con il nuovo uovo?",
+  "companion.induce_egg_error": "Impossibile creare l'uovo.",
+  "companion.induce_egg_place_prompt": "Uovo creato. Posizionarlo in uno slot cargo dell'exotuta disponibile?",
+  "companion.place_egg_in_exosuit": "Posiziona uovo nell'exotuta",
+  "companion.place_egg_no_inventory": "Inventario cargo dell'exotuta non trovato.",
+  "companion.place_egg_full": "L'inventario cargo dell'exotuta è pieno. Libera spazio e usa il pulsante 'Posiziona uovo nell'exotuta'.",
+  "companion.place_egg_success": "Uovo posizionato nel cargo dell'exotuta alla posizione ({0}, {1}).",
+  "companion.make_hatchable": "Rendi schiudibile",
+  "companion.make_hatchable_error": "Impossibile modificare l'ora di nascita."
 }

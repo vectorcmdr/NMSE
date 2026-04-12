@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Descargando actualización... {0}%",
   "update.title": "Actualización de NMSE",
   "update.up_to_date": "NMSE está actualizado.",
-  "update.up_to_date_msg": "Está ejecutando la última versión ({0})."
+  "update.up_to_date_msg": "Está ejecutando la última versión ({0}).",
+  "companion.battle_weak": "Debil:",
+  "companion.battle_strong": "Fuerte:",
+  "companion.stats_warning": "Nota: cambiar ciertos valores puede cambiar el nombre generado proceduralmente del compañero.",
+  "companion.induce_egg": "Inducir huevo",
+  "companion.induce_egg_no_slots": "No se encontraron ranuras de huevos en los datos de guardado.",
+  "companion.induce_egg_select_title": "Ranuras de huevos llenas, cual reemplazar?",
+  "companion.induce_egg_replace_confirm": "Seguro que quieres reemplazar {0} con el nuevo huevo?",
+  "companion.induce_egg_error": "Error al crear el huevo.",
+  "companion.induce_egg_place_prompt": "Huevo creado. Colocarlo en una ranura de carga del exotraje disponible?",
+  "companion.place_egg_in_exosuit": "Colocar huevo en exotraje",
+  "companion.place_egg_no_inventory": "Inventario de carga del exotraje no encontrado.",
+  "companion.place_egg_full": "El inventario de carga del exotraje esta lleno. Libere espacio y use el boton 'Colocar huevo en exotraje'.",
+  "companion.place_egg_success": "Huevo colocado en la carga del exotraje en la posicion ({0}, {1}).",
+  "companion.make_hatchable": "Hacer eclosionable",
+  "companion.make_hatchable_error": "No se pudo modificar la hora de nacimiento."
 }

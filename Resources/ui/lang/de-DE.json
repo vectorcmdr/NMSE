@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Update wird heruntergeladen... {0} %",
   "update.title": "NMSE-Update",
   "update.up_to_date": "NMSE ist auf dem neuesten Stand.",
-  "update.up_to_date_msg": "Sie verwenden die neueste Version ({0})."
+  "update.up_to_date_msg": "Sie verwenden die neueste Version ({0}).",
+  "companion.battle_weak": "Schwach:",
+  "companion.battle_strong": "Stark:",
+  "companion.stats_warning": "Hinweis: Das Ändern bestimmter Werte kann den prozedural generierten Namen des Begleiters ändern.",
+  "companion.induce_egg": "Ei erzeugen",
+  "companion.induce_egg_no_slots": "Keine Ei-Plätze in den Speicherdaten gefunden.",
+  "companion.induce_egg_select_title": "Ei-Plätze voll, welches Ei ersetzen?",
+  "companion.induce_egg_replace_confirm": "Sind Sie sicher, dass Sie {0} durch das neue Ei ersetzen möchten?",
+  "companion.induce_egg_error": "Ei konnte nicht erstellt werden.",
+  "companion.induce_egg_place_prompt": "Ei erstellt. In einen verfügbaren Exoanzug-Laderaum-Platz legen?",
+  "companion.place_egg_in_exosuit": "Ei in Exoanzug legen",
+  "companion.place_egg_no_inventory": "Exoanzug-Laderaum nicht gefunden.",
+  "companion.place_egg_full": "Exoanzug-Laderaum ist voll. Schaffen Sie Platz und verwenden Sie die Schaltfläche 'Ei in Exoanzug legen'.",
+  "companion.place_egg_success": "Ei in Exoanzug-Laderaum an Position ({0}, {1}) platziert.",
+  "companion.make_hatchable": "Schlüpfbar machen",
+  "companion.make_hatchable_error": "Geburtszeit konnte nicht geändert werden."
 }

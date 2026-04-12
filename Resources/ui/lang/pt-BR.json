@@ -1607,5 +1607,20 @@
   "update.downloading_progress": "Baixando atualização... {0}%",
   "update.title": "Atualização do NMSE",
   "update.up_to_date": "O NMSE está atualizado.",
-  "update.up_to_date_msg": "Você está usando a versão mais recente ({0})."
+  "update.up_to_date_msg": "Você está usando a versão mais recente ({0}).",
+  "companion.battle_weak": "Fraco:",
+  "companion.battle_strong": "Forte:",
+  "companion.stats_warning": "Nota: alterar certos valores pode mudar o nome gerado proceduralmente do companheiro.",
+  "companion.induce_egg": "Induzir ovo",
+  "companion.induce_egg_no_slots": "Nenhum slot de ovo encontrado nos dados de salvamento.",
+  "companion.induce_egg_select_title": "Slots de ovo cheios, substituir qual?",
+  "companion.induce_egg_replace_confirm": "Tem certeza de que deseja substituir {0} pelo novo ovo?",
+  "companion.induce_egg_error": "Falha ao criar o ovo.",
+  "companion.induce_egg_place_prompt": "Ovo criado. Colocá-lo em um slot de carga do exotraje disponível?",
+  "companion.place_egg_in_exosuit": "Colocar ovo no exotraje",
+  "companion.place_egg_no_inventory": "Inventário de carga do exotraje não encontrado.",
+  "companion.place_egg_full": "O inventário de carga do exotraje está cheio. Libere espaço e use o botão 'Colocar ovo no exotraje'.",
+  "companion.place_egg_success": "Ovo colocado na carga do exotraje na posição ({0}, {1}).",
+  "companion.make_hatchable": "Tornar chocavel",
+  "companion.make_hatchable_error": "Nao foi possivel modificar a hora de nascimento."
 }

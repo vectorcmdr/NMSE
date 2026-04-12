@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Update downloaden... {0}%",
   "update.title": "NMSE-update",
   "update.up_to_date": "NMSE is up-to-date.",
-  "update.up_to_date_msg": "U gebruikt de nieuwste versie ({0})."
+  "update.up_to_date_msg": "U gebruikt de nieuwste versie ({0}).",
+  "companion.battle_weak": "Zwak:",
+  "companion.battle_strong": "Sterk:",
+  "companion.stats_warning": "Opmerking: het wijzigen van bepaalde waarden kan de procedureel gegenereerde naam van de metgezel veranderen.",
+  "companion.induce_egg": "Ei induceren",
+  "companion.induce_egg_no_slots": "Geen ei-slots gevonden in opslaggegevens.",
+  "companion.induce_egg_select_title": "Ei-slots vol, welk ei vervangen?",
+  "companion.induce_egg_replace_confirm": "Weet u zeker dat u {0} wilt vervangen door het nieuwe ei?",
+  "companion.induce_egg_error": "Ei kon niet worden aangemaakt.",
+  "companion.induce_egg_place_prompt": "Ei aangemaakt. In een beschikbare exopak-vrachtslot plaatsen?",
+  "companion.place_egg_in_exosuit": "Ei in exopak plaatsen",
+  "companion.place_egg_no_inventory": "Exopak-vrachtinventaris niet gevonden.",
+  "companion.place_egg_full": "Exopak-vrachtinventaris is vol. Maak ruimte vrij en gebruik de knop 'Ei in exopak plaatsen'.",
+  "companion.place_egg_success": "Ei geplaatst in exopak-vracht op positie ({0}, {1}).",
+  "companion.make_hatchable": "Uitbroedbaar maken",
+  "companion.make_hatchable_error": "Kon geboortedatum niet wijzigen."
 }

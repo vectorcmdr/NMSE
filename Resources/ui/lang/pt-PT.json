@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "A transferir atualização... {0}%",
   "update.title": "Atualização do NMSE",
   "update.up_to_date": "O NMSE está atualizado.",
-  "update.up_to_date_msg": "Está a utilizar a versão mais recente ({0})."
+  "update.up_to_date_msg": "Está a utilizar a versão mais recente ({0}).",
+  "companion.battle_weak": "Fraco:",
+  "companion.battle_strong": "Forte:",
+  "companion.stats_warning": "Nota: alterar certos valores pode mudar o nome gerado proceduralmente do companheiro.",
+  "companion.induce_egg": "Induzir ovo",
+  "companion.induce_egg_no_slots": "Nenhuma ranhura de ovo encontrada nos dados de gravação.",
+  "companion.induce_egg_select_title": "Ranhuras de ovo cheias, substituir qual?",
+  "companion.induce_egg_replace_confirm": "Tem a certeza de que pretende substituir {0} pelo novo ovo?",
+  "companion.induce_egg_error": "Não foi possível criar o ovo.",
+  "companion.induce_egg_place_prompt": "Ovo criado. Colocá-lo numa ranhura de carga do exofato disponível?",
+  "companion.place_egg_in_exosuit": "Colocar ovo no exofato",
+  "companion.place_egg_no_inventory": "Inventário de carga do exofato não encontrado.",
+  "companion.place_egg_full": "O inventário de carga do exofato está cheio. Liberte espaço e utilize o botão 'Colocar ovo no exofato'.",
+  "companion.place_egg_success": "Ovo colocado na carga do exofato na posição ({0}, {1}).",
+  "companion.make_hatchable": "Tornar chocavel",
+  "companion.make_hatchable_error": "Nao foi possivel modificar a hora de nascimento."
 }

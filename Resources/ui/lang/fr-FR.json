@@ -1608,5 +1608,20 @@
   "update.downloading_progress": "Téléchargement de la mise à jour... {0} %",
   "update.title": "Mise à jour NMSE",
   "update.up_to_date": "NMSE est à jour.",
-  "update.up_to_date_msg": "Vous utilisez la dernière version ({0})."
+  "update.up_to_date_msg": "Vous utilisez la dernière version ({0}).",
+  "companion.battle_weak": "Faible :",
+  "companion.battle_strong": "Fort :",
+  "companion.stats_warning": "Remarque : modifier certaines valeurs peut changer le nom généré procéduralement pour le compagnon.",
+  "companion.induce_egg": "Induire un oeuf",
+  "companion.induce_egg_no_slots": "Aucun emplacement d'oeuf trouvé dans les données de sauvegarde.",
+  "companion.induce_egg_select_title": "Emplacements d'oeufs pleins, remplacer lequel ?",
+  "companion.induce_egg_replace_confirm": "Êtes-vous sûr de vouloir remplacer {0} par le nouvel oeuf ?",
+  "companion.induce_egg_error": "Impossible de creer l'oeuf.",
+  "companion.induce_egg_place_prompt": "Oeuf créé. Le placer dans un emplacement de soute d'exocombinaison disponible ?",
+  "companion.place_egg_in_exosuit": "Placer l'oeuf dans l'exocombinaison",
+  "companion.place_egg_no_inventory": "Inventaire de soute d'exocombinaison introuvable.",
+  "companion.place_egg_full": "La soute d'exocombinaison est pleine. Libérez un emplacement et utilisez le bouton 'Placer l'oeuf dans l'exocombinaison'.",
+  "companion.place_egg_success": "Oeuf placé dans la soute d'exocombinaison à la position ({0}, {1}).",
+  "companion.make_hatchable": "Rendre éclosable",
+  "companion.make_hatchable_error": "Impossible de modifier l'heure de naissance."
 }
