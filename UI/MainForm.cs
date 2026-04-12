@@ -154,6 +154,7 @@ public partial class MainFormResources : Form
         _vehiclePanel.DataModified += (s, e) => _hasUnsavedChanges = true;
         _cataloguePanel.DataModified += (s, e) => _hasUnsavedChanges = true;
         _accountPanel.DataModified += (s, e) => _hasUnsavedChanges = true;
+        _companionPanel.ExosuitCargoModified += OnCompanionExosuitCargoModified;
 
         // Wire up Save Utilities reload event
         _mainStatsPanel.ReloadRequested += (s, e) =>
@@ -495,6 +496,18 @@ public partial class MainFormResources : Form
 
         if (_loadedTabIndices.Contains(7)) // Bases & Storage (includes Chests)
             _basePanel.LoadData(_currentSaveData);
+    }
+
+    private void OnCompanionExosuitCargoModified(object? sender, EventArgs e)
+    {
+        if (_currentSaveData == null)
+            return;
+
+        _hasUnsavedChanges = true;
+
+        // Reload the exosuit panel cargo grid so the newly placed egg is visible
+        if (_loadedTabIndices.Contains(1)) // Exosuit is tab 1
+            _exosuitPanel.LoadData(_currentSaveData);
     }
 
     /// <summary>
@@ -1266,7 +1279,7 @@ public partial class MainFormResources : Form
         catch (Exception ex)
         {
             _progressBar.Visible = false;
-            MessageBox.Show(UiStrings.Format("dialog.failed_load_save", ex.Message), UiStrings.Get("dialog.error"),
+            MessageBox.Show(this, UiStrings.Format("dialog.failed_load_save", ex.Message), UiStrings.Get("dialog.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
             _statusLabel.Text = UiStrings.Get("status.failed_load_save");
         }
@@ -1412,7 +1425,7 @@ public partial class MainFormResources : Form
         }
         else
         {
-            MessageBox.Show(UiStrings.Get("dialog.no_save_slot"), UiStrings.Get("dialog.info"),
+            MessageBox.Show(this, UiStrings.Get("dialog.no_save_slot"), UiStrings.Get("dialog.info"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
@@ -1434,7 +1447,7 @@ public partial class MainFormResources : Form
             if (_currentSaveData == null)
             {
                 _progressBar.Visible = false;
-                MessageBox.Show(UiStrings.Format("dialog.xbox_slot_failed", slotId), UiStrings.Get("dialog.error"),
+                MessageBox.Show(this, UiStrings.Format("dialog.xbox_slot_failed", slotId), UiStrings.Get("dialog.error"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -1477,7 +1490,7 @@ public partial class MainFormResources : Form
         catch (Exception ex)
         {
             _progressBar.Visible = false;
-            MessageBox.Show(UiStrings.Format("dialog.failed_load_xbox", ex.Message), UiStrings.Get("dialog.error"),
+            MessageBox.Show(this, UiStrings.Format("dialog.failed_load_xbox", ex.Message), UiStrings.Get("dialog.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
             _statusLabel.Text = UiStrings.Get("status.failed_load_xbox");
         }
@@ -1500,7 +1513,7 @@ public partial class MainFormResources : Form
             if (_currentSaveData == null)
             {
                 _progressBar.Visible = false;
-                MessageBox.Show(UiStrings.Format("dialog.ps4_slot_failed", slotIndex), UiStrings.Get("dialog.error"),
+                MessageBox.Show(this, UiStrings.Format("dialog.ps4_slot_failed", slotIndex), UiStrings.Get("dialog.error"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -1544,7 +1557,7 @@ public partial class MainFormResources : Form
         catch (Exception ex)
         {
             _progressBar.Visible = false;
-            MessageBox.Show(UiStrings.Format("dialog.failed_load_ps4", ex.Message), UiStrings.Get("dialog.error"),
+            MessageBox.Show(this, UiStrings.Format("dialog.failed_load_ps4", ex.Message), UiStrings.Get("dialog.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
             _statusLabel.Text = UiStrings.Get("status.failed_load_ps4");
         }
@@ -1627,7 +1640,7 @@ public partial class MainFormResources : Form
 
                 _statusLabel.Text = UiStrings.Format("status.save_written", Path.GetFileName(_xboxContainersIndexPath));
                 _hasUnsavedChanges = false;
-                MessageBox.Show(UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
+                MessageBox.Show(this, UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -1649,12 +1662,12 @@ public partial class MainFormResources : Form
 
             _statusLabel.Text = UiStrings.Format("status.save_written", Path.GetFileName(_currentFilePath));
             _hasUnsavedChanges = false;
-            MessageBox.Show(UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
+            MessageBox.Show(this, UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("dialog.save_failed", ex.Message), UiStrings.Get("dialog.error"),
+            MessageBox.Show(this, UiStrings.Format("dialog.save_failed", ex.Message), UiStrings.Get("dialog.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1695,7 +1708,7 @@ public partial class MainFormResources : Form
 
         if (!Directory.Exists(backupRoot))
         {
-            MessageBox.Show(UiStrings.Get("dialog.no_backup_dir"), UiStrings.Get("dialog.restore_backup"),
+            MessageBox.Show(this, UiStrings.Get("dialog.no_backup_dir"), UiStrings.Get("dialog.restore_backup"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -1708,7 +1721,7 @@ public partial class MainFormResources : Form
 
         if (backups.Count == 0)
         {
-            MessageBox.Show(UiStrings.Get("dialog.no_backup_zips"), UiStrings.Get("dialog.restore_backup"),
+            MessageBox.Show(this, UiStrings.Get("dialog.no_backup_zips"), UiStrings.Get("dialog.restore_backup"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -1716,7 +1729,7 @@ public partial class MainFormResources : Form
         string latestBackup = backups[0];
         string backupName = Path.GetFileName(latestBackup);
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this,
             UiStrings.Format("dialog.restore_confirm", fileName, backupName, File.GetCreationTime(latestBackup).ToString("g")),
             UiStrings.Get("dialog.restore_backup"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
@@ -1727,7 +1740,7 @@ public partial class MainFormResources : Form
             var entry = zip.GetEntry(fileName);
             if (entry == null)
             {
-                MessageBox.Show(UiStrings.Format("dialog.restore_file_not_found", fileName, backupName), UiStrings.Get("dialog.restore_backup"),
+                MessageBox.Show(this, UiStrings.Format("dialog.restore_file_not_found", fileName, backupName), UiStrings.Get("dialog.restore_backup"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -1738,7 +1751,7 @@ public partial class MainFormResources : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("dialog.restore_failed", ex.Message), UiStrings.Get("dialog.restore_backup"),
+            MessageBox.Show(this, UiStrings.Format("dialog.restore_failed", ex.Message), UiStrings.Get("dialog.restore_backup"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1757,7 +1770,7 @@ public partial class MainFormResources : Form
 
         if (!Directory.Exists(backupRoot))
         {
-            MessageBox.Show(UiStrings.Get("dialog.no_backup_dir"), UiStrings.Get("dialog.restore_backup_single"),
+            MessageBox.Show(this, UiStrings.Get("dialog.no_backup_dir"), UiStrings.Get("dialog.restore_backup_single"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -1769,7 +1782,7 @@ public partial class MainFormResources : Form
 
         if (backups.Count == 0)
         {
-            MessageBox.Show(UiStrings.Get("dialog.no_backup_zips"), UiStrings.Get("dialog.restore_backup_single"),
+            MessageBox.Show(this, UiStrings.Get("dialog.no_backup_zips"), UiStrings.Get("dialog.restore_backup_single"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
@@ -1786,7 +1799,7 @@ public partial class MainFormResources : Form
         if (accountFileName != null)
             fileList += $"\n  • {accountFileName}";
 
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this,
             UiStrings.Format("dialog.restore_single_confirm", fileList, backupName, File.GetCreationTime(latestBackup).ToString("g")),
             UiStrings.Get("dialog.restore_backup_single"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
@@ -1799,7 +1812,7 @@ public partial class MainFormResources : Form
             var saveEntry = zip.GetEntry(fileName);
             if (saveEntry == null)
             {
-                MessageBox.Show(UiStrings.Format("dialog.restore_file_not_found", fileName, backupName), UiStrings.Get("dialog.restore_backup_single"),
+                MessageBox.Show(this, UiStrings.Format("dialog.restore_file_not_found", fileName, backupName), UiStrings.Get("dialog.restore_backup_single"),
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -1820,7 +1833,7 @@ public partial class MainFormResources : Form
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("dialog.restore_failed", ex.Message), UiStrings.Get("dialog.restore_backup_single"),
+            MessageBox.Show(this, UiStrings.Format("dialog.restore_failed", ex.Message), UiStrings.Get("dialog.restore_backup_single"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -1896,7 +1909,7 @@ public partial class MainFormResources : Form
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("dialog.import_failed", ex.Message), UiStrings.Get("dialog.error"),
+                MessageBox.Show(this, UiStrings.Format("dialog.import_failed", ex.Message), UiStrings.Get("dialog.error"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -2273,7 +2286,7 @@ public partial class MainFormResources : Form
             else
             {
                 _statusLabel.Text = UiStrings.Get("update.up_to_date");
-                MessageBox.Show(
+                MessageBox.Show(this,
                     UiStrings.Format("update.up_to_date_msg", $"{VerMajor}.{VerMinor}.{VerPatch}"),
                     UiStrings.Get("update.title"),
                     MessageBoxButtons.OK,
@@ -2283,7 +2296,7 @@ public partial class MainFormResources : Form
         catch (Exception ex)
         {
             _statusLabel.Text = UiStrings.Get("update.check_failed");
-            MessageBox.Show(
+            MessageBox.Show(this,
                 UiStrings.Format("update.check_failed_msg", ex.Message),
                 UiStrings.Get("update.title"),
                 MessageBoxButtons.OK,
@@ -2297,7 +2310,7 @@ public partial class MainFormResources : Form
     /// </summary>
     private async void PromptUserForUpdate(UpdateInfo update)
     {
-        var result = MessageBox.Show(
+        var result = MessageBox.Show(this,
             UiStrings.Format("update.available_msg",
                 $"{VerMajor}.{VerMinor}.{VerPatch}",
                 update.RemoteVersion.ToString(3)),
@@ -2336,7 +2349,7 @@ public partial class MainFormResources : Form
             else
             {
                 _statusLabel.Text = UiStrings.Get("update.apply_failed");
-                MessageBox.Show(
+                MessageBox.Show(this,
                     UiStrings.Get("update.apply_failed_msg"),
                     UiStrings.Get("update.title"),
                     MessageBoxButtons.OK,
@@ -2346,7 +2359,7 @@ public partial class MainFormResources : Form
         catch (Exception ex)
         {
             _statusLabel.Text = UiStrings.Get("update.download_failed");
-            MessageBox.Show(
+            MessageBox.Show(this,
                 UiStrings.Format("update.download_failed_msg", ex.Message),
                 UiStrings.Get("update.title"),
                 MessageBoxButtons.OK,
@@ -2420,7 +2433,7 @@ public partial class MainFormResources : Form
         // Prompt if there are unsaved changes
         if (_hasUnsavedChanges && _currentSaveData != null)
         {
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this,
                 UiStrings.Get("dialog.unsaved_changes_msg"),
                 UiStrings.Get("dialog.unsaved_changes"),
                 MessageBoxButtons.YesNoCancel,

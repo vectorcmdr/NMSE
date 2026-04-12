@@ -346,6 +346,14 @@ partial class CompanionPanel
         _trustLabel = AddRow(_leftColumn, "Trust:", _trustField, lRow++);
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _birthTimeLabel = AddRow(_leftColumn, "Birth Time:", _birthTimePicker, lRow++);
+
+        // "Make Hatchable" button row (only visible for eggs, placed between Birth Time and Last Egg Time)
+        _makeHatchableBtn = new Button { Text = "Make Hatchable", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Visible = false };
+        _makeHatchableBtn.Click += (s, e) => OnMakeHatchable();
+        _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _leftColumn.Controls.Add(new Label { Text = "", AutoSize = true }, 0, lRow);
+        _leftColumn.Controls.Add(_makeHatchableBtn, 1, lRow++);
+
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _lastEggTimeLabel = AddRow(_leftColumn, "Last Egg Time:", _lastEggTimePicker, lRow++);
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -358,6 +366,21 @@ partial class CompanionPanel
         _allowRerollLabel = AddRow(_leftColumn, "Allow Reroll:", _allowUnmodifiedRerollField, lRow++);
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _uaLabel = AddRow(_leftColumn, "UA:", _uaField, lRow++);
+
+        // "Induce Egg" button row (only visible for pets) - extra top margin for spacing
+        _induceEggBtn = new Button { Text = "Induce Egg", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Visible = false, Margin = new Padding(3, 10, 3, 3) };
+        _induceEggBtn.Click += (s, e) => OnInduceEgg();
+        _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _leftColumn.Controls.Add(new Label { Text = "", AutoSize = true }, 0, lRow);
+        _leftColumn.Controls.Add(_induceEggBtn, 1, lRow++);
+
+        // "Place Egg in Exosuit" button row (only visible for eggs)
+        _placeEggInExosuitBtn = new Button { Text = "Place Egg in Exosuit", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Visible = false };
+        _placeEggInExosuitBtn.Click += (s, e) => OnPlaceEggInExosuit();
+        _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _leftColumn.Controls.Add(new Label { Text = "", AutoSize = true }, 0, lRow);
+        _leftColumn.Controls.Add(_placeEggInExosuitBtn, 1, lRow++);
+
         // Blank spacer row at bottom of left column for alignment
         _leftColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _leftColumn.Controls.Add(new Label { Text = "", AutoSize = true }, 0, lRow++);
@@ -578,18 +601,29 @@ partial class CompanionPanel
         accColumn.Controls.Add(_accessoryPanel);
         descAccessoryRow.Controls.Add(accColumn, 1, 0);
 
+        // Warning label about procedural name changes
+        _statsWarningLabel = new Label
+        {
+            Text = "Note: Changing certain values can change the procedurally generated name for the companion.",
+            AutoSize = true,
+            ForeColor = System.Drawing.Color.DarkOrange,
+            Padding = new Padding(0, 3, 0, 5),
+        };
+
         var innerLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 1,
-            RowCount = 2,
+            RowCount = 3,
         };
         innerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        innerLayout.Controls.Add(_formLayout, 0, 0);
-        innerLayout.Controls.Add(descAccessoryRow, 0, 1);
+        innerLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        innerLayout.Controls.Add(_statsWarningLabel, 0, 0);
+        innerLayout.Controls.Add(_formLayout, 0, 1);
+        innerLayout.Controls.Add(descAccessoryRow, 0, 2);
 
         statsScroll.Controls.Add(innerLayout);
 
@@ -787,6 +821,20 @@ partial class CompanionPanel
         _battleAffinityValue = new Label { Text = "", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
         affinityRow.Controls.Add(_battleAffinityLabel);
         affinityRow.Controls.Add(_battleAffinityValue);
+
+        // Weak/Strong labels
+        _battleWeakLabel = new Label { Text = "Weak:", AutoSize = true, Padding = new Padding(15, 5, 5, 0) };
+        FontManager.ApplyHeadingFont(_battleWeakLabel, 10);
+        _battleWeakValue = new Label { Text = "", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
+        affinityRow.Controls.Add(_battleWeakLabel);
+        affinityRow.Controls.Add(_battleWeakValue);
+
+        _battleStrongLabel = new Label { Text = "Strong:", AutoSize = true, Padding = new Padding(15, 5, 5, 0) };
+        FontManager.ApplyHeadingFont(_battleStrongLabel, 10);
+        _battleStrongValue = new Label { Text = "", AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
+        affinityRow.Controls.Add(_battleStrongLabel);
+        affinityRow.Controls.Add(_battleStrongValue);
+
         battleLayout.Controls.Add(affinityRow, 0, bRow++);
 
         // == Ability Slots list ==
@@ -930,6 +978,12 @@ partial class CompanionPanel
     private DoubleBufferedTabControl _tabControl = null!;
     private TabPage _statsPage = null!;
     private TabPage _battlePage = null!;
+
+    // Stats tab warning and action buttons
+    private Label _statsWarningLabel = null!;
+    private Button _induceEggBtn = null!;
+    private Button _placeEggInExosuitBtn = null!;
+    private Button _makeHatchableBtn = null!;
     private TableLayoutPanel _formLayout = null!;
     private TableLayoutPanel _leftColumn = null!;
     private TableLayoutPanel _rightColumn = null!;
@@ -1029,6 +1083,10 @@ partial class CompanionPanel
     // Battle tab fields
     private Label _battleAffinityLabel = null!;
     private Label _battleAffinityValue = null!;
+    private Label _battleWeakLabel = null!;
+    private Label _battleWeakValue = null!;
+    private Label _battleStrongLabel = null!;
+    private Label _battleStrongValue = null!;
     private Label _battleOverrideClassesLabel = null!;
     private CheckBox _battleOverrideCheck = null!;
     private Label _battleHealthClassLabel = null!;

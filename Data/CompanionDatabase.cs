@@ -9309,6 +9309,43 @@ public static class PetBiomeAffinityMap
     private static readonly Dictionary<string, string> _targetLoc = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
+    /// Maps UI biome strings to game-correct affinity names.
+    /// The biome to affinity data uses lookup/temp names (e.g. "Cold", "Lush", "Barren")
+    /// but the in-game affinity names differ (e.g. "Frost", "Tropical", "Desert").
+    /// This dictionary provides the corrected game names for display instead of using the MXML values.
+    /// </summary>
+    private static readonly Dictionary<string, string> _affinityGameNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Toxic", "Toxic" },
+        { "Radioactive", "Radioactive" },
+        { "Fire", "Fire" },
+        { "Cold", "Frost" },
+        { "Frozen", "Frost" },
+        { "Lush", "Tropical" },
+        { "Barren", "Desert" },
+        { "Weird", "Anomalous" },
+        { "Mech", "Mechanical" },
+        { "Normal", "Normal" },
+    };
+
+    /// <summary>
+    /// Weak/strong type matchup data. Each affinity maps to a tuple of
+    /// (WeakAgainst, StrongAgainst) affinity lists using game-correct names.
+    /// </summary>
+    private static readonly Dictionary<string, (string[] Weak, string[] Strong)> _affinityMatchups
+        = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "Toxic", (new[] { "Desert", "Frost" }, new[] { "Tropical", "Radioactive" }) },
+        { "Desert", (new[] { "Tropical", "Mechanical" }, new[] { "Toxic", "Fire" }) },
+        { "Frost", (new[] { "Radioactive", "Fire" }, new[] { "Toxic", "Mechanical" }) },
+        { "Anomalous", (new[] { "Fire", "Tropical" }, new[] { "Radioactive", "Mechanical" }) },
+        { "Mechanical", (new[] { "Frost", "Anomalous" }, new[] { "Desert", "Tropical" }) },
+        { "Tropical", (new[] { "Toxic", "Mechanical" }, new[] { "Desert", "Anomalous" }) },
+        { "Radioactive", (new[] { "Toxic", "Anomalous" }, new[] { "Fire", "Frost" }) },
+        { "Fire", (new[] { "Desert", "Radioactive" }, new[] { "Frost", "Anomalous" }) },
+    };
+
+    /// <summary>
     /// Resolves a biome type to its pet battler affinity.
     /// Returns empty string if not found.
     /// </summary>
@@ -9330,51 +9367,75 @@ public static class PetBiomeAffinityMap
 
     /// <summary>
     /// Returns an emoji matching the affinity type, for visual consistency with move type icons.
+    /// Accepts both JSON-sourced names (e.g. "Cold", "Lush") and game-correct names
+    /// (e.g. "Frost", "Tropical").
     /// </summary>
     public static string GetAffinityEmoji(string affinity)
     {
         return affinity?.ToLowerInvariant() switch
         {
-            "toxic" => "\U0001F480",   // skull
-            "radioactive" => "\u2622\uFE0F", // radioactive
-            "fire" => "\U0001F525",    // fire
-            "cold" or "frozen" => "\u2744\uFE0F", // snowflake
-            "lush" => "\U0001F33F",    // herb/leaf
-            "barren" => "\U0001F3DC\uFE0F", // desert
-            "weird" => "\U0001F52E",   // crystal ball
-            "mech" => "\u2699\uFE0F",  // gear
-            "normal" => "\u2B50",      // star
+            // Updated with the new affinity name lookup and glyph vs unicode ID.
+            "toxic" => "☠️",
+            "radioactive" => "☢️",
+            "fire" => "🔥",
+            "cold" or "frozen" or "frost" => "❄️",
+            "lush" or "tropical" => "🌿",
+            "barren" or "desert" => "☀️",
+            "weird" or "anomalous" => "🔮",
+            "mech" or "mechanical" => "⚙️",
+            "normal" => "⭐",
             _ => "",
         };
     }
 
     /// <summary>
+    /// Resolves a JSON affinity name to its game-correct display name.
+    /// For example: "Cold" becomes "Frost", "Lush" becomes "Tropical".
+    /// If the affinity is already a game-correct name or unrecognised, returns it unchanged.
+    /// </summary>
+    public static string GetAffinityGameName(string affinity)
+    {
+        if (string.IsNullOrEmpty(affinity)) return "";
+        return _affinityGameNames.TryGetValue(affinity, out var gameName) ? gameName : affinity;
+    }
+
+    /// <summary>
     /// Returns a normalised display name for an affinity value, prefixed with an emoji.
-    /// Uses the loc stub if available, otherwise normalises the raw affinity string.
-    /// For example: "Fire" -> "Fire" (already normalised), "Normal" -> "Normal".
-    /// The loc-resolved value (e.g. "FIRE") is also normalised: "FIRE" -> "Fire".
+    /// Uses the game-correct affinity name (e.g. "Frost" instead of "Cold").
     /// </summary>
     public static string GetAffinityDisplayName(string affinity, LocalisationService? service = null)
     {
         if (string.IsNullOrEmpty(affinity)) return "";
 
-        string emoji = GetAffinityEmoji(affinity);
-        string name;
+        string gameName = GetAffinityGameName(affinity);
+        string emoji = GetAffinityEmoji(gameName);
+        return !string.IsNullOrEmpty(emoji) ? $"{emoji}{gameName}" : gameName;
+    }
 
-        // Try to resolve via game localisation
-        if (service != null && _affinityLoc.TryGetValue(affinity, out var locKey))
+    /// <summary>
+    /// Returns the weak/strong matchup data for a game-correct affinity name.
+    /// The returned tuple contains (Weak, Strong) arrays of game-correct affinity names.
+    /// Returns null if no matchup data exists (e.g. for "Normal").
+    /// </summary>
+    public static (string[] Weak, string[] Strong)? GetAffinityMatchup(string gameAffinity)
+    {
+        if (string.IsNullOrEmpty(gameAffinity)) return null;
+        return _affinityMatchups.TryGetValue(gameAffinity, out var matchup) ? matchup : null;
+    }
+
+    /// <summary>
+    /// Formats a list of affinity names with their emoji prefixes, joined by a separator.
+    /// </summary>
+    public static string FormatAffinityList(string[] affinities, string separator = ", ")
+    {
+        if (affinities == null || affinities.Length == 0) return "";
+        var parts = new string[affinities.Length];
+        for (int i = 0; i < affinities.Length; i++)
         {
-            var locValue = service.Lookup(locKey);
-            if (locValue != null)
-            {
-                name = DisplayStringHelper.NormalizeDisplayString(locValue);
-                return !string.IsNullOrEmpty(emoji) ? $"{emoji}{name}" : name;
-            }
+            string emoji = GetAffinityEmoji(affinities[i]);
+            parts[i] = !string.IsNullOrEmpty(emoji) ? $"{emoji}{affinities[i]}" : affinities[i];
         }
-
-        // Fallback: normalise the raw affinity string
-        name = DisplayStringHelper.NormalizeDisplayString(affinity);
-        return !string.IsNullOrEmpty(emoji) ? $"{emoji}{name}" : name;
+        return string.Join(separator, parts);
     }
 
     /// <summary>

@@ -13,6 +13,9 @@ public partial class CompanionPanel : UserControl
     private readonly List<(JsonObject Companion, string Label, string Source, int OriginalIndex, bool IsEmpty)> _entries = new();
     private bool _loading;
 
+    /// <summary>Raised when the companion panel modifies the exosuit cargo inventory (e.g. placing an egg).</summary>
+    public event EventHandler? ExosuitCargoModified;
+
     /// <summary>Cached per-slot allowed move IDs, gathered from all movesets. Index 0-4.</summary>
     private readonly List<PetBattleMoveEntry>[] _allowedMovesPerSlot = new List<PetBattleMoveEntry>[5];
 
@@ -423,8 +426,14 @@ public partial class CompanionPanel : UserControl
 
             // Disable accessory and battle controls for eggs
             bool isEgg = entry.Source == "Egg";
+            bool isPet = entry.Source == "Pet";
             SetAccessoryControlsEnabled(!isEgg && !entry.IsEmpty);
             SetBattleControlsEnabled(!isEgg && !entry.IsEmpty);
+
+            // Show/hide conditional buttons
+            _induceEggBtn.Visible = isPet && !entry.IsEmpty;
+            _placeEggInExosuitBtn.Visible = isEgg && !entry.IsEmpty;
+            _makeHatchableBtn.Visible = isEgg && !entry.IsEmpty;
         }
         finally { _loading = false; }
     }
@@ -1252,6 +1261,7 @@ public partial class CompanionPanel : UserControl
             _moveSlotDataInitialised = true;
         }
         // Affinity display
+        string currentGameAffinity = "";
         try
         {
             var biomeObj = comp.GetObject("Biome");
@@ -1261,8 +1271,23 @@ public partial class CompanionPanel : UserControl
                 ? PetBiomeAffinityMap.GetAffinityDisplayName(affinity)
                 : "";
             _battleAffinityValue.Text = display;
+            currentGameAffinity = PetBiomeAffinityMap.GetAffinityGameName(affinity);
         }
         catch { _battleAffinityValue.Text = ""; }
+
+        // Weak/Strong matchup display
+        var matchup = PetBiomeAffinityMap.GetAffinityMatchup(currentGameAffinity);
+        if (matchup != null)
+        {
+            _battleWeakValue.Text = PetBiomeAffinityMap.FormatAffinityList(matchup.Value.Weak);
+            _battleStrongValue.Text = PetBiomeAffinityMap.FormatAffinityList(matchup.Value.Strong);
+        }
+        else
+        {
+            string na = UiStrings.GetOrNull("common.na") ?? "N/A";
+            _battleWeakValue.Text = na;
+            _battleStrongValue.Text = na;
+        }
 
         // Stat Class Overrides
         try { _battleOverrideCheck.Checked = comp.GetBool("PetBattlerUseCoreStatClassOverrides"); } catch { _battleOverrideCheck.Checked = false; }
@@ -1895,7 +1920,7 @@ public partial class CompanionPanel : UserControl
             }
             catch (Exception ex)
             {
-                MessageBox.Show(UiStrings.Format("companion.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Format("companion.export_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -1923,7 +1948,7 @@ public partial class CompanionPanel : UserControl
 
             if (target == null)
             {
-                MessageBox.Show(UiStrings.Get("companion.no_arrays_found"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, UiStrings.Get("companion.no_arrays_found"), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -1960,7 +1985,7 @@ public partial class CompanionPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(UiStrings.Format("companion.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, UiStrings.Format("companion.import_failed", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -1996,6 +2021,412 @@ public partial class CompanionPanel : UserControl
     {
         if (_playerState?.Parent is JsonObject root) return root;
         return null;
+    }
+
+    /// <summary>
+    /// Handles the "Make Hatchable" button for eggs.
+    /// Sets BirthTime to 24 hours before the current save's value so the game treats it as hatchable.
+    /// </summary>
+    private void OnMakeHatchable()
+    {
+        var comp = SelectedCompanion;
+        if (comp == null) return;
+
+        try
+        {
+            long currentBirthTime = comp.GetLong("BirthTime");
+            long newBirthTime = currentBirthTime - 86400; // 24 hours in seconds
+            comp.Set("BirthTime", newBirthTime);
+
+            _loading = true;
+            try
+            {
+                _birthTimePicker.Value = DateTimeOffset.FromUnixTimeSeconds(newBirthTime).ToLocalTime().DateTime;
+            }
+            finally { _loading = false; }
+        }
+        catch
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.make_hatchable_error") ?? "Could not modify birth time.",
+                UiStrings.GetOrNull("companion.make_hatchable") ?? "Make Hatchable",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
+
+    /// <summary>
+    /// Handles the "Induce Egg" button for pets.
+    /// Creates a copy of the pet data in the first available egg slot (or lets the user choose
+    /// which slot to replace if full), then optionally places it into the exosuit cargo inventory.
+    /// </summary>
+    private void OnInduceEgg()
+    {
+        if (_playerState == null) return;
+        var entry = SelectedEntry;
+        if (entry.Source != "Pet" || entry.IsEmpty) return;
+        var petComp = entry.Companion;
+
+        var eggsArray = _playerState.GetArray("Eggs");
+        if (eggsArray == null || eggsArray.Length == 0)
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.induce_egg_no_slots") ?? "No egg slots found in save data.",
+                UiStrings.GetOrNull("companion.induce_egg") ?? "Induce Egg",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        // Find first empty egg slot
+        int targetSlot = -1;
+        for (int i = 0; i < eggsArray.Length; i++)
+        {
+            try
+            {
+                var eggObj = eggsArray.GetObject(i);
+                if (!IsSlotOccupied(eggObj))
+                {
+                    targetSlot = i;
+                    break;
+                }
+            }
+            catch { }
+        }
+
+        if (targetSlot < 0)
+        {
+            // All slots full - ask user which to replace
+            var slotNames = new string[eggsArray.Length];
+            for (int i = 0; i < eggsArray.Length; i++)
+            {
+                try
+                {
+                    var eggObj = eggsArray.GetObject(i);
+                    string name = eggObj.GetString("CustomName") ?? "";
+                    string species = CompanionLogic.LookupSpeciesName(eggObj.GetString("CreatureID") ?? "");
+                    slotNames[i] = $"Egg {i + 1}: {(!string.IsNullOrEmpty(name) ? name : species)}";
+                }
+                catch { slotNames[i] = $"Egg {i + 1}"; }
+            }
+
+            using var selectForm = new Form
+            {
+                Text = UiStrings.GetOrNull("companion.induce_egg_select_title") ?? "Egg slots full, replace which egg?",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                Size = new System.Drawing.Size(380, 150),
+            };
+            var combo = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Dock = DockStyle.Top,
+                Margin = new Padding(10, 10, 10, 5),
+            };
+            combo.Items.AddRange(slotNames);
+            combo.SelectedIndex = 0;
+            var okBtn = new Button { Text = "OK", DialogResult = DialogResult.OK, Dock = DockStyle.Bottom };
+            selectForm.Controls.Add(combo);
+            selectForm.Controls.Add(okBtn);
+            selectForm.AcceptButton = okBtn;
+
+            if (selectForm.ShowDialog(this) != DialogResult.OK) return;
+            targetSlot = combo.SelectedIndex;
+
+            // Confirm replacement
+            string confirmMsg = string.Format(
+                UiStrings.GetOrNull("companion.induce_egg_replace_confirm") ?? "Are you sure you want to replace {0} with the new egg?",
+                slotNames[targetSlot]);
+            if (MessageBox.Show(this, confirmMsg,
+                UiStrings.GetOrNull("companion.induce_egg") ?? "Induce Egg",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+        }
+
+        // Create the egg data from the pet
+        try
+        {
+            var eggSlot = eggsArray.GetObject(targetSlot);
+            CopyPetToEgg(petComp, eggSlot);
+        }
+        catch
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.induce_egg_error") ?? "Failed to create egg.",
+                UiStrings.GetOrNull("companion.induce_egg") ?? "Induce Egg",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        // Refresh the companion list
+        var saveData = FindSaveDataRoot();
+        if (saveData != null) LoadData(saveData);
+
+        // Ask if user wants to place the egg in exosuit
+        if (MessageBox.Show(this,
+            UiStrings.GetOrNull("companion.induce_egg_place_prompt") ?? "Egg created. Place it into an available exosuit cargo slot?",
+            UiStrings.GetOrNull("companion.induce_egg") ?? "Induce Egg",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+        {
+            PlaceEggItemInExosuit(targetSlot);
+        }
+    }
+
+    /// <summary>
+    /// Copies pet companion data to an egg slot, adjusting fields as the game does during egg induction.
+    /// The egg inherits all creature identification, seeds, traits, and battle data from the pet.
+    /// BirthTime is set to current epoch UTC, LastEggTime is set to the pet's BirthTime,
+    /// HasBeenSummoned is set to false, and Moods are reset to low values.
+    /// </summary>
+    private static void CopyPetToEgg(JsonObject pet, JsonObject egg)
+    {
+        // Copy identification fields
+        foreach (string key in new[]
+        {
+            "Scale", "CreatureID", "CustomName", "CustomSpeciesName",
+            "Predator", "UA", "AllowUnmodifiedReroll", "HasFur",
+            "Trust", "EggModified",
+        })
+        {
+            try
+            {
+                var val = pet.Get(key);
+                if (val != null) egg.Set(key, val);
+            }
+            catch { }
+        }
+
+        // Copy arrays: Descriptors, CreatureSeed, CreatureSecondarySeed, ColourBaseSeed, BoneScaleSeed, Traits
+        foreach (string key in new[] { "Descriptors", "CreatureSeed", "CreatureSecondarySeed", "ColourBaseSeed", "BoneScaleSeed", "Traits" })
+        {
+            try
+            {
+                var arr = pet.GetArray(key);
+                if (arr != null)
+                {
+                    var eggArr = egg.GetArray(key);
+                    if (eggArr != null)
+                    {
+                        for (int i = 0; i < Math.Min(arr.Length, eggArr.Length); i++)
+                            eggArr.Set(i, arr.Get(i));
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Copy string seeds
+        foreach (string key in new[] { "SpeciesSeed", "GenusSeed" })
+        {
+            try { egg.Set(key, pet.GetString(key) ?? "0x0"); } catch { }
+        }
+
+        // Copy nested objects: Biome, CreatureType
+        try
+        {
+            var biomeObj = pet.GetObject("Biome");
+            var eggBiomeObj = egg.GetObject("Biome");
+            if (biomeObj != null && eggBiomeObj != null)
+                eggBiomeObj.Set("Biome", biomeObj.GetString("Biome") ?? "Lush");
+        }
+        catch { }
+
+        try
+        {
+            var ctObj = pet.GetObject("CreatureType");
+            var eggCtObj = egg.GetObject("CreatureType");
+            if (ctObj != null && eggCtObj != null)
+                eggCtObj.Set("CreatureType", ctObj.GetString("CreatureType") ?? "None");
+        }
+        catch { }
+
+        // Copy trust times
+        foreach (string key in new[] { "LastTrustIncreaseTime", "LastTrustDecreaseTime" })
+        {
+            try { egg.Set(key, pet.GetLong(key)); } catch { }
+        }
+
+        // Set egg-specific times: BirthTime = now, LastEggTime = pet's BirthTime
+        long nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        try { egg.Set("BirthTime", nowUnix); } catch { }
+        try { egg.Set("LastEggTime", pet.GetLong("BirthTime")); } catch { }
+
+        // Egg is not summoned
+        try { egg.Set("HasBeenSummoned", false); } catch { }
+
+        // Reset moods to low values (as per game behaviour for newly induced eggs)
+        try
+        {
+            var moods = egg.GetArray("Moods");
+            if (moods != null && moods.Length >= 2)
+            {
+                moods.Set(0, 0.01);
+                moods.Set(1, 0.02);
+            }
+        }
+        catch { }
+
+        // Copy battle data
+        foreach (string key in new[]
+        {
+            "PetBattlerUseCoreStatClassOverrides", "PetBattlerTreatsAvailable",
+            "PetBattleProgressToTreat", "PetBattlerVictories",
+        })
+        {
+            try
+            {
+                var val = pet.Get(key);
+                if (val != null) egg.Set(key, val);
+            }
+            catch { }
+        }
+
+        // Copy battle arrays
+        foreach (string key in new[] { "PetBattlerCoreStatClassOverrides", "PetBattlerTreatsEaten", "PetBattlerMoveList" })
+        {
+            try
+            {
+                var petArr = pet.GetArray(key);
+                var eggArr = egg.GetArray(key);
+                if (petArr != null && eggArr != null)
+                {
+                    for (int i = 0; i < Math.Min(petArr.Length, eggArr.Length); i++)
+                    {
+                        var item = petArr.Get(i);
+                        if (item != null) eggArr.Set(i, item);
+                    }
+                }
+            }
+            catch { }
+        }
+
+        // Copy SenderData
+        try
+        {
+            var petSender = pet.GetObject("SenderData");
+            var eggSender = egg.GetObject("SenderData");
+            if (petSender != null && eggSender != null)
+            {
+                foreach (string sk in new[] { "LID", "UID", "USN", "PTK" })
+                {
+                    try { eggSender.Set(sk, petSender.GetString(sk) ?? ""); } catch { }
+                }
+                try { eggSender.Set("TS", petSender.GetLong("TS")); } catch { }
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Handles the "Place Egg in Exosuit" button for eggs.
+    /// Finds the selected egg slot and places the corresponding egg item into the exosuit cargo.
+    /// </summary>
+    private void OnPlaceEggInExosuit()
+    {
+        var entry = SelectedEntry;
+        if (entry.Source != "Egg" || entry.IsEmpty) return;
+        PlaceEggItemInExosuit(entry.OriginalIndex);
+    }
+
+    /// <summary>
+    /// Places an egg item into the first available exosuit cargo inventory slot.
+    /// The item ID is "^EGG{n}" where n is the 1-based egg slot number.
+    /// </summary>
+    private void PlaceEggItemInExosuit(int eggSlotIndex)
+    {
+        if (_playerState == null) return;
+
+        var cargoInventory = _playerState.GetObject(ExosuitLogic.CargoInventoryKey);
+        if (cargoInventory == null)
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.place_egg_no_inventory") ?? "Exosuit cargo inventory not found.",
+                UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        var slots = cargoInventory.GetArray("Slots");
+        var validIndices = cargoInventory.GetArray("ValidSlotIndices");
+        if (slots == null || validIndices == null)
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.place_egg_no_inventory") ?? "Exosuit cargo inventory not found.",
+                UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        // Build set of occupied positions
+        var occupied = new HashSet<(int, int)>();
+        for (int i = 0; i < slots.Length; i++)
+        {
+            try
+            {
+                var slot = slots.GetObject(i);
+                var idx = slot?.GetObject("Index");
+                if (idx != null)
+                    occupied.Add((idx.GetInt("X"), idx.GetInt("Y")));
+            }
+            catch { }
+        }
+
+        // Find first valid slot index that is not occupied
+        int targetX = -1, targetY = -1;
+        for (int i = 0; i < validIndices.Length; i++)
+        {
+            try
+            {
+                var vi = validIndices.GetObject(i);
+                if (vi == null) continue;
+                int x = vi.GetInt("X");
+                int y = vi.GetInt("Y");
+                if (!occupied.Contains((x, y)))
+                {
+                    targetX = x;
+                    targetY = y;
+                    break;
+                }
+            }
+            catch { }
+        }
+
+        if (targetX < 0)
+        {
+            MessageBox.Show(this,
+                UiStrings.GetOrNull("companion.place_egg_full") ?? "Exosuit cargo inventory is full. Free up a slot and use the 'Place Egg in Exosuit' button.",
+                UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        // Create the inventory slot for the egg
+        string eggItemId = $"^EGG{eggSlotIndex + 1}";
+
+        var newSlot = new JsonObject();
+        var typeObj = new JsonObject();
+        typeObj.Add("InventoryType", "Product");
+        newSlot.Add("Type", typeObj);
+        newSlot.Add("Id", eggItemId);
+        newSlot.Add("Amount", 1);
+        newSlot.Add("MaxAmount", 1);
+        newSlot.Add("DamageFactor", 0.0);
+        newSlot.Add("FullyInstalled", true);
+        newSlot.Add("AddedAutomatically", false);
+        var indexObj = new JsonObject();
+        indexObj.Add("X", targetX);
+        indexObj.Add("Y", targetY);
+        newSlot.Add("Index", indexObj);
+
+        slots.Add(newSlot);
+
+        // Notify listeners (e.g. MainForm) so the exosuit inventory grid is refreshed
+        ExosuitCargoModified?.Invoke(this, EventArgs.Empty);
+
+        MessageBox.Show(this,
+            string.Format(UiStrings.GetOrNull("companion.place_egg_success") ?? "Egg placed in exosuit cargo at position ({0}, {1}).", targetX, targetY),
+            UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit",
+            MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     public void SaveData(JsonObject saveData)
@@ -2077,6 +2508,8 @@ public partial class CompanionPanel : UserControl
 
         // Battle tab labels
         _battleAffinityLabel.Text = UiStrings.GetOrNull("companion.battle_affinity") ?? "Affinity:";
+        _battleWeakLabel.Text = UiStrings.GetOrNull("companion.battle_weak") ?? "Weak:";
+        _battleStrongLabel.Text = UiStrings.GetOrNull("companion.battle_strong") ?? "Strong:";
         _battleOverrideClassesLabel.Text = UiStrings.GetOrNull("companion.battle_stat_overrides") ?? "Stat Class Overrides";
         _battleOverrideCheck.Text = UiStrings.GetOrNull("companion.battle_override_classes") ?? "Override Pet Classes";
         _battleHealthClassLabel.Text = UiStrings.GetOrNull("companion.battle_health") ?? "Health:";
@@ -2100,5 +2533,11 @@ public partial class CompanionPanel : UserControl
             _moveSlotCooldownLabels[i].Text = UiStrings.GetOrNull("companion.battle_cooldown") ?? "Cooldown:";
             _moveSlotScoreBoostLabels[i].Text = UiStrings.GetOrNull("companion.battle_score_boost") ?? "Score Boost:";
         }
+
+        // Stats tab warning and action buttons
+        _statsWarningLabel.Text = UiStrings.GetOrNull("companion.stats_warning") ?? "Note: Changing certain values can change the procedurally generated name for the companion.";
+        _induceEggBtn.Text = UiStrings.GetOrNull("companion.induce_egg") ?? "Induce Egg";
+        _placeEggInExosuitBtn.Text = UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit";
+        _makeHatchableBtn.Text = UiStrings.GetOrNull("companion.make_hatchable") ?? "Make Hatchable";
     }
 }
