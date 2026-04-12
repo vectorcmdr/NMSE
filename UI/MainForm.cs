@@ -278,7 +278,7 @@ public partial class MainFormResources : Form
     /// Primary: reads the ICO file from the output directory.
     /// Fallback: Properties.Resources.AppIcon via the compiled .resources blob.
     /// </summary>
-    private static Icon? LoadAppIcon()
+    internal static Icon? LoadAppIcon()
     {
         // 1. Try the file on disk (copied to output by the build).
         try
@@ -757,18 +757,12 @@ public partial class MainFormResources : Form
                 _mainStatsPanel.RefreshGlyphButtonImages();
 
                 // Start icon pre-loading immediately on a background thread.
-                // The form remains invisible (Opacity = 0) until the preload
-                // finishes and the Shown event fires, at which point we set
-                // Opacity = 1.  This gives "best of both worlds": the form
-                // window is created quickly (fast startup perception - taskbar
-                // entry appears immediately) but the user never sees a slowly
-                // building UI with icons loading one-by-one.
+                // This allows icon images to load while the form continues
+                // initializing. The main window itself remains visible during
+                // startup, matching the previous behaviour.
                 var db = _database;
                 var iconMgr = _iconManager;
                 _iconPreloadTask = Task.Run(() => iconMgr.PreloadIcons(db));
-
-                // Keep form invisible during initial render; revealed in Shown handler.
-                Opacity = 0;
             }
 
             // Pass item database and icons to inventory panels

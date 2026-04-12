@@ -23,7 +23,8 @@ static class Program
         // (database loading, icon preloading, panel construction).
         using var splash = new SplashForm();
         splash.Show();
-        splash.Update(); // Force synchronous repaint before the heavy work.
+        Application.DoEvents(); // Process WM_SETICON and taskbar updates before heavy startup.
+        splash.Refresh();
 
         var mainForm = new MainFormResources();
         mainForm.SetSplash(splash);

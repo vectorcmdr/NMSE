@@ -24,17 +24,30 @@ internal sealed class SplashForm : Form
         ShowInTaskbar = true;
         TopMost = true;
         ShowIcon = true;
+        Text = MainFormResources.AppName;
 
-        // Try to load the icon for the taskbar entry.
+        // Load the same app icon used by the main window so the taskbar entry
+        // has a valid icon immediately while the startup splash is visible.
         try
         {
-            string icoPath = Path.Combine(AppContext.BaseDirectory, MainFormResources.IconPath);
-            if (File.Exists(icoPath))
+            Icon? appIcon = MainFormResources.LoadAppIcon();
+            if (appIcon != null)
             {
-                byte[] bytes = File.ReadAllBytes(icoPath);
-                using var ms = new MemoryStream(bytes);
-                Icon = new Icon(ms);
+                Icon = appIcon;
             }
+            else
+            {
+                string exePath = Application.ExecutablePath;
+                if (!string.IsNullOrEmpty(exePath))
+                {
+                    Icon? exeIcon = Icon.ExtractAssociatedIcon(exePath);
+                    if (exeIcon != null)
+                        Icon = exeIcon;
+                }
+            }
+
+            // Ensure the window handle is created so Windows picks up the icon.
+            var handle = Handle;
         }
         catch
         {
