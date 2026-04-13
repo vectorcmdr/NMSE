@@ -2,6 +2,7 @@ using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
+using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
 
@@ -845,7 +846,8 @@ public partial class CataloguePanel : UserControl
                         if (addr != null)
                         {
                             try { realityIndex = addr.GetInt("RealityIndex"); } catch { }
-                            galaxyName = GalaxyDatabase.GetGalaxyDisplayName(realityIndex);
+                            string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
+                            galaxyName = $"{GalaxyDatabase.GetGalaxyDisplayName(realityIndex)} ({galaxyType})";
 
                             var gal = addr.GetObject("GalacticAddress");
                             if (gal != null)
@@ -889,7 +891,7 @@ public partial class CataloguePanel : UserControl
         {
             CoordinateHelper.UpdateGlyphPanel(_locGlyphPanel, "");
             _locGalaxyLabel.Text = "";
-            _locGalaxyDot.Text = "";
+            UpdateLocationGalaxyDot(0, string.Empty);
             return;
         }
 
@@ -900,46 +902,37 @@ public partial class CataloguePanel : UserControl
         _locGalaxyLabel.Text = galaxy;
 
         int realityIndex = _locationsGrid.Rows[rowIdx].Cells["Galaxy"].Tag is int ri ? ri : 0;
-        string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
-        _locGalaxyDot.Text = string.IsNullOrEmpty(galaxy) ? "" : " \u25CF";
-        string hexColor = GalaxyDatabase.GetGalaxyCoreColor(realityIndex);
-        _locGalaxyDot.ForeColor = System.Drawing.ColorTranslator.FromHtml(hexColor);
+        UpdateLocationGalaxyDot(realityIndex, galaxy);
+    }
+
+    private void UpdateLocationGalaxyDot(int realityIndex, string galaxy)
+    {
+        if (string.IsNullOrWhiteSpace(galaxy))
+        {
+            _locGalaxyDot.Image = null;
+            _locGalaxyDot.Text = string.Empty;
+            _locGalaxyDot.AutoSize = false;
+            _locGalaxyDot.Size = new Size(12, 12);
+            _locGalaxyCoreCaptionLabel.Text = string.Empty;
+        }
+        else
+        {
+            GalaxyDisplayHelper.ConfigureGalaxyDotLabel(_locGalaxyDot, realityIndex);
+            _locGalaxyCoreCaptionLabel.Text = UiStrings.Get("player.core_label");
+        }
     }
 
     /// <summary>
-    /// Custom paint handler for the Galaxy column to append a colored ● indicator
-    /// representing the galaxy type (Normal=blue, Lush=green, Harsh=red, Empty=cyan).
+    /// Custom paint handler for the Galaxy column to append a colored dot indicator
+    /// using the galaxy core colour from GalaxyDatabase.
     /// </summary>
     private void OnLocationGalaxyCellPainting(object? sender, DataGridViewCellPaintingEventArgs e)
     {
         if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
         if (_locationsGrid.Columns[e.ColumnIndex].Name != "Galaxy") return;
 
-        e.PaintBackground(e.ClipBounds, e.State.HasFlag(DataGridViewElementStates.Selected));
-        string text = e.Value?.ToString() ?? "";
-        if (!string.IsNullOrEmpty(text) && e.Graphics != null)
-        {
-            int realityIndex = _locationsGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Tag is int ri ? ri : 0;
-            string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
-            string hexColor = GalaxyDatabase.GetGalaxyCoreColor(realityIndex);
-            Color dotColor = System.Drawing.ColorTranslator.FromHtml(hexColor);
-
-            var font = e.CellStyle?.Font ?? _locationsGrid.DefaultCellStyle.Font ?? _locationsGrid.Font;
-            var textColor = e.State.HasFlag(DataGridViewElementStates.Selected)
-                ? (e.CellStyle?.SelectionForeColor ?? SystemColors.HighlightText)
-                : (e.CellStyle?.ForeColor ?? SystemColors.ControlText);
-
-            using var textBrush = new SolidBrush(textColor);
-            using var dotBrush = new SolidBrush(dotColor);
-            using var sf = new StringFormat { LineAlignment = StringAlignment.Center };
-
-            var textSize = e.Graphics.MeasureString(text + " ", font);
-            var rect = e.CellBounds;
-            rect.X += 2;
-            e.Graphics.DrawString(text + " ", font, textBrush, rect.X, rect.Y + (rect.Height - textSize.Height) / 2);
-            e.Graphics.DrawString("\u25CF", font, dotBrush, rect.X + textSize.Width - 2, rect.Y + (rect.Height - textSize.Height) / 2);
-        }
-        e.Handled = true;
+        int realityIndex = _locationsGrid.Rows[e.RowIndex].Cells[e.ColumnIndex].Tag is int ri ? ri : 0;
+        GalaxyDisplayHelper.PaintGalaxyCell(e, e.Value?.ToString() ?? string.Empty, realityIndex);
     }
 
     private void DeleteLocation_Click(object? sender, EventArgs e)
@@ -1677,6 +1670,7 @@ public partial class CataloguePanel : UserControl
         // Location detail caption labels
         _portalGlyphsCaptionLabel.Text = UiStrings.Get("discovery.portal_glyphs");
         _galaxyCaptionLabel.Text = UiStrings.Get("discovery.galaxy");
+        _locGalaxyCoreCaptionLabel.Text = string.Empty;
 
         // Tech grid columns
         if (_techGrid.Columns["Name"] is DataGridViewColumn tName) tName.HeaderText = UiStrings.Get("discovery.col_name");

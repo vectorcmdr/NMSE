@@ -486,9 +486,20 @@ partial class CataloguePanel
         locDetailPanel.Controls.Add(_locGlyphPanel);
         _galaxyCaptionLabel = new Label { Text = "  Galaxy:", AutoSize = true, Padding = new Padding(10, 5, 5, 0) };
         locDetailPanel.Controls.Add(_galaxyCaptionLabel);
-        _locGalaxyLabel = new Label { AutoSize = true, Padding = new Padding(0, 5, 0, 0), Font = new Font(DefaultFont.FontFamily, 9, FontStyle.Bold) };
+        _locGalaxyLabel = new Label { AutoSize = true, Padding = new Padding(0, 4, 0, 0), Font = new Font(DefaultFont.FontFamily, 9, FontStyle.Bold) };
         locDetailPanel.Controls.Add(_locGalaxyLabel);
-        _locGalaxyDot = new Label { AutoSize = true, Text = "", Padding = new Padding(0, 5, 0, 0), Font = new Font(DefaultFont.FontFamily, 9, FontStyle.Bold) };
+        _locGalaxyCoreCaptionLabel = new Label { AutoSize = true, Padding = new Padding(0, 4, 0, 0), Font = new Font(DefaultFont.FontFamily, 9, FontStyle.Bold), Margin = new Padding(2, 0, 0, 0) };
+        locDetailPanel.Controls.Add(_locGalaxyCoreCaptionLabel);
+        _locGalaxyDot = new Label
+        {
+            AutoSize = false,
+            Text = string.Empty,
+            Padding = Padding.Empty,
+            Margin = new Padding(0, 6, 0, 0),
+            Font = new Font(DefaultFont.FontFamily, 9, FontStyle.Bold),
+            ImageAlign = ContentAlignment.MiddleCenter,
+            Size = new Size(12, 12)
+        };
         locDetailPanel.Controls.Add(_locGalaxyDot);
         locationsLayout.Controls.Add(locDetailPanel, 0, 3);
 
@@ -626,6 +637,7 @@ partial class CataloguePanel
     private Label _portalGlyphsCaptionLabel = null!;
     private Label _galaxyCaptionLabel = null!;
     private Label _locGalaxyLabel = null!;
+    private Label _locGalaxyCoreCaptionLabel = null!;
     private Label _locGalaxyDot = null!;
 
     // Tab 6: Known Fish
