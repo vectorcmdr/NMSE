@@ -1,7 +1,8 @@
 using System.Linq;
+using NMSE.Core;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
-using NMSE.Core;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -161,6 +162,7 @@ internal class BasesSubPanel : UserControl
     private readonly Button _exportBtn;
     private readonly Button _importBtn;
     private readonly Button _moveBaseComputerBtn;
+    private readonly Button _clearTerrainEditsBtn;
 
     // Labels for localisation
     private readonly Label _npcTitle;
@@ -277,9 +279,12 @@ internal class BasesSubPanel : UserControl
         _importBtn.Click += OnImport;
         _moveBaseComputerBtn = new Button { Text = UiStrings.Get("base.move_basecomp"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(140, 0), Enabled = false };
         _moveBaseComputerBtn.Click += OnMoveBaseComputer;
+        _clearTerrainEditsBtn = new Button { Text = UiStrings.Get("base.clear_terrain"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(140, 0), Enabled = false };
+        _clearTerrainEditsBtn.Click += OnClearTerrainEdits;
         buttonPanel.Controls.Add(_exportBtn);
         buttonPanel.Controls.Add(_importBtn);
         buttonPanel.Controls.Add(_moveBaseComputerBtn);
+        buttonPanel.Controls.Add(_clearTerrainEditsBtn);
         layout.Controls.Add(buttonPanel, 0, row);
         layout.SetColumnSpan(buttonPanel, 3);
         row++;
@@ -306,6 +311,7 @@ internal class BasesSubPanel : UserControl
         _exportBtn.Enabled = false;
         _importBtn.Enabled = false;
         _moveBaseComputerBtn.Enabled = false;
+        _clearTerrainEditsBtn.Enabled = false;
 
         try
         {
@@ -583,6 +589,7 @@ internal class BasesSubPanel : UserControl
             _exportBtn.Enabled = false;
             _importBtn.Enabled = false;
             _moveBaseComputerBtn.Enabled = false;
+            _clearTerrainEditsBtn.Enabled = false;
             _pendingBaseName = null;
             UpdateSummonButtonState();
             return;
@@ -603,6 +610,7 @@ internal class BasesSubPanel : UserControl
         _exportBtn.Enabled = true;
         _importBtn.Enabled = true;
         _moveBaseComputerBtn.Enabled = true;
+        _clearTerrainEditsBtn.Enabled = true;
         UpdateSummonButtonState();
     }
 
@@ -734,6 +742,12 @@ internal class BasesSubPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Moves the base computer (^BASE_FLAG) to the position of a user-selected target object.
+    /// Uses a coordinate system transformation to properly re-anchor the base at the target
+    /// location while keeping all objects at their correct world-space positions.
+    /// Based on community knowledge of the NMS save format.
+    /// </summary>
     private void OnMoveBaseComputer(object? sender, EventArgs e)
     {
         if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
@@ -820,8 +834,8 @@ internal class BasesSubPanel : UserControl
                 return;
             }
 
-            // Swap positions between base computer and target object
-            BaseLogic.SwapPositions(baseFlag, target.Data);
+            // Perform the full coordinate system transformation and position swap
+            BaseLogic.MoveBaseComputer(item.Data, baseFlag, target.Data);
             OnBaseSelected(this, EventArgs.Empty);
             MessageBox.Show(this, UiStrings.Get("base.move_basecomp_success"), UiStrings.Get("base.move_basecomp_success_title"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -829,6 +843,44 @@ internal class BasesSubPanel : UserControl
         catch (Exception ex)
         {
             MessageBox.Show(this, UiStrings.Format("base.move_basecomp_failed", ex.Message), UiStrings.Get("common.error"),
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void OnClearTerrainEdits(object? sender, EventArgs e)
+    {
+        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_playerState == null) return;
+
+        var result = MessageBox.Show(this,
+            UiStrings.Format("base.clear_terrain_confirm", item.DisplayName),
+            UiStrings.Get("base.clear_terrain_title"),
+            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (result != DialogResult.Yes) return;
+
+        try
+        {
+            int removed = BaseLogic.ClearTerrainEdits(_playerState, item.Data);
+            if (removed > 0)
+            {
+                MessageBox.Show(this,
+                    UiStrings.Format("base.clear_terrain_success", removed),
+                    UiStrings.Get("base.clear_terrain_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(this,
+                    UiStrings.Get("base.clear_terrain_none"),
+                    UiStrings.Get("base.clear_terrain_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                UiStrings.Format("base.clear_terrain_failed", ex.Message),
+                UiStrings.Get("common.error"),
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -856,6 +908,7 @@ internal class BasesSubPanel : UserControl
         _exportBtn.Text = UiStrings.Get("base.export");
         _importBtn.Text = UiStrings.Get("base.import");
         _moveBaseComputerBtn.Text = UiStrings.Get("base.move_basecomp");
+        _clearTerrainEditsBtn.Text = UiStrings.Get("base.clear_terrain");
 
         // Refresh NPC race combo with localised display names
         RefreshNpcRaceCombo();
