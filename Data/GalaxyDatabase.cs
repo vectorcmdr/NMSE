@@ -1,12 +1,19 @@
+using System.Drawing;
+
 namespace NMSE.Data;
 
 /// <summary>All 256 NMS galaxies with their type classification.</summary>
 public static class GalaxyDatabase
 {
     /// <summary>
-    /// Array of all 256 galaxies with their 1-based number, hex value, name,
-    /// type classification, type descriptiong and core colour.
+    /// Array of galaxy metadata used for UI display and game lookup.
     /// </summary>
+    /// <remarks>
+    /// The first 256 entries are the actual in-game galaxies, indexed from 0 .. 255.
+    /// A final sentinel entry exists at index 256 for UI/listing purposes only.
+    /// This fake entry should never be treated as a real galaxy for coordinate or
+    /// portal hex generation.
+    /// </remarks>
     public static readonly (int Number, string Hex, string Name, string Type, string Description, string Core)[] Galaxies =
     [
 		(1,"00","Euclid","Normal","","White"),
@@ -265,9 +272,19 @@ public static class GalaxyDatabase
 		(254,"FD","Tuhgrespod","Normal","","Canary Yellow"),
 		(255,"FE","Iousongola","Harsh","","Manhattan Orange"),
 		(256,"FF","Odyalutai","Normal","","Magenta"),
+		(257,"??","Yilsrussimil","Normal","","Magenta"), // Used only as a sentinel (the special value kind, not the in game kind). The hex field is deliberately invalid so accidental direct hex lookups fail.
     ];
 
-    /// <summary>All 49 listed colours for the galactic cores.</summary>
+    /// <summary>
+    /// Mapping of named galaxy core colours to their UI hex values.
+    /// </summary>
+    /// <remarks>
+    /// This list is used to resolve the galaxy core <c>Core</c> field in the
+    /// <see cref="Galaxies"/> table into a concrete display colour for UI dots
+    /// and other galaxy-related colour rendering.
+    /// </remarks>
+    private const string DefaultCoreColor = "#000000";
+
     public static readonly (string ColorName, string HexColor)[] CoreColors =
     [
 		("White","#ffffff"),
@@ -321,60 +338,129 @@ public static class GalaxyDatabase
 		("Light Slate Blue","#8470ff"),
 	];
 
+    private static readonly Dictionary<string, string> CoreColorMap = CoreColors.ToDictionary(c => c.ColorName, c => c.HexColor, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The number of real in-game galaxies in <see cref="Galaxies" />.
+    /// </summary>
+    /// <remarks>
+    /// Entries 0..255 are real galaxies. The entry at index 256 is a special
+    /// non-game sentinel used only for UI/listing. It is not a valid target for
+    /// coordinate generation or portal hex calculations and is only valid for
+    /// setting RealityIndex in the players current location from MainStats.
+    /// It should never be treated as a real galaxy for any game logic or coordinate/portal hex generation.
+    /// </remarks>
+    public const int RealGalaxyCount = 256;
+
+    /// <summary>
+    /// Returns true when the given reality index refers to a real game galaxy.
+    /// </summary>
+    /// <remarks>
+    /// Use this guard before accessing game-only properties such as hex coordinates.
+    /// </remarks>
+    private static bool IsRealGalaxyIndex(int realityIndex) => realityIndex >= 0 && realityIndex < RealGalaxyCount;
+
+    /// <summary>
+    /// Returns true when the given reality index refers to the special UI-only galaxy.
+    /// </summary>
+    /// <remarks>
+    /// This sentinel entry is included for display and selection purposes, but it
+    /// does not represent a playable galaxy and must never be used for normal
+    /// coordinate/portal hex generation.
+    /// </remarks>
+    public static bool IsSpecialGalaxyIndex(int realityIndex) => realityIndex == RealGalaxyCount;
+
+    private static bool IsKnownGalaxyIndex(int realityIndex) => realityIndex >= 0 && realityIndex < Galaxies.Length;
+
     /// <summary>Get raw galaxy name by 0-based reality index.</summary>
-    public static string GetGalaxyName(int realityIndex)
-    {
-        if (realityIndex >= 0 && realityIndex < Galaxies.Length)
-            return Galaxies[realityIndex].Name;
-        return UiStrings.Get("common.galaxy_unknown");
-    }
+    public static string GetGalaxyName(int realityIndex) => IsKnownGalaxyIndex(realityIndex)
+        ? Galaxies[realityIndex].Name
+        : UiStrings.Get("common.galaxy_unknown");
 
     /// <summary>Get galaxy type by 0-based reality index.</summary>
-    public static string GetGalaxyType(int realityIndex)
-    {
-        if (realityIndex >= 0 && realityIndex < Galaxies.Length)
-            return Galaxies[realityIndex].Type;
-        return UiStrings.Get("common.galaxy_type_default");
-    }
+    public static string GetGalaxyType(int realityIndex) => IsKnownGalaxyIndex(realityIndex)
+        ? Galaxies[realityIndex].Type
+        : UiStrings.Get("common.galaxy_type_default");
 
     /// <summary>Get galaxy core colour by 0-based reality index.</summary>
-    public static string GetGalaxyCore(int realityIndex)
-    {
-        if (realityIndex >= 0 && realityIndex < Galaxies.Length)
-            return Galaxies[realityIndex].Core;
-        return "Unknown";
-    }
+    public static string GetGalaxyCore(int realityIndex) => IsKnownGalaxyIndex(realityIndex)
+        ? Galaxies[realityIndex].Core
+        : "Unknown";
 
     /// <summary>Get full display name by 0-based reality index, e.g. "Euclid (1)".</summary>
-    public static string GetGalaxyDisplayName(int realityIndex)
+    public static string GetGalaxyDisplayName(int realityIndex) => IsKnownGalaxyIndex(realityIndex)
+        ? $"{Galaxies[realityIndex].Name} ({Galaxies[realityIndex].Number})"
+        : UiStrings.Get("common.galaxy_unknown");
+
+    /// Parses a hex colour string like <c>#RRGGBB</c> or <c>#AARRGGBB</c> into a <see cref="Color"/>.
+    /// Invalid values fall back to <see cref="Color.Black"/>.
+    public static Color ParseHexColor(string hexColor)
     {
-        if (realityIndex >= 0 && realityIndex < Galaxies.Length)
-            return $"{Galaxies[realityIndex].Name} ({Galaxies[realityIndex].Number})";
-        return UiStrings.Get("common.galaxy_unknown");
+        if (string.IsNullOrWhiteSpace(hexColor) || !hexColor.StartsWith("#", StringComparison.Ordinal)
+            || (hexColor.Length != 7 && hexColor.Length != 9))
+        {
+            return Color.Black;
+        }
+
+        try
+        {
+            int argb = Convert.ToInt32(hexColor[1..], 16);
+            return hexColor.Length == 7 ? Color.FromArgb(unchecked((int)0xFF000000 | argb)) : Color.FromArgb(argb);
+        }
+        catch
+        {
+            return Color.Black;
+        }
     }
 
     /// <summary>
-    /// UI display colour for each galaxy type.
-    /// Empty=blue, Lush=green, Harsh=red, Normal=cyan.
+    /// Gets the resolved <see cref="Color"/> for the given galaxy core index.
     /// </summary>
-    public static System.Drawing.Color GetGalaxyTypeColor(string galaxyType) => galaxyType switch
-    {
-        "Empty" => System.Drawing.Color.FromArgb(0x55, 0x88, 0xCC),   // Blue
-        "Lush" => System.Drawing.Color.FromArgb(0x55, 0xCC, 0x55),    // Green
-        "Harsh" => System.Drawing.Color.FromArgb(0xCC, 0x55, 0x55),   // Red
-        _ => System.Drawing.Color.FromArgb(0x55, 0xCC, 0xCC),         // Cyan
-    };
+    /// <param name="realityIndex">The 0-based galaxy reality index.</param>
+    /// <returns>The parsed core colour, or black for unknown values.</returns>
+    public static Color GetGalaxyCoreColorValue(int realityIndex) =>
+        ParseHexColor(GetGalaxyCoreColor(realityIndex));
 
     /// <summary>
-    /// UI display colour for each galaxy based on named core colour.
+    /// Resolves the galaxy core colour hex string for a given galaxy index.
     /// </summary>
+    /// <param name="realityIndex">The 0-based galaxy reality index.</param>
+    /// <returns>The hex colour for the galaxy core, or the default colour for unknown indices.</returns>
     public static string GetGalaxyCoreColor(int realityIndex)
     {
+        if (!IsKnownGalaxyIndex(realityIndex))
+            return DefaultCoreColor;
+
         string colorName = GetGalaxyCore(realityIndex);
-        if (!string.IsNullOrEmpty(colorName) && colorName != "Unknown")
+        return CoreColorMap.TryGetValue(colorName, out var hexColor)
+            ? hexColor
+            : DefaultCoreColor;
+    }
+
+    /// <summary>
+    /// Returns the raw galaxy hex code for valid in-game galaxy indices.
+    /// </summary>
+    /// <param name="realityIndex">The 0-based galaxy reality index.</param>
+    /// <returns>The hex code string, or <c>null</c> for non-game or unknown indices.</returns>
+    public static string? GetGalaxyHex(int realityIndex) => IsRealGalaxyIndex(realityIndex)
+        ? Galaxies[realityIndex].Hex
+        : null;
+
+    /// <summary>
+    /// Tries to get the raw galaxy hex code for a real galaxy index.
+    /// </summary>
+    /// <param name="realityIndex">The 0-based galaxy reality index.</param>
+    /// <param name="hex">The returned hex string if successful.</param>
+    /// <returns><c>true</c> when the index is a real galaxy; otherwise <c>false</c>.</returns>
+    public static bool TryGetGalaxyHex(int realityIndex, out string hex)
+    {
+        if (IsRealGalaxyIndex(realityIndex))
         {
-            return CoreColors.FirstOrDefault(c => c.ColorName == colorName).HexColor;
+            hex = Galaxies[realityIndex].Hex;
+            return true;
         }
-		else return "#000000";
+
+        hex = string.Empty;
+        return false;
     }
 }
