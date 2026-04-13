@@ -57,7 +57,16 @@ partial class MainStatsPanel
         _accountNameField = new TextBox { Width = 250, ReadOnly = true };
 
         _galaxyField = new Label { AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
-        _galaxyDotLabel = new Label { AutoSize = true, Text = "", Padding = new Padding(0, 4, 0, 0) };
+        _galaxyCoreCaptionLabel = new Label { AutoSize = true, Padding = new Padding(0, 4, 0, 0) };
+        _galaxyDotLabel = new Label
+        {
+            AutoSize = false,
+            Size = new Size(12, 12),
+            Text = string.Empty,
+            Padding = Padding.Empty,
+            Margin = new Padding(0, 6, 0, 0),
+            ImageAlign = ContentAlignment.MiddleCenter
+        };
         _galaxyPanel = new FlowLayoutPanel
         {
             AutoSize = true,
@@ -67,6 +76,7 @@ partial class MainStatsPanel
             Padding = new Padding(0),
         };
         _galaxyPanel.Controls.Add(_galaxyField);
+        _galaxyPanel.Controls.Add(_galaxyCoreCaptionLabel);
         _galaxyPanel.Controls.Add(_galaxyDotLabel);
         _portalCodeField = new TextBox { Width = 200, ReadOnly = true };
         _portalCodeDecField = new TextBox { Width = 200, ReadOnly = true };
@@ -115,7 +125,7 @@ partial class MainStatsPanel
             Padding = new Padding(0),
         };
 
-        _galaxyNud = new NumericUpDown { Width = 150, Minimum = 0, Maximum = 256 };
+        _galaxyNud = new NumericUpDown { Width = 150, Minimum = 1, Maximum = 257 };
         _voxelXNud = new NumericUpDown { Width = 150, Minimum = -2048, Maximum = 2047 };
         _voxelYNud = new NumericUpDown { Width = 150, Minimum = -128, Maximum = 127 };
         _voxelZNud = new NumericUpDown { Width = 150, Minimum = -2048, Maximum = 2047 };
@@ -255,7 +265,7 @@ partial class MainStatsPanel
         int editRow = 0;
 
         _editCoordsHeader = AddSectionHeader(editLayout, "Edit Coordinates", editRow++);
-        _galaxyRangeLabel = AddRow(editLayout, "Galaxy (0–256):", _galaxyNud, editRow++);
+        _galaxyRangeLabel = AddRow(editLayout, "Galaxy (1–257):", _galaxyNud, editRow++);
         _voxelXLabel = AddRow(editLayout, "Voxel X (-2048–2047):", _voxelXNud, editRow++);
         _voxelYLabel = AddRow(editLayout, "Voxel Y (-128–127):", _voxelYNud, editRow++);
         _voxelZLabel = AddRow(editLayout, "Voxel Z (-2048–2047):", _voxelZNud, editRow++);
@@ -561,6 +571,7 @@ partial class MainStatsPanel
     // Coordinates
     private FlowLayoutPanel _galaxyPanel = null!;
     private Label _galaxyField = null!;
+    private Label _galaxyCoreCaptionLabel = null!;
     private Label _galaxyDotLabel = null!;
     private TextBox _portalCodeField = null!;
     private TextBox _portalCodeDecField = null!;

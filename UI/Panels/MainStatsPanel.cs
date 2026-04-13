@@ -215,9 +215,8 @@ public partial class MainStatsPanel : UserControl
             int realityIndex = addr.GetInt("RealityIndex");
             string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
             _galaxyField.Text = $"{GalaxyDatabase.GetGalaxyDisplayName(realityIndex)} ({galaxyType})";
-            _galaxyDotLabel.Text = "\u25CF";
-            string hexColor = GalaxyDatabase.GetGalaxyCoreColor(realityIndex);
-            _galaxyDotLabel.ForeColor = System.Drawing.ColorTranslator.FromHtml(hexColor);
+            _galaxyCoreCaptionLabel.Text = UiStrings.Get("player.core_label");
+            GalaxyDisplayHelper.ConfigureGalaxyDotLabel(_galaxyDotLabel, realityIndex);
 
             var galactic = addr.GetObject("GalacticAddress");
             if (galactic == null) return;
@@ -245,8 +244,10 @@ public partial class MainStatsPanel : UserControl
             CoordinateHelper.UpdateGlyphPanel(_portalGlyphPanel, _portalCodeField.Text);
             _signalBoosterField.Text = CoordinateHelper.VoxelToSignalBooster(voxelX, voxelY, voxelZ, solarIdx);
 
-            // Populate editable coordinate NUDs
-            _galaxyNud.Value = Math.Clamp(realityIndex, (int)_galaxyNud.Minimum, (int)_galaxyNud.Maximum);
+            // Populate editable coordinate NUDs.
+            // The NUD is presented to the user as a 1-based galaxy selector (1..257),
+            // while the underlying RealityIndex remains 0-based (0..256).
+            _galaxyNud.Value = Math.Clamp(realityIndex + 1, (int)_galaxyNud.Minimum, (int)_galaxyNud.Maximum);
             _voxelXNud.Value = Math.Clamp(voxelX, (int)_voxelXNud.Minimum, (int)_voxelXNud.Maximum);
             _voxelYNud.Value = Math.Clamp(voxelY, (int)_voxelYNud.Minimum, (int)_voxelYNud.Maximum);
             _voxelZNud.Value = Math.Clamp(voxelZ, (int)_voxelZNud.Minimum, (int)_voxelZNud.Maximum);
@@ -566,7 +567,12 @@ public partial class MainStatsPanel : UserControl
             var addr = playerState.GetObject("UniverseAddress");
             if (addr == null) return;
 
-            WriteCoordIfChanged(addr, "RealityIndex", (int)_galaxyNud.Value, _galaxyNud);
+            int desiredRealityIndex = (int)_galaxyNud.Value - 1;
+            if (_rawCoordValues == null || !_rawCoordValues.TryGetValue("RealityIndex", out int rawRealityIndex)
+                || desiredRealityIndex != rawRealityIndex)
+            {
+                addr.Set("RealityIndex", desiredRealityIndex);
+            }
 
             var galactic = addr.GetObject("GalacticAddress");
             if (galactic == null) return;
@@ -594,30 +600,6 @@ public partial class MainStatsPanel : UserControl
         target.Set(key, uiValue);
     }
 
-    private void RefreshCoordinateDisplay()
-    {
-        int realityIndex = (int)_galaxyNud.Value;
-        int voxelX = (int)_voxelXNud.Value;
-        int voxelY = (int)_voxelYNud.Value;
-        int voxelZ = (int)_voxelZNud.Value;
-        int solarIdx = (int)_solarSystemNud.Value;
-        int planetIdx = (int)_planetNud.Value;
-
-        string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
-        _galaxyField.Text = $"{GalaxyDatabase.GetGalaxyDisplayName(realityIndex)} ({galaxyType})";
-        _galaxyDotLabel.Text = " \u25CF";
-        string hexColor = GalaxyDatabase.GetGalaxyCoreColor(realityIndex);
-        _galaxyDotLabel.ForeColor = System.Drawing.ColorTranslator.FromHtml(hexColor);
-        _portalCodeField.Text = CoordinateHelper.VoxelToPortalCode(voxelX, voxelY, voxelZ, solarIdx, planetIdx);
-        _portalCodeDecField.Text = CoordinateHelper.PortalHexToDec(_portalCodeField.Text);
-        CoordinateHelper.UpdateGlyphPanel(_portalGlyphPanel, _portalCodeField.Text);
-        _signalBoosterField.Text = CoordinateHelper.VoxelToSignalBooster(voxelX, voxelY, voxelZ, solarIdx);
-
-        double dist = CoordinateHelper.GetDistanceToCenter(voxelX, voxelY, voxelZ);
-        _distanceToCenterField.Text = $"{dist:F0} ly";
-        _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString();
-    }
-
     private void OnApplyCoordinates(object? sender, EventArgs e)
     {
         if (_saveData != null)
@@ -631,6 +613,29 @@ public partial class MainStatsPanel : UserControl
             catch { }
         }
         RefreshCoordinateDisplay();
+    }
+
+    private void RefreshCoordinateDisplay()
+    {
+        int realityIndex = (int)_galaxyNud.Value - 1;
+        int voxelX = (int)_voxelXNud.Value;
+        int voxelY = (int)_voxelYNud.Value;
+        int voxelZ = (int)_voxelZNud.Value;
+        int solarIdx = (int)_solarSystemNud.Value;
+        int planetIdx = (int)_planetNud.Value;
+
+        string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
+        _galaxyField.Text = $"{GalaxyDatabase.GetGalaxyDisplayName(realityIndex)} ({galaxyType})";
+        _galaxyCoreCaptionLabel.Text = UiStrings.Get("player.core_label");
+        GalaxyDisplayHelper.ConfigureGalaxyDotLabel(_galaxyDotLabel, realityIndex);
+        _portalCodeField.Text = CoordinateHelper.VoxelToPortalCode(voxelX, voxelY, voxelZ, solarIdx, planetIdx);
+        _portalCodeDecField.Text = CoordinateHelper.PortalHexToDec(_portalCodeField.Text);
+        CoordinateHelper.UpdateGlyphPanel(_portalGlyphPanel, _portalCodeField.Text);
+        _signalBoosterField.Text = CoordinateHelper.VoxelToSignalBooster(voxelX, voxelY, voxelZ, solarIdx);
+
+        double dist = CoordinateHelper.GetDistanceToCenter(voxelX, voxelY, voxelZ);
+        _distanceToCenterField.Text = $"{dist:F0} ly";
+        _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString();
     }
 
     private void OnConvertPortalCode(object? sender, EventArgs e)
@@ -688,7 +693,7 @@ public partial class MainStatsPanel : UserControl
         if (result != DialogResult.OK) return;
 
         // Apply the random coordinates to the NUDs
-        _galaxyNud.Value = galaxy;
+        _galaxyNud.Value = galaxy + 1;
         _voxelXNud.Value = Math.Clamp(voxelX, (int)_voxelXNud.Minimum, (int)_voxelXNud.Maximum);
         _voxelYNud.Value = Math.Clamp(voxelY, (int)_voxelYNud.Minimum, (int)_voxelYNud.Maximum);
         _voxelZNud.Value = Math.Clamp(voxelZ, (int)_voxelZNud.Minimum, (int)_voxelZNud.Maximum);
@@ -1138,6 +1143,7 @@ public partial class MainStatsPanel : UserControl
 
         // Coordinate labels
         _galaxyLabel.Text = UiStrings.Get("player.galaxy");
+        _galaxyCoreCaptionLabel.Text = string.Empty;
         _portalHexLabel.Text = UiStrings.Get("player.portal_code_hex");
         _portalDecLabel.Text = UiStrings.Get("player.portal_code_dec");
         _portalGlyphsLabel.Text = UiStrings.Get("player.portal_glyphs");
