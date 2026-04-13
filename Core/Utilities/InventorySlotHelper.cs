@@ -1,6 +1,6 @@
 using NMSE.Models;
 
-namespace NMSE.Core;
+namespace NMSE.Core.Utilities;
 
 /// <summary>
 /// Static helpers for manipulating inventory slot JSON data.

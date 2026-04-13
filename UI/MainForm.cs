@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using NMSE.Config;
 using NMSE.Core;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.IO;
 using NMSE.Models;

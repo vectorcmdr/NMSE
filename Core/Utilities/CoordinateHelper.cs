@@ -1,11 +1,13 @@
 using System;
+using System.Globalization;
 using System.IO;
+using NMSE.Models;
 #if WINFORMS
 using System.Drawing;
 using System.Windows.Forms;
 #endif
 
-namespace NMSE.Data;
+namespace NMSE.Core.Utilities;
 
 /// <summary>NMS galactic coordinate conversion utilities.</summary>
 public static class CoordinateHelper
@@ -137,6 +139,36 @@ public static class CoordinateHelper
         int signValue = (int)Math.Pow(16, byteLength);
         int halfSign = signValue / 2;
         return address >= halfSign ? address - signValue : address;
+    }
+
+    /// <summary>
+    /// Normalises a GalacticAddress value to a consistent hex string for comparison.
+    /// Save data stores GalacticAddress as either a "0x..." hex string or a raw integer.
+    /// This method converts both forms to the same "0x..." uppercase hex string.
+    /// </summary>
+    /// <param name="value">The raw value from <c>JsonObject.Get("GalacticAddress")</c>.</param>
+    /// <returns>A normalised hex string (e.g. "0x311700FE91210B"), or empty string if the value cannot be normalised.</returns>
+    public static string NormalizeGalacticAddress(object? value)
+    {
+        if (value is string s)
+        {
+            // Already a hex string; normalise to uppercase
+            if (s.StartsWith("0x", StringComparison.OrdinalIgnoreCase) || s.StartsWith("0X", StringComparison.OrdinalIgnoreCase))
+                return "0x" + s[2..].ToUpperInvariant();
+            // Could be a decimal string representation of a number
+            if (long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out long parsed))
+                return "0x" + parsed.ToString("X", CultureInfo.InvariantCulture);
+            return s;
+        }
+        if (value is RawDouble rd)
+            return "0x" + ((long)rd.Value).ToString("X", CultureInfo.InvariantCulture);
+        if (value is int i)
+            return "0x" + ((long)i).ToString("X", CultureInfo.InvariantCulture);
+        if (value is long l)
+            return "0x" + l.ToString("X", CultureInfo.InvariantCulture);
+        if (value is double d)
+            return "0x" + ((long)d).ToString("X", CultureInfo.InvariantCulture);
+        return "";
     }
 
 #if WINFORMS

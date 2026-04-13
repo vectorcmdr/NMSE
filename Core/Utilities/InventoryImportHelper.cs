@@ -1,6 +1,6 @@
 using NMSE.Models;
 
-namespace NMSE.Core;
+namespace NMSE.Core.Utilities;
 
 /// <summary>
 /// Helper for locating and unwrapping imported JSON files from various editors.

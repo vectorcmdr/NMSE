@@ -1,5 +1,6 @@
 using System.Text.Json;
 using NMSE.Core;
+using NMSE.Core.Utilities;
 
 namespace NMSE.Data;
 
@@ -9013,11 +9014,11 @@ public class PetBattleMovePhase
     public string Effect { get; set; } = "";
 
     /// <summary>Normalised display string for Strength.</summary>
-    public string StrengthDisplay => DisplayStringHelper.NormalizeDisplayString(Strength);
+    public string StrengthDisplay => StringHelper.NormalizeDisplayString(Strength);
     /// <summary>Normalised display string for Effect.</summary>
     public string EffectDisplay => Effect == "DoTDamage"
         ? "Damage over Time"
-        : DisplayStringHelper.NormalizeDisplayString(Effect);
+        : StringHelper.NormalizeDisplayString(Effect);
 }
 
 /// <summary>Represents a pet battle move from Pet Battle Moves.json.</summary>
@@ -9043,10 +9044,10 @@ public class PetBattleMoveEntry
     public IReadOnlyList<PetBattleMovePhase> Phases { get; set; } = Array.Empty<PetBattleMovePhase>();
 
     /// <summary>Normalised display string for Target.</summary>
-    public string TargetDisplay => DisplayStringHelper.NormalizeDisplayString(Target);
+    public string TargetDisplay => StringHelper.NormalizeDisplayString(Target);
 
     /// <summary>Normalised display string for IconStyle.</summary>
-    public string IconStyleDisplay => DisplayStringHelper.NormalizeDisplayString(IconStyle);
+    public string IconStyleDisplay => StringHelper.NormalizeDisplayString(IconStyle);
 
     /// <summary>
     /// Returns an emoji/symbol matching the icon style.
@@ -9184,7 +9185,7 @@ public class PetBattleMovesetEntry
     public IReadOnlyList<PetBattleMoveSlot> Slots { get; set; } = Array.Empty<PetBattleMoveSlot>();
 
     /// <summary>Normalised display name (e.g. "BASIC" -> "Basic", "DOT_BOMBER" -> "Dot Bomber").</summary>
-    public string DisplayName => DisplayStringHelper.NormalizeDisplayString(Id);
+    public string DisplayName => StringHelper.NormalizeDisplayString(Id);
 
     public override string ToString() => DisplayName;
 }

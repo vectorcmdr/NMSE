@@ -1,4 +1,5 @@
 using System.Linq;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
 
@@ -326,8 +327,8 @@ internal static class FreighterLogic
     /// <returns>A filename-safe string combining name, type, and class.</returns>
     internal static string BuildExportFileName(string name, string? typeName, int classIndex)
     {
-        string safeName = FileNameHelper.SanitizeFileName(name);
-        string safeType = FileNameHelper.SanitizeFileName(typeName ?? "unknown");
+        string safeName = StringHelper.SanitizeFileName(name);
+        string safeType = StringHelper.SanitizeFileName(typeName ?? "unknown");
         string safeClass = classIndex >= 0 ? FreighterClasses[classIndex] : "C";
         return $"{safeName}_{safeType}_{safeClass}";
     }

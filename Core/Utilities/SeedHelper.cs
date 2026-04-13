@@ -1,4 +1,4 @@
-namespace NMSE.Core;
+namespace NMSE.Core.Utilities;
 
 /// <summary>
 /// Shared helper for validating and normalizing hex seed values.

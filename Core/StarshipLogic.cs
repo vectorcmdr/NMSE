@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
 
@@ -279,8 +280,8 @@ internal static class StarshipLogic
         try { hyperdrive = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_HYPERDRIVE"); } catch { }
         try { maneuver = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_AGILE"); } catch { }
 
-        string safeName = FileNameHelper.SanitizeFileName(name);
-        string safeTypeName = FileNameHelper.SanitizeFileName(shipTypeName);
+        string safeName = StringHelper.SanitizeFileName(name);
+        string safeTypeName = StringHelper.SanitizeFileName(shipTypeName);
         string cls2 = classIndex >= 0 ? ShipClasses[classIndex] : "C";
 
         var cfg = ExportConfig.Instance;

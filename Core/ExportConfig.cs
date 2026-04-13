@@ -1,3 +1,5 @@
+using NMSE.Core.Utilities;
+
 namespace NMSE.Core;
 
 using System.Text.Json;
@@ -204,7 +206,7 @@ public class ExportConfig
             result = result.Replace($"{{{kv.Key}}}", kv.Value ?? "", StringComparison.OrdinalIgnoreCase);
 
         // Sanitize for filesystem
-        result = FileNameHelper.SanitizeFileName(result);
+        result = StringHelper.SanitizeFileName(result);
         return result + ext;
     }
 

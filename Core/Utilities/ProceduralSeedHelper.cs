@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace NMSE.Core;
+namespace NMSE.Core.Utilities;
 
 /// <summary>
 /// Shared helpers for procedural technology item seed generation and parsing.

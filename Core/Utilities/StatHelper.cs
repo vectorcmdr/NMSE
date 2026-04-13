@@ -1,6 +1,6 @@
 using NMSE.Models;
 
-namespace NMSE.Core;
+namespace NMSE.Core.Utilities;
 
 /// <summary>
 /// Shared helper for reading and writing BaseStatValues across inventory logic classes.

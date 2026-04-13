@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.RegularExpressions;
 using NMSE.Core;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
 using NMSE.UI.Util;
@@ -3725,7 +3726,7 @@ public partial class InventoryGridPanel : UserControl
             // Try to locate inventory data inside the parsed object.
             // Supports raw inventory files (Slots at top level) as well as
             // NMSSaveEditor / NomNom wrapper formats where inventory is nested.
-            var inventory = Core.InventoryImportHelper.FindInventoryObject(imported);
+            var inventory = InventoryImportHelper.FindInventoryObject(imported);
             if (inventory == null)
             {
                 MessageBox.Show(this, UiStrings.Get("inventory.import_bad_format"),

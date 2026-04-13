@@ -1,6 +1,7 @@
+using NMSE.Core;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
-using NMSE.Core;
 using System.Globalization;
 
 namespace NMSE.UI.Panels;
@@ -1494,7 +1495,7 @@ public partial class CompanionPanel : UserControl
 
             if (!string.IsNullOrEmpty(move.LocIDToDescribeStat))
             {
-                string statDesc = DisplayStringHelper.NormalizeDisplayString(
+                string statDesc = StringHelper.NormalizeDisplayString(
                     move.LocIDToDescribeStat.Replace("UI_PB_STAT_", ""));
                 leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_stat") ?? "Stat Affected:", statDesc));
             }

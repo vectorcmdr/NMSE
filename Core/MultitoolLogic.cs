@@ -1,3 +1,4 @@
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
 
@@ -149,7 +150,7 @@ internal static class MultitoolLogic
         try { mining = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_MINING"); } catch { }
         try { scan = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_SCAN"); } catch { }
 
-        string safeName = FileNameHelper.SanitizeFileName(name);
+        string safeName = StringHelper.SanitizeFileName(name);
         string cls2 = classIndex >= 0 ? ToolClasses[classIndex] : "C";
 
         return new ToolData
