@@ -218,7 +218,7 @@ Every contribution - big or small - is greatly appreciated. ❤️
 
 ## 📄 License
 
-NMSE is licensed under the **GNU General Public License v3.0** - see the [LICENSE][license] file for details.
+NMSE is licensed under the **GNU Affero General Public License** - see the [LICENSE][license] file for details.
 
 ---
 
