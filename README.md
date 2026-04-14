@@ -248,7 +248,7 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 
 <!-- Badges -->
 [badge-build]: https://img.shields.io/github/actions/workflow/status/vectorcmdr/NMSE/build-nmse.yml?branch=main&label=build&logo=github
-[badge-license]: https://img.shields.io/github/license/vectorcmdr/NMSE?color=blue
+[badge-license]: https://img.shields.io/badge/license-AGPL%203.0-0078D4
 [badge-dotnet]: https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white
 [badge-release]: https://img.shields.io/github/v/release/vectorcmdr/NMSE?include_prereleases&label=⇓%20release&color=green
 [badge-stars]: https://img.shields.io/github/stars/vectorcmdr/NMSE?style=flat&color=yellow&label=★%20stars
