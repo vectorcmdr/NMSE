@@ -54,4 +54,23 @@ internal static class SeedHelper
         }
         return true;
     }
+
+    /// <summary>
+    /// Normalizes a seed string that may be a hex seed (e.g. "0xABCD") or a plain integer (e.g. "0", "1").
+    /// The game uses both formats for SpeciesSeed and GenusSeed fields.
+    /// </summary>
+    /// <param name="seed">The raw seed input from the user.</param>
+    /// <returns>The normalized seed string, or null if invalid.</returns>
+    internal static string? NormalizeSeedOrInteger(string? seed)
+    {
+        if (string.IsNullOrWhiteSpace(seed)) return null;
+        var trimmed = seed.Trim();
+
+        // Accept plain integer values (the game sometimes stores 0 or 1)
+        if (long.TryParse(trimmed, System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out _))
+            return trimmed;
+
+        return NormalizeSeed(seed);
+    }
 }
