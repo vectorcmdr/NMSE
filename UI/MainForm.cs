@@ -731,6 +731,12 @@ public partial class MainFormResources : Form
             PetBattleMoveDatabase.LoadFromFile(Path.Combine(jsonPath, "Pet Battle Moves.json"));
             PetBattleMovesetDatabase.LoadFromFile(Path.Combine(jsonPath, "Pet Battle Movesets.json"));
             PetBiomeAffinityMap.LoadFromFile(Path.Combine(jsonPath, "Game Table Globals.json"));
+            CompanionDatabase.LoadFromFile(Path.Combine(jsonPath, "Creature Species.json"));
+            CreaturePartDatabase.LoadFromFile(Path.Combine(jsonPath, "Creature Descriptors.json"));
+
+            // Refresh companion panel species list now that the database has been loaded
+            // (the panel constructor runs before data loading, so the combo is initially empty)
+            _companionPanel.RefreshSpeciesList();
 
             // Load word database for Known Words feature (from Words.json)
             _splashForm?.SetProgress(45, "Loading word database...");
@@ -1595,6 +1601,10 @@ public partial class MainFormResources : Form
 
         try
         {
+            // Force any focused text field to lose focus, triggering its Leave handler
+            // so that pending edits are committed before we sync panel data.
+            this.ActiveControl = null;
+
             // Sync all panel data to in-memory JsonObjects
             SyncAllPanelData();
 
