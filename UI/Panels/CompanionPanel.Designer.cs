@@ -948,11 +948,11 @@ partial class CompanionPanel
                 combo.DropDownWidth = maxWidth;
             };
 
-            var controlRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-            _moveSlotCooldownLabels[i] = new Label { Text = "Cooldown:", AutoSize = true, Padding = new Padding(0, 5, 3, 0) };
-            _moveSlotCooldowns[i] = new NumericUpDown { Minimum = 0, Maximum = 20, Width = 50 };
-            _moveSlotCooldowns[i].ValueChanged += (s, e) => { if (!_loading) OnMoveSlotCooldownChanged(slotIdx); };
-            _moveSlotScoreBoostLabels[i] = new Label { Text = "Score Boost:", AutoSize = true, Padding = new Padding(8, 5, 3, 0) };
+            // Cooldown and ScoreBoost controls are retained but not shown.
+            // The game no longer exposes these values in PetBattlerMoves.
+            _moveSlotCooldownLabels[i] = new Label { Text = "Cooldown:", AutoSize = true, Visible = false };
+            _moveSlotCooldowns[i] = new NumericUpDown { Minimum = 0, Maximum = 20, Width = 50, Visible = false };
+            _moveSlotScoreBoostLabels[i] = new Label { Text = "Score Boost:", AutoSize = true, Visible = false };
             _moveSlotScoreBoosts[i] = new NumericUpDown
             {
                 Minimum = 0,
@@ -961,12 +961,8 @@ partial class CompanionPanel
                 Increment = 0.1m,
                 Width = 90,
                 Value = 0,
+                Visible = false,
             };
-            _moveSlotScoreBoosts[i].ValueChanged += (s, e) => { if (!_loading) OnMoveSlotScoreBoostChanged(slotIdx); };
-            controlRow.Controls.Add(_moveSlotCooldownLabels[i]);
-            controlRow.Controls.Add(_moveSlotCooldowns[i]);
-            controlRow.Controls.Add(_moveSlotScoreBoostLabels[i]);
-            controlRow.Controls.Add(_moveSlotScoreBoosts[i]);
 
             _moveSlotMovesetLabels[i] = new Label
             {
@@ -991,7 +987,7 @@ partial class CompanionPanel
             _moveSlotDetailPanels[i].ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // right label
             _moveSlotDetailPanels[i].ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize)); // right value
 
-            // Left column: combo, cooldown/scoreboost, moveset label
+            // Left column: combo, moveset label
             var leftCol = new FlowLayoutPanel
             {
                 AutoSize = true,
@@ -1000,7 +996,6 @@ partial class CompanionPanel
                 Dock = DockStyle.Fill,
             };
             leftCol.Controls.Add(_moveSlotCombos[i]);
-            leftCol.Controls.Add(controlRow);
             leftCol.Controls.Add(_moveSlotMovesetLabels[i]);
 
             // Per-slot two-column layout: left = controls, right = detail panel

@@ -115,18 +115,32 @@ public class CompanionEggInductionTests
             Assert.Equal(petTreats.GetInt(i), eggTreats.GetInt(i));
         }
 
-        // Move list should match
-        var petMoves = pet.GetArray("PetBattlerMoveList")!;
-        var eggMoves = egg.GetArray("PetBattlerMoveList")!;
-        Assert.Equal(petMoves.Length, eggMoves.Length);
-        for (int i = 0; i < petMoves.Length; i++)
+        // Move list should match (PetBattlerMoves is a string array)
+        var petMoves = pet.GetArray("PetBattlerMoves");
+        var eggMoves = egg.GetArray("PetBattlerMoves");
+        if (petMoves != null && eggMoves != null)
         {
-            var pm = petMoves.GetObject(i)!;
-            var em = eggMoves.GetObject(i)!;
-            Assert.Equal(pm.GetString("MoveTemplateID"), em.GetString("MoveTemplateID"));
+            Assert.Equal(petMoves.Length, eggMoves.Length);
+            for (int i = 0; i < petMoves.Length; i++)
+            {
+                Assert.Equal(petMoves.GetString(i), eggMoves.GetString(i));
+            }
+            _output.WriteLine($"Treats: {petTreats.Length}, Moves: {petMoves.Length}");
         }
-
-        _output.WriteLine($"Treats: {petTreats.Length}, Moves: {petMoves.Length}");
+        else
+        {
+            // Fall back to legacy PetBattlerMoveList if PetBattlerMoves not present
+            var petMoveList = pet.GetArray("PetBattlerMoveList")!;
+            var eggMoveList = egg.GetArray("PetBattlerMoveList")!;
+            Assert.Equal(petMoveList.Length, eggMoveList.Length);
+            for (int i = 0; i < petMoveList.Length; i++)
+            {
+                var pm = petMoveList.GetObject(i)!;
+                var em = eggMoveList.GetObject(i)!;
+                Assert.Equal(pm.GetString("MoveTemplateID"), em.GetString("MoveTemplateID"));
+            }
+            _output.WriteLine($"Treats: {petTreats.Length}, Moves (legacy): {petMoveList.Length}");
+        }
     }
 
     [Fact]

@@ -1619,11 +1619,11 @@ public partial class CompanionPanel : UserControl
         public override string ToString() => Label;
     }
 
-    /// <summary>Loads move slot data from the companion's PetBattlerMoveList.</summary>
+    /// <summary>Loads move slot data from the companion's PetBattlerMoves array.</summary>
     private void LoadMoveSlots(JsonObject comp)
     {
-        JsonArray? moveList = null;
-        try { moveList = comp.GetArray("PetBattlerMoveList"); } catch { }
+        JsonArray? moves = null;
+        try { moves = comp.GetArray("PetBattlerMoves"); } catch { }
 
         for (int i = 0; i < 5; i++)
         {
@@ -1634,22 +1634,14 @@ public partial class CompanionPanel : UserControl
             foreach (var move in _allowedMovesPerSlot[i])
                 _moveSlotCombos[i].Items.Add(move);
 
-            // Read current move
+            // Read current move ID from the string array
             string moveId = "";
-            int cooldown = 0;
-            double scoreBoost = 0;
 
-            if (moveList != null && i < moveList.Length)
+            if (moves != null && i < moves.Length)
             {
                 try
                 {
-                    var moveObj = moveList.GetObject(i);
-                    if (moveObj != null)
-                    {
-                        moveId = (moveObj.GetString("MoveTemplateID") ?? "").TrimStart('^');
-                        try { cooldown = moveObj.GetInt("Cooldown"); } catch { }
-                        try { scoreBoost = moveObj.GetDouble("ScoreBoost"); } catch { }
-                    }
+                    moveId = (moves.GetString(i) ?? "").TrimStart('^');
                 }
                 catch { }
             }
@@ -1670,43 +1662,9 @@ public partial class CompanionPanel : UserControl
             }
             _moveSlotCombos[i].SelectedIndex = selectedIdx;
 
-            // Cooldown and score boost
-            var (cdMin, cdMax) = GetCooldownRange(moveId, i);
-            _moveSlotCooldowns[i].Minimum = cdMin;
-            _moveSlotCooldowns[i].Maximum = cdMax;
-            _rawBattleIntValues[$"Cooldown_{i}"] = cooldown;
-            _moveSlotCooldowns[i].Value = Math.Clamp(cooldown, cdMin, cdMax);
-            _rawBattleDecimalValues[$"ScoreBoost_{i}"] = (decimal)scoreBoost;
-            _moveSlotScoreBoosts[i].Value = Math.Clamp((decimal)scoreBoost, 0, 10);
-
             // Moveset label and detail
             UpdateMoveSlotInfo(i, moveId);
         }
-    }
-
-    /// <summary>Gets cooldown min/max range for a move in a given slot across all movesets.</summary>
-    private static (int Min, int Max) GetCooldownRange(string moveId, int slotIndex)
-    {
-        if (string.IsNullOrEmpty(moveId)) return (0, 20);
-
-        int slotNumber = slotIndex + 1;
-        int globalMin = int.MaxValue, globalMax = int.MinValue;
-
-        foreach (var ms in PetBattleMovesetDatabase.Movesets)
-        {
-            var slot = ms.Slots.FirstOrDefault(s => s.SlotNumber == slotNumber);
-            if (slot == null) continue;
-            foreach (var opt in slot.Options)
-            {
-                if (string.Equals(opt.Template, moveId, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (opt.CooldownMin < globalMin) globalMin = opt.CooldownMin;
-                    if (opt.CooldownMax > globalMax) globalMax = opt.CooldownMax;
-                }
-            }
-        }
-
-        return globalMin <= globalMax ? (globalMin, globalMax) : (0, 20);
     }
 
     /// <summary>Updates the moveset label and move detail panel for a slot.</summary>
@@ -1811,132 +1769,18 @@ public partial class CompanionPanel : UserControl
         var selectedItem = _moveSlotCombos[slotIndex].SelectedItem;
         string moveId = selectedItem is PetBattleMoveEntry moveEntry ? moveEntry.Id : "";
 
-        // Write to save
+        // Write to PetBattlerMoves string array
         try
         {
-            var moveList = comp.GetArray("PetBattlerMoveList");
-            if (moveList != null && slotIndex < moveList.Length)
+            var moves = comp.GetArray("PetBattlerMoves");
+            if (moves != null && slotIndex < moves.Length)
             {
-                var moveObj = moveList.GetObject(slotIndex);
-                if (moveObj != null)
-                {
-                    moveObj.Set("MoveTemplateID", string.IsNullOrEmpty(moveId) ? "^" : $"^{moveId}");
-
-                    if (!string.IsNullOrEmpty(moveId))
-                    {
-                        // Set default cooldown and score boost from moveset data
-                        var (cdMin, cdMax) = GetCooldownRange(moveId, slotIndex);
-                        int defaultCd = cdMin;
-                        double defaultWeight = GetDefaultWeighting(moveId, slotIndex);
-
-                        moveObj.Set("Cooldown", defaultCd);
-                        moveObj.Set("ScoreBoost", defaultWeight);
-
-                        _loading = true;
-                        try
-                        {
-                            _moveSlotCooldowns[slotIndex].Minimum = cdMin;
-                            _moveSlotCooldowns[slotIndex].Maximum = cdMax;
-                            _moveSlotCooldowns[slotIndex].Value = defaultCd;
-                            _moveSlotScoreBoosts[slotIndex].Value = Math.Clamp((decimal)defaultWeight, 0, 10);
-                        }
-                        finally { _loading = false; }
-                    }
-                    else
-                    {
-                        moveObj.Set("Cooldown", 0);
-                        moveObj.Set("ScoreBoost", 0.0);
-
-                        _loading = true;
-                        try
-                        {
-                            _moveSlotCooldowns[slotIndex].Minimum = 0;
-                            _moveSlotCooldowns[slotIndex].Maximum = 20;
-                            _moveSlotCooldowns[slotIndex].Value = 0;
-                            _moveSlotScoreBoosts[slotIndex].Value = 0;
-                        }
-                        finally { _loading = false; }
-                    }
-                }
+                moves.Set(slotIndex, string.IsNullOrEmpty(moveId) ? "^" : $"^{moveId}");
             }
         }
         catch { }
 
         UpdateMoveSlotInfo(slotIndex, moveId);
-    }
-
-    /// <summary>Gets the default weighting for a move in a slot from moveset data.</summary>
-    private static double GetDefaultWeighting(string moveId, int slotIndex)
-    {
-        int slotNumber = slotIndex + 1;
-        foreach (var ms in PetBattleMovesetDatabase.Movesets)
-        {
-            var slot = ms.Slots.FirstOrDefault(s => s.SlotNumber == slotNumber);
-            if (slot == null) continue;
-            foreach (var opt in slot.Options)
-            {
-                if (string.Equals(opt.Template, moveId, StringComparison.OrdinalIgnoreCase))
-                    return opt.Weighting;
-            }
-        }
-        return 1.0;
-    }
-
-    /// <summary>Handles cooldown value change for a move slot.</summary>
-    private void OnMoveSlotCooldownChanged(int slotIndex)
-    {
-        var comp = SelectedCompanion;
-        if (comp == null) return;
-
-        // Skip write if user didn't change it from the clamped display value
-        if (!WasBattleIntChangedByUser($"Cooldown_{slotIndex}", (int)_moveSlotCooldowns[slotIndex].Value, _moveSlotCooldowns[slotIndex]))
-            return;
-
-        try
-        {
-            var moveList = comp.GetArray("PetBattlerMoveList");
-            if (moveList != null && slotIndex < moveList.Length)
-            {
-                var moveObj = moveList.GetObject(slotIndex);
-                moveObj?.Set("Cooldown", (int)_moveSlotCooldowns[slotIndex].Value);
-            }
-        }
-        catch { }
-    }
-
-    /// <summary>Handles score boost value change for a move slot.
-    /// Snaps the value to the nearest 0.1 increment so that e.g. 1.660000
-    /// with an up-arrow press results in 1.700000 rather than 1.760000.</summary>
-    private void OnMoveSlotScoreBoostChanged(int slotIndex)
-    {
-        if (_loading) return;
-        var comp = SelectedCompanion;
-        if (comp == null) return;
-
-        var nud = _moveSlotScoreBoosts[slotIndex];
-        decimal rounded = Math.Round(nud.Value, 1, MidpointRounding.AwayFromZero);
-        if (nud.Value != rounded)
-        {
-            _loading = true;
-            try { nud.Value = rounded; }
-            finally { _loading = false; }
-        }
-
-        // Skip write if user didn't change it from the clamped display value
-        if (!WasBattleDecimalChangedByUser($"ScoreBoost_{slotIndex}", rounded, nud))
-            return;
-
-        double val = Math.Clamp((double)rounded, 0, 9.999999);
-        try
-        {
-            var moveList = comp.GetArray("PetBattlerMoveList");
-            if (moveList != null && slotIndex < moveList.Length)
-            {
-                var moveObj = moveList.GetObject(slotIndex);
-                moveObj?.Set("ScoreBoost", val);
-            }
-        }
-        catch { }
     }
 
     /// <summary>Handles the Override Pet Classes checkbox.</summary>

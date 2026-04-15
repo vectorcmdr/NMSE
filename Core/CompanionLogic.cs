@@ -224,6 +224,7 @@ internal static class CompanionLogic
         "PetBattleProgressToTreat",
         "PetBattlerVictories",
         "PetBattlerMoveList",
+        "PetBattlerMoves",
     };
 
     /// <summary>
@@ -261,6 +262,7 @@ internal static class CompanionLogic
         try { companion.Set("PetBattlerVictories", 0); } catch { }
 
         // PetBattlerMoveList: array of 5 move objects -> reset MoveTemplateID/Cooldown/ScoreBoost
+        // (legacy key, no longer used by the game but still present in saves)
         try
         {
             var moveList = companion.GetArray("PetBattlerMoveList");
@@ -275,6 +277,16 @@ internal static class CompanionLogic
                         obj.Set("ScoreBoost", 0.0);
                     }
                 }
+        }
+        catch { }
+
+        // PetBattlerMoves: array of 5 move ID strings -> reset to "^"
+        try
+        {
+            var moves = companion.GetArray("PetBattlerMoves");
+            if (moves != null)
+                for (int i = 0; i < moves.Length; i++)
+                    moves.Set(i, "^");
         }
         catch { }
     }

@@ -15,12 +15,13 @@ public class PetBattleRoundtripTests
 {
     private readonly ITestOutputHelper _output;
     private const string BasePath = "../../../../../_ref/pet_new";
+    private const string NewKeyBasePath = "../../../../../_ref/pet_new_key";
 
     public PetBattleRoundtripTests(ITestOutputHelper output) { _output = output; }
 
-    private JsonObject? LoadSave(string filename)
+    private JsonObject? LoadSave(string filename, string basePath = BasePath)
     {
-        var path = Path.Combine(BasePath, filename);
+        var path = Path.Combine(basePath, filename);
         if (!File.Exists(path))
             return null; // Skip if reference save not available
         _output.WriteLine($"Loading: {filename}");
@@ -80,7 +81,7 @@ public class PetBattleRoundtripTests
         int victories = pet0.GetInt("PetBattlerVictories");
         _output.WriteLine($"PetBattlerVictories = {victories}");
 
-        // 8. PetBattlerMoveList (array of 5 move objects)
+        // 8. PetBattlerMoveList (legacy, array of 5 move objects)
         var moveList = pet0.GetArray("PetBattlerMoveList");
         Assert.NotNull(moveList);
         Assert.Equal(5, moveList!.Length);
@@ -93,7 +94,7 @@ public class PetBattleRoundtripTests
             Assert.StartsWith("^", tid);
             int cd = moveObj.GetInt("Cooldown");
             double sb = moveObj.GetDouble("ScoreBoost");
-            _output.WriteLine($"  Move[{i}]: MoveTemplateID=\"{tid}\", Cooldown={cd}, ScoreBoost={sb}");
+            _output.WriteLine($"  MoveList[{i}]: MoveTemplateID=\"{tid}\", Cooldown={cd}, ScoreBoost={sb}");
         }
     }
 
@@ -199,5 +200,77 @@ public class PetBattleRoundtripTests
         move0.Set("Cooldown", origCd);
         move0.Set("ScoreBoost", origSb);
         _output.WriteLine("Roundtrip OK");
+    }
+
+    [Fact]
+    public void NewKey_PetBattlerMovesIsStringArray()
+    {
+        var save = LoadSave("new_key.json", NewKeyBasePath);
+        if (save == null) return; // Skip if reference save not available
+        var pets = save.GetObject("BaseContext")!.GetObject("PlayerStateData")!.GetArray("Pets")!;
+        Assert.True(pets.Length >= 1, "Expected at least one pet");
+
+        var pet0 = pets.GetObject(0)!;
+
+        // PetBattlerMoves should be an array of 5 strings
+        var moves = pet0.GetArray("PetBattlerMoves");
+        Assert.NotNull(moves);
+        Assert.Equal(5, moves!.Length);
+
+        for (int i = 0; i < 5; i++)
+        {
+            string val = moves.GetString(i);
+            Assert.NotNull(val);
+            Assert.StartsWith("^", val);
+            _output.WriteLine($"  PetBattlerMoves[{i}] = \"{val}\"");
+        }
+    }
+
+    [Fact]
+    public void NewKey_LegacyMoveListDefaulted()
+    {
+        var save = LoadSave("new_key.json", NewKeyBasePath);
+        if (save == null) return; // Skip if reference save not available
+        var pets = save.GetObject("BaseContext")!.GetObject("PlayerStateData")!.GetArray("Pets")!;
+
+        var pet0 = pets.GetObject(0)!;
+
+        // Legacy PetBattlerMoveList should still exist but with default values
+        var moveList = pet0.GetArray("PetBattlerMoveList");
+        Assert.NotNull(moveList);
+        Assert.Equal(5, moveList!.Length);
+
+        for (int i = 0; i < 5; i++)
+        {
+            var moveObj = moveList.GetObject(i);
+            Assert.NotNull(moveObj);
+            Assert.Equal("^", moveObj!.GetString("MoveTemplateID"));
+            Assert.Equal(0, moveObj.GetInt("Cooldown"));
+            Assert.Equal(0.0, moveObj.GetDouble("ScoreBoost"));
+        }
+
+        _output.WriteLine("Legacy PetBattlerMoveList is reset to defaults as expected");
+    }
+
+    [Fact]
+    public void NewKey_PetBattlerMovesRoundTrip()
+    {
+        var save = LoadSave("new_key.json", NewKeyBasePath);
+        if (save == null) return; // Skip if reference save not available
+        var pet0 = save.GetObject("BaseContext")!.GetObject("PlayerStateData")!.GetArray("Pets")!.GetObject(0)!;
+
+        var moves = pet0.GetArray("PetBattlerMoves")!;
+        string orig0 = moves.GetString(0);
+        _output.WriteLine($"Before: PetBattlerMoves[0] = \"{orig0}\"");
+
+        // Write new value
+        moves.Set(0, "^TEST_MOVE");
+        Assert.Equal("^TEST_MOVE", moves.GetString(0));
+        _output.WriteLine("After write: ^TEST_MOVE");
+
+        // Restore
+        moves.Set(0, orig0);
+        Assert.Equal(orig0, moves.GetString(0));
+        _output.WriteLine($"After restore: \"{orig0}\"");
     }
 }
