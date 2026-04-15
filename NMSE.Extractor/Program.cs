@@ -258,6 +258,9 @@ public class Program
             ("PetBattleMoves", "PETBATTLERMOVESTABLE.MXML", Parsers.ParsePetBattleMoves),
             ("PetBattleMovesets", "PETBATTLERMOVESETSTABLE.MXML", Parsers.ParsePetBattleMovesets),
             ("GameTableGlobals", "GCGAMETABLEGLOBALS.MXML", Parsers.ParseGameTableGlobals),
+            ("CreatureSpecies", "creaturedatatable.MXML", Parsers.ParseCreatureSpecies),
+            ("CreatureDescriptors", "creaturefilenametable.MXML",
+                p => Parsers.ParseCreatureDescriptors(p, mbinDir)),
         };
 
         // Pre-warm XML cache by loading shared MXML files on the main thread.
@@ -339,6 +342,10 @@ public class Program
             finalFiles["Pet Battle Movesets.json"] = baseData["PetBattleMovesets"];
         if (baseData.ContainsKey("GameTableGlobals"))
             finalFiles["Game Table Globals.json"] = baseData["GameTableGlobals"];
+        if (baseData.ContainsKey("CreatureSpecies"))
+            finalFiles["Creature Species.json"] = baseData["CreatureSpecies"];
+        if (baseData.ContainsKey("CreatureDescriptors"))
+            finalFiles["Creature Descriptors.json"] = baseData["CreatureDescriptors"];
 
         // Categorized files
         var categorized = new Dictionary<string, List<Dictionary<string, object?>>>

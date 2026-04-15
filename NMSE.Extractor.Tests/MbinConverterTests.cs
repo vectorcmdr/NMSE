@@ -285,15 +285,15 @@ public class MbinConverterTests
     }
 
     /// <summary>
-    /// Tests EstimateMaxStorageBytes: largest pak + 2x total pak size.
+    /// Tests EstimateMaxStorageBytes: largest pak + 0.5x total pak size.
     /// </summary>
     [Fact]
-    public void EstimateMaxStorageBytes_ReturnsLargestPakPlus2xTotal()
+    public void EstimateMaxStorageBytes_ReturnsLargestPakPlusHalfTotal()
     {
         long pakSize = 10_000_000_000; // 10 GB total
         long largestPak = 2_000_000_000; // 2 GB largest
         long estimate = PakExtractor.EstimateMaxStorageBytes(pakSize, largestPak);
-        Assert.Equal(largestPak + (pakSize * 2), estimate);
+        Assert.Equal(largestPak + (pakSize / 2), estimate);
     }
 
     /// <summary>
@@ -458,6 +458,7 @@ public class MbinConverterTests
     [InlineData("NMSARC.Precache.pak")]
     [InlineData("NMSARC.globals.pak")]
     [InlineData("NMSARC.59AABAC1.pak")]
+    [InlineData("NMSARC.EntitySceneMBIN.pak")]
     public void IsPakRelevant_DataPaks_ReturnsTrue(string pakName)
     {
         Assert.True(PakExtractor.IsPakRelevant(pakName));
@@ -482,7 +483,6 @@ public class MbinConverterTests
     [InlineData("NMSARC.AnimMBIN.pak")]
     [InlineData("NMSARC.audio.pak")]
     [InlineData("NMSARC.audioBNK.pak")]
-    [InlineData("NMSARC.EntitySceneMBIN.pak")]
     [InlineData("NMSARC.fonts.pak")]
     [InlineData("NMSARC.MeshCommon.pak")]
     [InlineData("NMSARC.MeshMisc.pak")]

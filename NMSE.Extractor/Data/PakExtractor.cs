@@ -22,7 +22,6 @@ public static partial class PakExtractor
         "ANIMMBIN",
         "AUDIO",
         "AUDIOBNK",
-        "ENTITYSCENEMBIN",
         "FONTS",
         "MESH",
         "MISC",
@@ -272,13 +271,14 @@ public static partial class PakExtractor
     /// <summary>
     /// Estimate the maximum disk space consumed during extraction.
     /// With per-pak extraction, peak = largest single pak (temp copy) + filtered extracted content.
-    /// Uses pak total size as a conservative upper bound for extracted content.
+    /// Uses half the pak total size as a conservative upper bound for extracted content,
+    /// since we extract less than 1% of content from most paks.
     /// </summary>
     public static long EstimateMaxStorageBytes(long pakFilesSize, long largestPakSize)
     {
         // Per-pak approach: only 1 pak on disk at a time + extracted content
-        // Extracted content with filters is much smaller than total, but use 2x pak size as safe upper bound
-        return largestPakSize + (pakFilesSize * 2);
+        // Extracted content with filters is much smaller than total; use 0.5x pak size as safe upper bound
+        return largestPakSize + (pakFilesSize / 2);
     }
 
     /// <summary>

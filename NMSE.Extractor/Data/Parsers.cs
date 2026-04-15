@@ -2614,4 +2614,355 @@ public static class Parsers
         Console.WriteLine($"[OK] Parsed Game Table Globals (Biome affinities: {affinities.Count}, Affinity locs: {affinityLoc.Count})");
         return result;
     }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Creature Species (from creaturedatatable.MXML)
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses creature species data from creaturedatatable.MXML.
+    /// Produces Creature Species.json with creature IDs, types, scales and pet metadata.
+    /// </summary>
+    public static List<Dictionary<string, object?>> ParseCreatureSpecies(string mxmlPath)
+    {
+        var root = MxmlParser.LoadXml(mxmlPath);
+        var species = new List<Dictionary<string, object?>>();
+
+        var tableProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "Table"
+                && e.Parent?.Name.LocalName == "Data");
+        if (tableProp == null)
+        {
+            tableProp = root.Descendants("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "Table");
+        }
+        if (tableProp == null)
+        {
+            Console.WriteLine("[WARN] ParseCreatureSpecies: No <Property name=\"Table\"> found");
+            return species;
+        }
+
+        foreach (var elem in tableProp.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "GcCreatureData"))
+        {
+            try
+            {
+                string creatureId = MxmlParser.GetPropertyValue(elem, "Id");
+                if (string.IsNullOrEmpty(creatureId)) continue;
+
+                string forceType = MxmlParser.GetNestedEnum(elem, "ForceType", "CreatureType") ?? "";
+                string realType = MxmlParser.GetNestedEnum(elem, "RealType", "CreatureType") ?? "";
+                string moveArea = MxmlParser.GetPropertyValue(elem, "MoveArea");
+                bool ecoSystem = MxmlParser.ParseValue(
+                    MxmlParser.GetPropertyValue(elem, "EcoSystemCreature", "false")) is true;
+                bool canBeFemale = MxmlParser.ParseValue(
+                    MxmlParser.GetPropertyValue(elem, "CanBeFemale", "false")) is true;
+                bool onlyForced = MxmlParser.ParseValue(
+                    MxmlParser.GetPropertyValue(elem, "OnlySpawnWhenIdIsForced", "false")) is true;
+
+                string minScaleStr = MxmlParser.GetPropertyValue(elem, "MinScale", "1");
+                string maxScaleStr = MxmlParser.GetPropertyValue(elem, "MaxScale", "1");
+                double.TryParse(minScaleStr, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double minScale);
+                double.TryParse(maxScaleStr, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out double maxScale);
+
+                string rarity = MxmlParser.GetNestedEnum(elem, "Rarity", "CreatureRarity") ?? "";
+                string eggType = MxmlParser.GetPropertyValue(elem, "EggType");
+
+                // Parse PetData section (accessory slots and riding modifiers)
+                var accessorySlots = new List<Dictionary<string, object?>>();
+                var ridingParts = new List<Dictionary<string, object?>>();
+
+                var dataSection = elem.Elements("Property")
+                    .FirstOrDefault(e => e.Attribute("name")?.Value == "Data");
+                if (dataSection != null)
+                {
+                    // GcCreaturePetData is nested inside a Data array element
+                    var petData = dataSection.Descendants("Property")
+                        .FirstOrDefault(e => e.Attribute("value")?.Value == "GcCreaturePetData");
+                    if (petData != null)
+                    {
+                        var petInner = petData.Elements("Property")
+                            .FirstOrDefault(e => e.Attribute("name")?.Value == "GcCreaturePetData")
+                            ?? petData;
+
+                        var accSlotsProp = petInner.Elements("Property")
+                            .FirstOrDefault(e => e.Attribute("name")?.Value == "AccessorySlots");
+                        if (accSlotsProp != null)
+                        {
+                            foreach (var accSlot in accSlotsProp.Elements("Property")
+                                .Where(e => e.Attribute("value")?.Value == "GcCreaturePetAccessory"))
+                            {
+                                string reqDesc = MxmlParser.GetPropertyValue(accSlot, "RequiredDescriptor");
+                                if (!string.IsNullOrEmpty(reqDesc))
+                                    accessorySlots.Add(new() { ["RequiredDescriptor"] = reqDesc });
+                            }
+                        }
+                    }
+
+                    // GcCreatureRidingData is also nested inside the Data array
+                    var ridingData = dataSection.Descendants("Property")
+                        .FirstOrDefault(e => e.Attribute("value")?.Value == "GcCreatureRidingData");
+                    if (ridingData != null)
+                    {
+                        var ridingInner = ridingData.Elements("Property")
+                            .FirstOrDefault(e => e.Attribute("name")?.Value == "GcCreatureRidingData")
+                            ?? ridingData;
+
+                        var partMods = ridingInner.Elements("Property")
+                            .FirstOrDefault(e => e.Attribute("name")?.Value == "PartModifiers");
+                        if (partMods != null)
+                        {
+                            foreach (var mod in partMods.Elements("Property")
+                                .Where(e => e.Attribute("value")?.Value == "GcCreatureRidingDataPartModifier"))
+                            {
+                                string partName = MxmlParser.GetPropertyValue(mod, "PartName");
+                                if (!string.IsNullOrEmpty(partName))
+                                    ridingParts.Add(new() { ["PartName"] = partName });
+                            }
+                        }
+                    }
+                }
+
+                // Pet battler data
+                bool canBattle = false;
+                string battleAffinity = "";
+                var petBattleData = dataSection?.Descendants("Property")
+                    .FirstOrDefault(e => e.Attribute("value")?.Value == "GcCreaturePetBattleData");
+                if (petBattleData != null)
+                {
+                    var battleInner = petBattleData.Elements("Property")
+                        .FirstOrDefault(e => e.Attribute("name")?.Value == "GcCreaturePetBattleData")
+                        ?? petBattleData;
+                    canBattle = MxmlParser.ParseValue(
+                        MxmlParser.GetPropertyValue(battleInner, "CanBeUsedInPetBattler", "false")) is true;
+                    battleAffinity = MxmlParser.GetNestedEnum(
+                        battleInner, "ForcedAffinity", "PetBattleAffinity") ?? "";
+                }
+
+                species.Add(new()
+                {
+                    ["Id"] = creatureId,
+                    ["ForceType"] = NullIfEmpty(forceType),
+                    ["RealType"] = NullIfEmpty(realType),
+                    ["MoveArea"] = NullIfEmpty(moveArea),
+                    ["EcoSystemCreature"] = ecoSystem,
+                    ["CanBeFemale"] = canBeFemale,
+                    ["OnlySpawnWhenIdIsForced"] = onlyForced,
+                    ["MinScale"] = minScale,
+                    ["MaxScale"] = maxScale,
+                    ["Rarity"] = NullIfEmpty(rarity),
+                    ["EggType"] = NullIfEmpty(eggType),
+                    ["CanBeUsedInPetBattler"] = canBattle,
+                    ["PetBattlerForcedAffinity"] = NullIfEmpty(battleAffinity),
+                    ["PetAccessorySlots"] = accessorySlots.Count > 0 ? accessorySlots : null,
+                    ["RidingPartModifiers"] = ridingParts.Count > 0 ? ridingParts : null,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [WARN] Skipped creature species entry: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[OK] Parsed {species.Count} creature species");
+        return species;
+    }
+
+    // ──────────────────────────────────────────────────────────────────
+    //  Creature Descriptors (from SCENE.MXML files + creaturefilenametable.MXML)
+    // ──────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses creature descriptor trees from SCENE MXML files.
+    /// Uses creaturefilenametable.MXML to map game creature IDs to their model scene files.
+    /// Produces Creature Descriptors.json with hierarchical group/option descriptor trees.
+    /// </summary>
+    /// <param name="filenameTablePath">Path to creaturefilenametable.MXML.</param>
+    /// <param name="mbinDir">
+    /// Directory containing MBIN/MXML output. Scene MXML files are expected in
+    /// subdirectories matching the original pak paths (e.g. models/planets/creatures/...).
+    /// </param>
+    public static List<Dictionary<string, object?>> ParseCreatureDescriptors(
+        string filenameTablePath, string mbinDir)
+    {
+        var results = new List<Dictionary<string, object?>>();
+
+        // Build creature ID to scene file path mapping
+        var idToScenePath = BuildCreatureSceneMapping(filenameTablePath);
+        if (idToScenePath.Count == 0)
+        {
+            Console.WriteLine("[WARN] ParseCreatureDescriptors: No creature-to-scene mappings found");
+            return results;
+        }
+
+        int parsed = 0;
+        int skipped = 0;
+
+        foreach (var (creatureId, scenePath) in idToScenePath.OrderBy(kv => kv.Key))
+        {
+            // Convert NMS path (e.g. MODELS/PLANETS/CREATURES/CATRIG/CAT.SCENE.MBIN)
+            // to local MXML filename (e.g. cat.scene.MXML)
+            string sceneFileName = Path.GetFileName(scenePath)
+                .Replace(".MBIN", ".MXML", StringComparison.OrdinalIgnoreCase);
+
+            string mxmlPath = Path.Combine(mbinDir, sceneFileName);
+            if (!File.Exists(mxmlPath))
+            {
+                // Scene MXML not available (may not have been extracted)
+                skipped++;
+                continue;
+            }
+
+            try
+            {
+                var sceneRoot = MxmlParser.LoadXml(mxmlPath);
+                var groups = ParseSceneDescriptorTree(sceneRoot);
+
+                if (groups.Count > 0)
+                {
+                    results.Add(new()
+                    {
+                        ["CreatureId"] = creatureId,
+                        ["Groups"] = groups,
+                    });
+                    parsed++;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [WARN] Failed to parse descriptors for {creatureId} ({sceneFileName}): {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"[OK] Parsed descriptors for {parsed} creatures ({skipped} scene files not found)");
+        return results;
+    }
+
+    /// <summary>
+    /// Builds a mapping from game creature ID to SCENE.MBIN path
+    /// using creaturefilenametable.MXML.
+    /// </summary>
+    private static Dictionary<string, string> BuildCreatureSceneMapping(string filenameTablePath)
+    {
+        var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var root = MxmlParser.LoadXml(filenameTablePath);
+
+        var tableProp = root.Descendants("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "Table"
+                && e.Parent?.Name.LocalName == "Data");
+        if (tableProp == null)
+        {
+            tableProp = root.Descendants("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "Table");
+        }
+        if (tableProp == null) return mapping;
+
+        foreach (var elem in tableProp.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "GcCreatureFilename"))
+        {
+            string id = MxmlParser.GetPropertyValue(elem, "ID");
+            string filename = MxmlParser.GetPropertyValue(elem, "Filename");
+            if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(filename))
+                mapping.TryAdd(id, filename);
+        }
+
+        return mapping;
+    }
+
+    /// <summary>
+    /// Parses the descriptor tree from a creature SCENE MXML file.
+    /// Descriptors are identified by node names starting with underscore.
+    /// Returns hierarchical groups in the format expected by Creature Descriptors.json.
+    /// </summary>
+    private static List<Dictionary<string, object?>> ParseSceneDescriptorTree(XElement sceneRoot)
+    {
+        // Find the top-level MODEL node's Children
+        var modelChildren = sceneRoot.Elements("Property")
+            .FirstOrDefault(e => e.Attribute("name")?.Value == "Children");
+
+        if (modelChildren == null) return new();
+
+        return CollectDescriptorGroups(modelChildren);
+    }
+
+    /// <summary>
+    /// Recursively collects descriptor groups from scene node children.
+    /// Groups are collections of sibling nodes whose names start with a shared
+    /// underscore-prefixed pattern (e.g. _HEAD_, _BODY_, _TAIL_).
+    /// </summary>
+    private static List<Dictionary<string, object?>> CollectDescriptorGroups(XElement childrenElement)
+    {
+        var groups = new Dictionary<string, List<Dictionary<string, object?>>>(StringComparer.OrdinalIgnoreCase);
+        var groupOrder = new List<string>();
+
+        foreach (var childNode in childrenElement.Elements("Property")
+            .Where(e => e.Attribute("value")?.Value == "TkSceneNodeData"))
+        {
+            string name = MxmlParser.GetPropertyValue(childNode, "Name");
+            if (string.IsNullOrEmpty(name) || !name.StartsWith('_'))
+                continue;
+
+            // Skip *Shape mesh duplicates (engine artefacts, not real descriptors)
+            if (name.EndsWith("Shape", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // Determine group ID from name pattern (e.g. _Head_Hog becomes _HEAD_)
+            string groupId = DeriveGroupId(name);
+
+            if (!groups.ContainsKey(groupId))
+            {
+                groups[groupId] = new();
+                groupOrder.Add(groupId);
+            }
+
+            // Build option entry
+            var option = new Dictionary<string, object?>
+            {
+                ["Id"] = name.ToUpperInvariant().Replace(" ", ""),
+                ["Name"] = name,
+            };
+
+            // Recurse into children for nested descriptor groups
+            var nestedChildren = childNode.Elements("Property")
+                .FirstOrDefault(e => e.Attribute("name")?.Value == "Children");
+            if (nestedChildren != null)
+            {
+                var childGroups = CollectDescriptorGroups(nestedChildren);
+                if (childGroups.Count > 0)
+                    option["Children"] = childGroups;
+            }
+
+            groups[groupId].Add(option);
+        }
+
+        // Build result maintaining discovery order
+        var result = new List<Dictionary<string, object?>>();
+        foreach (string gid in groupOrder)
+        {
+            result.Add(new()
+            {
+                ["GroupId"] = gid,
+                ["Options"] = groups[gid],
+            });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Derives a group ID from a descriptor node name.
+    /// E.g. "_Head_Hog" becomes "_HEAD_", "_Body_Cat" becomes "_BODY_".
+    /// For names with only one segment (e.g. "_Body_"), uses the full name.
+    /// </summary>
+    private static string DeriveGroupId(string name)
+    {
+        // Names are like _Head_Hog, _Body_Cat, _Tail_Alien0, _Shape_1
+        // Group ID is the first segment: _HEAD_, _BODY_, _TAIL_, _SHAPE_
+        int secondUnderscore = name.IndexOf('_', 1);
+        if (secondUnderscore < 0)
+            return name.ToUpperInvariant() + "_";
+
+        return name[..(secondUnderscore + 1)].ToUpperInvariant();
+    }
 }

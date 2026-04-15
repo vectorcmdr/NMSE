@@ -88,6 +88,8 @@ public static class ExtractorConfig
         "*GAMESTATE/PLAYERDATA/CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.mbin",
         "*SIMULATION/GAMETABLES/PETBATTLER/PETBATTLERMOVESTABLE.mbin",
         "*SIMULATION/GAMETABLES/PETBATTLER/PETBATTLERMOVESETSTABLE.mbin",
+        "*SIMULATION/ECOSYSTEM/creaturedatatable.mbin",
+        "*SIMULATION/ECOSYSTEM/creaturefilenametable.mbin",
     ];
 
     /// <summary>
@@ -103,6 +105,7 @@ public static class ExtractorConfig
     public static readonly string[] GlobalsMbinFilters =
     [
         "*GCGAMETABLEGLOBALS.mbin",
+        "*GCCREATUREGLOBALS.mbin",
     ];
 
     /// <summary>
@@ -114,29 +117,49 @@ public static class ExtractorConfig
     ];
 
     /// <summary>
+    /// Filters for creature and robot SCENE.MBIN files in EntitySceneMBIN paks.
+    /// These contain the descriptor trees needed for companion editing.
+    /// </summary>
+    public static readonly string[] SceneMbinFilters =
+    [
+        "*MODELS/PLANETS/CREATURES/*.SCENE.MBIN",
+        "*MODELS/COMMON/ROBOTS/*.SCENE.MBIN",
+        "*MODELS/PLANETS/BIOMES/*/SMALLCREATURE/*/*.SCENE.MBIN",
+        "*MODELS/PLANETS/BIOMES/*/MEDIUMCREATURE/*.SCENE.MBIN",
+    ];
+
+    /// <summary>
     /// Returns the appropriate extraction filters for a given pak file.
     /// NMS distributes game data across many paks (including hex-named paks),
     /// so all non-texture paks receive MBIN filters. Texture paks only get DDS filters.
+    /// EntitySceneMBIN paks get scene-specific MBIN filters.
     /// </summary>
     public static string[] GetFiltersForPak(string pakFileName)
     {
         string nameUpper = (Path.GetFileNameWithoutExtension(pakFileName) ?? "").ToUpperInvariant();
 
-        // Tex* → texture filters only (these paks only contain DDS/texture data)
+        // Tex* paks contain only DDS/texture data
         int firstDot = nameUpper.IndexOf('.');
-        if (firstDot >= 0 && nameUpper[(firstDot + 1)..].StartsWith("TEX"))
-            return TextureFilters;
+        if (firstDot >= 0)
+        {
+            string type = nameUpper[(firstDot + 1)..];
+            if (type.StartsWith("TEX"))
+                return TextureFilters;
 
-        // All other paks → all MBIN filters (metadata + locale + globals).
-        // NMS distributes game data across many paks — REALITY/TABLES MBINs
-        // are NOT in MetadataEtc.pak but in other (often hex-named) paks.
+            // EntitySceneMBIN paks contain SCENE.MBIN files with descriptor trees
+            if (type.StartsWith("ENTITYSCENEMBIN"))
+                return SceneMbinFilters;
+        }
+
+        // All other paks get MBIN filters (metadata + locale + globals).
+        // NMS distributes game data across many paks.
         return MbinFilters;
     }
 
     /// <summary>
-    /// All MBIN filters (for reference/tests). Game data + locale + globals.
+    /// All MBIN filters (for reference/tests). Game data + locale + globals + scene.
     /// </summary>
-    public static readonly string[] MbinFilters = [.. MetadataMbinFilters, .. LocaleMbinFilters, .. GlobalsMbinFilters];
+    public static readonly string[] MbinFilters = [.. MetadataMbinFilters, .. LocaleMbinFilters, .. GlobalsMbinFilters, .. SceneMbinFilters];
 
     /// <summary>
     /// Combined MBIN + texture filters (for reference/tests).
@@ -173,7 +196,10 @@ public static class ExtractorConfig
         "CHARACTERCUSTOMISATIONDESCRIPTORGROUPSDATA.MXML",
         "PETBATTLERMOVESTABLE.MXML",
         "PETBATTLERMOVESETSTABLE.MXML",
+        "creaturedatatable.MXML",
+        "creaturefilenametable.MXML",
         "GCGAMETABLEGLOBALS.MXML",
+        "GCCREATUREGLOBALS.MXML",
         "nms_loc1_english.MXML",
         "nms_loc4_english.MXML",
         "nms_loc5_english.MXML",
