@@ -1,10 +1,43 @@
-## NMSE — No Man's Save Editor v1.1.17 (preview)
+## NMSE — No Man's Save Editor v1.1.20 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
 
-### This preview build includes new support for Game Update 6.32 (Xeno Arena)
+#### Features:
+
+- Added the ability to induce an egg from a companion (and place / replicate it into the exosuit inventory). (per Discord FR)
+- Added type matchup information to the Compantion panel Battle tab for companion affinity.
+- Added pet battle team selection to the battle tab.
+- Added new DB for creatures in place of outdated hardcoded DB, includes minor UI improvements due to this.
+- Updated inventory UI to include a two section Slot Details and Item Picker that function independantly (per FR #44):
+    - Slot details now displays the currently selected slot for reference.
+    - Item picker is enhanced with icon and description elements for the selected item.
+    - Item picker adds/replaces items directly instead of via slot details.
+    - Item class mini icon is displayed next to the icon.
+    - Item descriptions are now available via a tooltip on hovering over the information icon in place of the description block.
+    - Forced item reselection is reduced with this new workflow.
+- Updated the base moving functionality in the Bases tab to use a vector coordinate transforming algorithm (using Gram-Schmidt process).
+- Added terrain edit clearing for bases (per FR #12).
+- Added updated galactic core color system for galaxy display (via PR#43 - thanks @maniro-x)
+- Improved display of galaxy information in the Teleport Destinations tab.
+- Added additional milestones to the milestone list (more to come).
+
+#### Bug Fixes:
+
+- Updated the companion pet battle class display to better show when it is not in override and is using the procedural class values (currently unable to display).
+- Fixed an import but with pet accessories.
+- Updated pet battle Affinity names in the UI to in game version instead of MXML lookup names.
+- Updated icon and delayed load system to improve icon reliability on load splash.
+- Siginificant internal cleanup (non user facing).
+- Test suite cleanup.
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.1.17 (preview)
 
 > ⚠️ _Please use the companion editing responsibly for PvP. Don't have fun at the expense of other players._
 
@@ -41,9 +74,6 @@
 - Numerous internal fixes and changes (non user facing).
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.0.397 (preview)
 
