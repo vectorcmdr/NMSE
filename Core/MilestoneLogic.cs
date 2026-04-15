@@ -22,7 +22,12 @@ internal static class MilestoneLogic
         { "Explorers", "UI-EXPLORERS.PNG" },
         { "Autophage", "UI-BUILDERS.PNG" },
         { "Pirate", "UI-PIRATE.PNG" },
-        { "Other Milestones / Stats", "UI-PERK.PNG"}
+        { "Other Milestones / Stats", "UI-PERK.PNG"},
+        { "Discoveries (Planets)", "UI-MILESTONES.PNG"},
+        { "Discoveries (Creatures)", "UI-MILESTONES.PNG"},
+        { "Travel", "UI-MILESTONES.PNG"},
+        { "Multiplayer", "UI-PERK.PNG"},
+        { "Pet Battles", "UI-PERK.PNG"},
     };
 
     /// <summary>

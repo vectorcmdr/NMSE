@@ -43,7 +43,7 @@ public partial class MilestonePanel : UserControl
         }
     }
 
-    private static TableLayoutPanel CreateThreeColumnSection()
+    private static TableLayoutPanel CreateColumnSection(int columnCount)
     {
         var section = new TableLayoutPanel
         {
@@ -51,17 +51,16 @@ public partial class MilestonePanel : UserControl
             AutoSizeMode = AutoSizeMode.GrowOnly,
             AutoScroll = true,
             Dock = DockStyle.Top,
-            ColumnCount = 3,
+            ColumnCount = columnCount,
             RowCount = 1,
             Margin = new Padding(0, 0, 0, 8),
             Padding = new Padding(0),
         };
-        section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
-        section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
-        section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
+        for (int i = 0; i < columnCount; i++)
+            section.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
         section.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < columnCount; i++)
         {
             var col = new TableLayoutPanel
             {
@@ -80,6 +79,9 @@ public partial class MilestonePanel : UserControl
 
         return section;
     }
+
+    private static TableLayoutPanel CreateThreeColumnSection() => CreateColumnSection(3);
+    private static TableLayoutPanel CreateFourColumnSection() => CreateColumnSection(4);
 
     private static TableLayoutPanel GetColumnPanel(TableLayoutPanel section, int colIndex)
     {
@@ -129,6 +131,13 @@ public partial class MilestonePanel : UserControl
 
         panel.Controls.Add(container, 0, row);
         panel.SetColumnSpan(container, 2);
+    }
+
+    /// <summary>Adds an empty spacer row for visual separation between sections within a column.</summary>
+    private static void AddVerticalSpacer(TableLayoutPanel panel, int height = 12)
+    {
+        int row = panel.RowCount++;
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
     }
 
     private void AddField(TableLayoutPanel panel, string locKey, string statId)
