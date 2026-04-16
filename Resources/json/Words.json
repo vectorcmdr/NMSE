@@ -1712,9 +1712,11 @@
 	{
 		"Id": "^BATTLE",
 		"Text": "battle",
-		"Text_LocStr": "WAR_BATTLE",
+		"Text_LocStr": "TRA_BATTLE",
 		"Groups": {
-			"^WAR_BATTLE": 1
+			"^TRA_BATTLE": 0,
+			"^WAR_BATTLE": 1,
+			"^EXP_BATTLE": 2
 		}
 	},
 	{
@@ -2906,6 +2908,16 @@
 		"Text_LocStr": "WAR_CHAMBER",
 		"Groups": {
 			"^WAR_CHAMBER": 1
+		}
+	},
+	{
+		"Id": "^CHAMPION",
+		"Text": "champion",
+		"Text_LocStr": "TRA_CHAMPION",
+		"Groups": {
+			"^TRA_CHAMPION": 0,
+			"^WAR_CHAMPION": 1,
+			"^EXP_CHAMPION": 2
 		}
 	},
 	{

@@ -14480,7 +14480,7 @@
 	{
 		"Id": "SPEC_PB_EGG01",
 		"Icon": "SPEC_PB_EGG01.png",
-		"IconPath": "textures/ui/frontend/icons/products/product.creatureegg.dds",
+		"IconPath": "textures/ui/frontend/icons/products/product.2026.hermitcrabpet.dds",
 		"Name": "Aeron Crab Egg",
 		"Name_LocStr": "UI_SPEC_PB_EGG01_NAME",
 		"Group": "Shellseeker Companion",
@@ -14555,7 +14555,7 @@
 	{
 		"Id": "SPEC_PB_EGG02",
 		"Icon": "SPEC_PB_EGG02.png",
-		"IconPath": "textures/ui/frontend/icons/products/product.creaturerobotegg.dds",
+		"IconPath": "textures/ui/frontend/icons/products/product.2026.fishbowl3pet.dds",
 		"Name": "Wandering Shrimp Tank Egg",
 		"Name_LocStr": "UI_SPEC_PB_EGG02_NAME",
 		"Group": "Liquid-Suspended Consciousness",
@@ -14630,7 +14630,7 @@
 	{
 		"Id": "SPEC_PB_EGG03",
 		"Icon": "SPEC_PB_EGG03.png",
-		"IconPath": "textures/ui/frontend/icons/products/product.creatureegg.dds",
+		"IconPath": "textures/ui/frontend/icons/products/product.2026.landsquidpet.dds",
 		"Name": "Boundary Horror Egg",
 		"Name_LocStr": "UI_SPEC_PB_EGG03_NAME",
 		"Group": "Spectral Anomaly",
@@ -14705,7 +14705,7 @@
 	{
 		"Id": "SPEC_PB_EGG04",
 		"Icon": "SPEC_PB_EGG04.png",
-		"IconPath": "textures/ui/frontend/icons/products/product.creaturerobotegg.dds",
+		"IconPath": "textures/ui/frontend/icons/products/product.2026.spiderquadpet.dds",
 		"Name": "Corrupted Quad Egg",
 		"Name_LocStr": "UI_SPEC_PB_EGG04_NAME",
 		"Group": "Sentinel Spawn Capsule",
@@ -14780,7 +14780,7 @@
 	{
 		"Id": "SPEC_PB_EGG05",
 		"Icon": "SPEC_PB_EGG05.png",
-		"IconPath": "textures/ui/frontend/icons/products/product.creatureegg.dds",
+		"IconPath": "textures/ui/frontend/icons/products/product.2026.horrorpet.dds",
 		"Name": "Geno-prawn Egg",
 		"Name_LocStr": "UI_SPEC_PB_EGG05_NAME",
 		"Group": "Abyssal Horror",
