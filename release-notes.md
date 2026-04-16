@@ -1,4 +1,4 @@
-## NMSE — No Man's Save Editor v1.1.20 (preview)
+## NMSE — No Man's Save Editor v1.1.28 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
@@ -6,11 +6,32 @@
 
 #### Features:
 
+- JSON key mappings update for Game Update 6.33.
+- Minor DB updates for Game Update 6.33.
+- Companion pet battle moves support updated for the new key location/system in Game Update 6.33 (which means access to cooldown/boost is gone).
+- Companion pet battle ability details re-ordered to prioritise effect over type.
+- Companion pet accessory customisation updated with game rules for slots and with in game color palette.
+
+#### Bug Fixes:
+
+- Fixed bug with companion pet accessory display / selection via the feature change above. (Per Issue #51)
+- Fixed erroneous Auto / Manual tagging on save files in the UI. (Per Issue #55)
+- NMS FloatValue fields changed to be cast to double always to avoid non-integral / non-integer precision issues. (Per Issue #56)
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.1.20 (preview)
+
+#### Features:
+
 - Added the ability to induce an egg from a companion (and place / replicate it into the exosuit inventory). (per Discord FR)
-- Added type matchup information to the Compantion panel Battle tab for companion affinity.
+- Added type matchup information to the Companion panel Battle tab for companion affinity.
 - Added pet battle team selection to the battle tab.
 - Added new DB for creatures in place of outdated hardcoded DB, includes minor UI improvements due to this.
-- Updated inventory UI to include a two section Slot Details and Item Picker that function independantly (per FR #44):
+- Updated inventory UI to include a two section Slot Details and Item Picker that function independently (per FR #44):
     - Slot details now displays the currently selected slot for reference.
     - Item picker is enhanced with icon and description elements for the selected item.
     - Item picker adds/replaces items directly instead of via slot details.
@@ -19,23 +40,20 @@
     - Forced item reselection is reduced with this new workflow.
 - Updated the base moving functionality in the Bases tab to use a vector coordinate transforming algorithm (using Gram-Schmidt process).
 - Added terrain edit clearing for bases (per FR #12).
-- Added updated galactic core color system for galaxy display (via PR#43 - thanks @maniro-x)
+- Added updated galactic core colour system for galaxy display (via PR#43 - thanks @maniro-x)
 - Improved display of galaxy information in the Teleport Destinations tab.
 - Added additional milestones to the milestone list (more to come).
 
 #### Bug Fixes:
 
 - Updated the companion pet battle class display to better show when it is not in override and is using the procedural class values (currently unable to display).
-- Fixed an import but with pet accessories.
+- Fixed an import bug with pet accessories.
 - Updated pet battle Affinity names in the UI to in game version instead of MXML lookup names.
 - Updated icon and delayed load system to improve icon reliability on load splash.
-- Siginificant internal cleanup (non user facing).
+- Significant internal cleanup (non user facing).
 - Test suite cleanup.
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.1.17 (preview)
 
@@ -245,7 +263,7 @@
 - Discoveries panel renamed to Catalogue to align with the game.
 - Optimise button added to Corvettes in the Starship panel (re-orders components for better handling stats and quicker loading times).
 - Support for NMS Model IO Tool .nmsship importing.
-- macOS .dmg available (requires Wine/Whisky/etc. to be installed).
+- macOS .dmg available (requires Wine/Gcenx Wine Builds/etc. to be installed).
 - Raw JSON Editor improvements:
     - Basic inline editing.
     - In window export/import buttons.
