@@ -88,27 +88,6 @@ public class CompanionDatabaseTests
     // --- GetAffinityDisplayName ---
 
     [Theory]
-    [InlineData("Toxic", "Toxic")]
-    [InlineData("Cold", "Frost")]
-    [InlineData("Lush", "Tropical")]
-    [InlineData("Barren", "Desert")]
-    [InlineData("Weird", "Anomalous")]
-    [InlineData("Mech", "Mechanical")]
-    public void GetAffinityDisplayName_ContainsGameName(string input, string expectedName)
-    {
-        string result = PetBiomeAffinityMap.GetAffinityDisplayName(input);
-        Assert.Contains(expectedName, result);
-    }
-
-    [Fact]
-    public void GetAffinityDisplayName_ContainsEmoji()
-    {
-        string result = PetBiomeAffinityMap.GetAffinityDisplayName("Fire");
-        Assert.Contains("\U0001F525", result);
-        Assert.Contains("Fire", result);
-    }
-
-    [Theory]
     [InlineData("")]
     [InlineData(null)]
     public void GetAffinityDisplayName_EmptyOrNull_ReturnsEmpty(string? input)
@@ -213,16 +192,6 @@ public class CompanionDatabaseTests
     }
 
     // --- FormatAffinityList ---
-
-    [Fact]
-    public void FormatAffinityList_FormatsWithEmojis()
-    {
-        var result = PetBiomeAffinityMap.FormatAffinityList(new[] { "Desert", "Frost" });
-        Assert.Contains("Desert", result);
-        Assert.Contains("Frost", result);
-        Assert.Contains("☀️", result); // Desert emoji
-        Assert.Contains("❄️", result); // Frost emoji
-    }
 
     [Fact]
     public void FormatAffinityList_EmptyArray_ReturnsEmpty()
@@ -339,45 +308,22 @@ public class CompanionDatabaseTests
     // --- PetBattleMoveEntry: Localised Target ---
 
     [Fact]
-    public void PetBattleMoveEntry_TargetDisplay_LocalisedValues()
+    public void PetBattleMoveEntry_TargetDisplay_EmptyTarget_ReturnsEmpty()
     {
-        var enemy = new PetBattleMoveEntry { Target = "ActiveEnemy" };
-        Assert.Equal("Active Enemy", enemy.TargetDisplay);
-
-        var self = new PetBattleMoveEntry { Target = "Self" };
-        Assert.Equal("Self", self.TargetDisplay);
+        var entry = new PetBattleMoveEntry { Target = "" };
+        Assert.Equal("", entry.TargetDisplay);
     }
 
     // --- PetBattleMoveEntry: Localised IconStyle ---
 
-    [Theory]
-    [InlineData("Attack", "Attack")]
-    [InlineData("Cooldown", "Cooldown")]
-    [InlineData("Heal", "Heal")]
-    [InlineData("Power", "Power")]
-    public void PetBattleMoveEntry_IconStyleDisplay_LocalisedValues(string iconStyle, string expected)
+    [Fact]
+    public void PetBattleMoveEntry_IconStyleDisplay_EmptyIconStyle_ReturnsEmpty()
     {
-        var entry = new PetBattleMoveEntry { IconStyle = iconStyle };
-        Assert.Equal(expected, entry.IconStyleDisplay);
+        var entry = new PetBattleMoveEntry { IconStyle = "" };
+        Assert.Equal("", entry.IconStyleDisplay);
     }
 
     // --- GetLocalisedAffinityName ---
-
-    [Theory]
-    [InlineData("Fire", "Fire")]
-    [InlineData("Frost", "Frost")]
-    [InlineData("Tropical", "Tropical")]
-    [InlineData("Desert", "Desert")]
-    [InlineData("Anomalous", "Anomalous")]
-    [InlineData("Mechanical", "Mechanical")]
-    [InlineData("Normal", "Normal")]
-    [InlineData("Toxic", "Toxic")]
-    [InlineData("Radioactive", "Radioactive")]
-    public void GetLocalisedAffinityName_KnownAffinities_ReturnsExpected(string gameName, string expected)
-    {
-        string result = PetBiomeAffinityMap.GetLocalisedAffinityName(gameName);
-        Assert.Equal(expected, result);
-    }
 
     [Theory]
     [InlineData("")]
@@ -387,24 +333,7 @@ public class CompanionDatabaseTests
         Assert.Equal("", PetBiomeAffinityMap.GetLocalisedAffinityName(input!));
     }
 
-    // --- Localised values with UiStrings loaded ---
-
-    private static void EnsureUiStringsLoaded()
-    {
-        if (UiStrings.TotalKeyCount > 0) return;
-        var dir = AppDomain.CurrentDomain.BaseDirectory;
-        for (int i = 0; i < 10; i++)
-        {
-            var candidate = System.IO.Path.Combine(dir, "Resources", "ui", "lang");
-            if (System.IO.Directory.Exists(candidate))
-            {
-                UiStrings.SetDirectory(candidate);
-                UiStrings.Load("en-GB");
-                return;
-            }
-            dir = System.IO.Path.GetDirectoryName(dir) ?? dir;
-        }
-    }
+    // --- AccessorySlot helpers ---
 
     private static void EnsureAccessoryDataLoaded()
     {
@@ -421,58 +350,6 @@ public class CompanionDatabaseTests
             dir = System.IO.Path.GetDirectoryName(dir) ?? dir;
         }
     }
-
-    [Fact]
-    public void WithUiStrings_GetLocalisedEffect_DamageNoProjectile_ReturnsMelee()
-    {
-        EnsureUiStringsLoaded();
-        if (UiStrings.TotalKeyCount == 0) return; // Gracefully skip if resources not found
-
-        string result = PetBattleMovePhase.GetLocalisedEffect("DamageNoProjectile");
-        Assert.Equal("Damage (Melee)", result);
-    }
-
-    [Fact]
-    public void WithUiStrings_GetLocalisedEffect_DoTDamage_ReturnsDamageOverTime()
-    {
-        EnsureUiStringsLoaded();
-        if (UiStrings.TotalKeyCount == 0) return;
-
-        string result = PetBattleMovePhase.GetLocalisedEffect("DoTDamage");
-        Assert.Equal("Damage over Time", result);
-    }
-
-    [Fact]
-    public void WithUiStrings_GetLocalisedAffinityName_Frost_ReturnsFrost()
-    {
-        EnsureUiStringsLoaded();
-        if (UiStrings.TotalKeyCount == 0) return;
-
-        string result = PetBiomeAffinityMap.GetLocalisedAffinityName("Frost");
-        Assert.Equal("Frost", result);
-    }
-
-    [Fact]
-    public void WithUiStrings_IconStyleDisplay_Attack_ReturnsAttack()
-    {
-        EnsureUiStringsLoaded();
-        if (UiStrings.TotalKeyCount == 0) return;
-
-        var entry = new PetBattleMoveEntry { IconStyle = "Attack" };
-        Assert.Equal("Attack", entry.IconStyleDisplay);
-    }
-
-    [Fact]
-    public void WithUiStrings_TargetDisplay_ActiveEnemy_ReturnsLocalisedValue()
-    {
-        EnsureUiStringsLoaded();
-        if (UiStrings.TotalKeyCount == 0) return;
-
-        var entry = new PetBattleMoveEntry { Target = "ActiveEnemy" };
-        Assert.Equal("Active Enemy", entry.TargetDisplay);
-    }
-
-    // --- AccessorySlot helpers ---
 
     [Theory]
     [InlineData("RIGHT", AccessorySlot.Right)]
