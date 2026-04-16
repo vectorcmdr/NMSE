@@ -2,6 +2,7 @@ using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
+using NMSE.UI.Controls;
 using System.Globalization;
 
 namespace NMSE.UI.Panels;
@@ -37,6 +38,13 @@ public partial class CompanionPanel : UserControl
 
     /// <summary>Raw (unclamped) battle double values read from JSON at load time, keyed by field name.</summary>
     private readonly Dictionary<string, double> _rawBattleDoubleValues = new();
+
+    /// <summary>
+    /// Current accessory slot layout for the selected companion. Each entry maps a UI row
+    /// (index 0-2) to an AccessorySlot value. Populated by LoadAccessories from the
+    /// creature's accessory variant data. Empty when no accessories are supported.
+    /// </summary>
+    private AccessorySlot[] _currentSlotLayout = { AccessorySlot.Right, AccessorySlot.Left, AccessorySlot.Front };
 
     public CompanionPanel()
     {
@@ -337,10 +345,10 @@ public partial class CompanionPanel : UserControl
             catch { _creatureTypeField.SelectedIndex = -1; }
 
             // Scale
-            try { _scaleField.Text = comp.GetDouble("Scale").ToString(System.Globalization.CultureInfo.InvariantCulture); } catch { _scaleField.Text = ""; }
+            try { _scaleField.NumericValue = comp.GetDouble("Scale"); } catch { _scaleField.NumericValue = null; }
 
             // Trust
-            try { _trustField.Text = comp.GetDouble("Trust").ToString(System.Globalization.CultureInfo.InvariantCulture); } catch { _trustField.Text = ""; }
+            try { _trustField.NumericValue = comp.GetDouble("Trust"); } catch { _trustField.NumericValue = null; }
 
             // Bone Scale Seed
             try
@@ -365,28 +373,28 @@ public partial class CompanionPanel : UserControl
             try
             {
                 var traits = comp.GetArray("Traits");
-                _helpfulnessField.Text = traits != null && traits.Length > 0 ? traits.GetDouble(0).ToString(System.Globalization.CultureInfo.InvariantCulture) : "0";
-                _aggressionField.Text = traits != null && traits.Length > 1 ? traits.GetDouble(1).ToString(System.Globalization.CultureInfo.InvariantCulture) : "0";
-                _independenceField.Text = traits != null && traits.Length > 2 ? traits.GetDouble(2).ToString(System.Globalization.CultureInfo.InvariantCulture) : "0";
+                _helpfulnessField.NumericValue = traits != null && traits.Length > 0 ? traits.GetDouble(0) : 0;
+                _aggressionField.NumericValue = traits != null && traits.Length > 1 ? traits.GetDouble(1) : 0;
+                _independenceField.NumericValue = traits != null && traits.Length > 2 ? traits.GetDouble(2) : 0;
             }
             catch
             {
-                _helpfulnessField.Text = "0";
-                _aggressionField.Text = "0";
-                _independenceField.Text = "0";
+                _helpfulnessField.NumericValue = 0;
+                _aggressionField.NumericValue = 0;
+                _independenceField.NumericValue = 0;
             }
 
             // Moods
             try
             {
                 var moods = comp.GetArray("Moods");
-                _hungryField.Text = moods != null && moods.Length > 0 ? moods.GetDouble(0).ToString(System.Globalization.CultureInfo.InvariantCulture) : "0";
-                _lonelyField.Text = moods != null && moods.Length > 1 ? moods.GetDouble(1).ToString(System.Globalization.CultureInfo.InvariantCulture) : "0";
+                _hungryField.NumericValue = moods != null && moods.Length > 0 ? moods.GetDouble(0) : 0;
+                _lonelyField.NumericValue = moods != null && moods.Length > 1 ? moods.GetDouble(1) : 0;
             }
             catch
             {
-                _hungryField.Text = "0";
-                _lonelyField.Text = "0";
+                _hungryField.NumericValue = 0;
+                _lonelyField.NumericValue = 0;
             }
 
             // BirthTime
@@ -692,8 +700,7 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null) return;
-        if (double.TryParse(_scaleField.Text, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out double val))
+        if (_scaleField.NumericValue is double val)
             comp.Set("Scale", val);
     }
 
@@ -701,8 +708,7 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null) return;
-        if (double.TryParse(_trustField.Text, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out double val))
+        if (_trustField.NumericValue is double val)
             comp.Set("Trust", val);
     }
 
@@ -741,27 +747,23 @@ public partial class CompanionPanel : UserControl
         comp.Set("HasFur", _hasFurField.Checked);
     }
 
-    private void WriteTrait(int index, TextBox field)
+    private void WriteTrait(int index, InvariantNumericTextBox field)
     {
         if (_loading) return;
         var comp = SelectedCompanion;
         if (comp == null) return;
         var traits = comp.GetArray("Traits");
-        if (traits != null && index < traits.Length && double.TryParse(field.Text,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out double val))
+        if (traits != null && index < traits.Length && field.NumericValue is double val)
             traits.Set(index, val);
     }
 
-    private void WriteMood(int index, TextBox field)
+    private void WriteMood(int index, InvariantNumericTextBox field)
     {
         if (_loading) return;
         var comp = SelectedCompanion;
         if (comp == null) return;
         var moods = comp.GetArray("Moods");
-        if (moods != null && index < moods.Length && double.TryParse(field.Text,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out double val))
+        if (moods != null && index < moods.Length && field.NumericValue is double val)
             moods.Set(index, val);
     }
 
@@ -817,7 +819,7 @@ public partial class CompanionPanel : UserControl
         }
     }
 
-    /// <summary>Called when the hex checkbox changes - converts the displayed value.</summary>
+    /// <summary>Called when the hex checkbox changes — converts the displayed value.</summary>
     private void OnUAHexCheckChanged()
     {
         string text = _uaField.Text.Trim();
@@ -825,7 +827,7 @@ public partial class CompanionPanel : UserControl
         {
             // Switching to hex: parse current decimal and convert
             if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out long val))
-                _uaField.Text = "0x" + val.ToString("X");
+                _uaField.Text = "0x" + val.ToString("X", CultureInfo.InvariantCulture);
         }
         else
         {
@@ -1062,6 +1064,7 @@ public partial class CompanionPanel : UserControl
     {
         if (entry.Source != "Pet" || entry.IsEmpty)
         {
+            _currentSlotLayout = Array.Empty<AccessorySlot>();
             for (int i = 0; i < 3; i++)
             {
                 _accessoryCombos[i].Items.Clear();
@@ -1074,36 +1077,49 @@ public partial class CompanionPanel : UserControl
             return;
         }
 
+        // Determine which accessory slots this creature supports
+        string creatureId = entry.Companion.GetString("CreatureID") ?? "";
+        _currentSlotLayout = CompanionAccessoryDatabase.GetSlotLayoutForCreature(creatureId);
+
+        // Update slot labels and visibility based on creature type
+        UpdateAccessorySlotLabels();
+
         var pacEntry = GetPetAccessoryCustomisationEntry(entry.OriginalIndex);
 
-        for (int slot = 0; slot < 3; slot++)
+        for (int uiRow = 0; uiRow < 3; uiRow++)
         {
+            bool slotActive = uiRow < _currentSlotLayout.Length;
+            var accSlot = slotActive ? _currentSlotLayout[uiRow] : AccessorySlot.Right;
+            int saveIndex = slotActive ? uiRow : -1;
+
             // Populate combo with slot-filtered entries
-            _accessoryCombos[slot].Items.Clear();
-            _accessoryCombos[slot].Items.Add(UiStrings.GetOrNull("companion.accessory_none") ?? "None");
-            var slotEntries = CompanionAccessoryDatabase.GetEntriesForSlot((AccessorySlot)slot);
-            foreach (var accEntry in slotEntries)
+            _accessoryCombos[uiRow].Items.Clear();
+            if (slotActive)
             {
-                if (accEntry.Id == "PET_ACC_NULL") continue; // Skip NULL entry, we have "None"
-                _accessoryCombos[slot].Items.Add(accEntry);
+                _accessoryCombos[uiRow].Items.Add(UiStrings.GetOrNull("companion.accessory_none") ?? "None");
+                var slotEntries = CompanionAccessoryDatabase.GetEntriesForSlot(accSlot);
+                foreach (var accEntry in slotEntries)
+                {
+                    if (accEntry.Id == "PET_ACC_NULL") continue;
+                    _accessoryCombos[uiRow].Items.Add(accEntry);
+                }
             }
 
             // Read current slot data
             int selectedIdx = 0;
-            _accessoryDescriptorLabels[slot].Text = "";
-            _accessoryPrimarySwatches[slot].BackColor = SystemColors.Control;
-            _accessoryAltSwatches[slot].BackColor = SystemColors.Control;
-            _accessoryScaleFields[slot].Text = "1.0";
+            _accessoryDescriptorLabels[uiRow].Text = "";
+            _accessoryPrimarySwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryAltSwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryScaleFields[uiRow].Text = "1.0";
 
-            if (pacEntry != null)
+            if (slotActive && pacEntry != null && saveIndex >= 0)
             {
-                var slotData = GetAccessorySlotData(pacEntry, slot);
+                var slotData = GetAccessorySlotData(pacEntry, saveIndex);
                 if (slotData != null)
                 {
                     string preset = slotData.GetString("SelectedPreset") ?? "^DEFAULT_PET";
                     if (preset != "^DEFAULT_PET")
                     {
-                        // Look for the accessory ID in DescriptorGroups[0]
                         try
                         {
                             var customData = slotData.GetObject("CustomData");
@@ -1113,34 +1129,31 @@ public partial class CompanionPanel : UserControl
                                 if (descGroups != null && descGroups.Length > 0)
                                 {
                                     string accId = (descGroups.GetString(0) ?? "").TrimStart('^');
-                                    // Find in combo
-                                    for (int ci = 1; ci < _accessoryCombos[slot].Items.Count; ci++)
+                                    for (int ci = 1; ci < _accessoryCombos[uiRow].Items.Count; ci++)
                                     {
-                                        if (_accessoryCombos[slot].Items[ci] is CompanionAccessoryEntry cae &&
+                                        if (_accessoryCombos[uiRow].Items[ci] is CompanionAccessoryEntry cae &&
                                             string.Equals(cae.Id, accId, StringComparison.OrdinalIgnoreCase))
                                         {
                                             selectedIdx = ci;
-                                            _accessoryDescriptorLabels[slot].Text = cae.Descriptor ?? "";
+                                            _accessoryDescriptorLabels[uiRow].Text = cae.Descriptor ?? "";
                                             break;
                                         }
                                     }
                                 }
 
-                                // Colours
                                 var colours = customData.GetArray("Colours");
                                 if (colours != null)
                                 {
                                     if (colours.Length > 0)
-                                        _accessoryPrimarySwatches[slot].BackColor = ReadColourFromArray(colours, 0);
+                                        _accessoryPrimarySwatches[uiRow].BackColor = ReadColourFromArray(colours, 0);
                                     if (colours.Length > 1)
-                                        _accessoryAltSwatches[slot].BackColor = ReadColourFromArray(colours, 1);
+                                        _accessoryAltSwatches[uiRow].BackColor = ReadColourFromArray(colours, 1);
                                 }
 
-                                // Scale
                                 try
                                 {
                                     double scale = customData.GetDouble("Scale");
-                                    _accessoryScaleFields[slot].Text = scale.ToString(CultureInfo.InvariantCulture);
+                                    _accessoryScaleFields[uiRow].NumericValue = scale;
                                 }
                                 catch { }
                             }
@@ -1150,7 +1163,45 @@ public partial class CompanionPanel : UserControl
                 }
             }
 
-            _accessoryCombos[slot].SelectedIndex = selectedIdx;
+            _accessoryCombos[uiRow].SelectedIndex = slotActive ? selectedIdx : -1;
+        }
+    }
+
+    /// <summary>
+    /// Updates accessory slot labels and visibility to match the current creature's slot layout.
+    /// Inactive rows (beyond the creature's supported slot count) are hidden. When no slots
+    /// are available, a "no accessories" message is shown instead.
+    /// </summary>
+    private void UpdateAccessorySlotLabels()
+    {
+        bool hasSlots = _currentSlotLayout.Length > 0;
+        _noAccessoriesLabel.Visible = !hasSlots;
+        _accessoryPanel.Visible = hasSlots;
+
+        for (int uiRow = 0; uiRow < 3; uiRow++)
+        {
+            bool active = uiRow < _currentSlotLayout.Length;
+            _accessorySlotLabels[uiRow].Visible = active;
+            _accessoryCombos[uiRow].Visible = active;
+            _accessoryPrimarySwatches[uiRow].Parent!.Visible = active;
+            _accessoryAltSwatches[uiRow].Parent!.Visible = active;
+            _accessoryScaleFields[uiRow].Parent!.Visible = active;
+            _accessoryResetBtns[uiRow].Visible = active;
+            _accessoryDescriptorLabels[uiRow].Visible = active;
+
+            if (active)
+            {
+                var locKey = CompanionAccessoryDatabase.GetSlotLabelLocKey(_currentSlotLayout[uiRow]);
+                string fallback = _currentSlotLayout[uiRow] switch
+                {
+                    AccessorySlot.Right => "Right:",
+                    AccessorySlot.Left => "Left:",
+                    AccessorySlot.Front => "Front:",
+                    AccessorySlot.Back => "Back:",
+                    _ => "Slot:",
+                };
+                _accessorySlotLabels[uiRow].Text = UiStrings.GetOrNull(locKey) ?? fallback;
+            }
         }
     }
 
@@ -1173,21 +1224,23 @@ public partial class CompanionPanel : UserControl
         return SystemColors.Control;
     }
 
-    /// <summary>Handles accessory combo selection change for a given slot.</summary>
-    private void OnAccessoryChanged(int slotIndex)
+    /// <summary>Handles accessory combo selection change for a given UI row.</summary>
+    private void OnAccessoryChanged(int uiRow)
     {
         var entry = SelectedEntry;
         if (entry.Source != "Pet" || _playerState == null) return;
+        int saveIndex = GetSaveIndexForUiRow(uiRow);
+        if (saveIndex < 0) return;
 
         var pacEntry = GetPetAccessoryCustomisationEntry(entry.OriginalIndex);
         if (pacEntry == null) return;
-        var slotData = GetAccessorySlotData(pacEntry, slotIndex);
+        var slotData = GetAccessorySlotData(pacEntry, saveIndex);
         if (slotData == null) return;
 
-        var selectedItem = _accessoryCombos[slotIndex].SelectedItem;
+        var selectedItem = _accessoryCombos[uiRow].SelectedItem;
         if (selectedItem is not CompanionAccessoryEntry accEntry)
         {
-            // "None" selected — reset to default
+            // "None" selected -- reset to default
             slotData.Set("SelectedPreset", "^DEFAULT_PET");
             var cd = slotData.GetObject("CustomData");
             if (cd != null)
@@ -1196,10 +1249,10 @@ public partial class CompanionPanel : UserControl
                 ClearJsonArrayContents(cd.GetArray("Colours"));
                 cd.Set("Scale", 1.0);
             }
-            _accessoryDescriptorLabels[slotIndex].Text = "";
-            _accessoryPrimarySwatches[slotIndex].BackColor = SystemColors.Control;
-            _accessoryAltSwatches[slotIndex].BackColor = SystemColors.Control;
-            _accessoryScaleFields[slotIndex].Text = "1.0";
+            _accessoryDescriptorLabels[uiRow].Text = "";
+            _accessoryPrimarySwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryAltSwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryScaleFields[uiRow].Text = "1.0";
             return;
         }
 
@@ -1223,28 +1276,98 @@ public partial class CompanionPanel : UserControl
                     descGroups.Add(existingDecal);
             }
         }
-        _accessoryDescriptorLabels[slotIndex].Text = accEntry.Descriptor ?? "";
+        _accessoryDescriptorLabels[uiRow].Text = accEntry.Descriptor ?? "";
     }
 
-    /// <summary>Handles colour button click for an accessory slot.</summary>
-    private void OnAccessoryColourClick(int slotIndex, int colourIndex)
+    /// <summary>
+    /// Maps a UI row index (0-2) to the corresponding save data index. The save data
+    /// stores accessories positionally: Data[0] is the first group in the creature's
+    /// AccessoryGroups, Data[1] is the second, etc. The UI row order matches the
+    /// creature's layout order, so the save index is simply the UI row index.
+    /// Returns -1 if the row is not active.
+    /// </summary>
+    private int GetSaveIndexForUiRow(int uiRow)
+    {
+        if (uiRow < 0 || uiRow >= _currentSlotLayout.Length)
+            return -1;
+        return uiRow;
+    }
+
+    /// <summary>Handles colour swatch click for an accessory slot by showing a palette popup.</summary>
+    private void OnAccessoryColourClick(int uiRow, int colourIndex)
     {
         var entry = SelectedEntry;
         if (entry.Source != "Pet" || _playerState == null) return;
+        int saveIndex = GetSaveIndexForUiRow(uiRow);
+        if (saveIndex < 0) return;
 
         var pacEntry = GetPetAccessoryCustomisationEntry(entry.OriginalIndex);
         if (pacEntry == null) return;
-        var slotData = GetAccessorySlotData(pacEntry, slotIndex);
+        var slotData = GetAccessorySlotData(pacEntry, saveIndex);
         if (slotData == null) return;
 
-        var swatch = colourIndex == 0 ? _accessoryPrimarySwatches[slotIndex] : _accessoryAltSwatches[slotIndex];
+        var swatch = colourIndex == 0 ? _accessoryPrimarySwatches[uiRow] : _accessoryAltSwatches[uiRow];
 
-        using var colorDialog = new ColorDialog { Color = swatch.BackColor, FullOpen = true };
-        if (colorDialog.ShowDialog() != DialogResult.OK) return;
+        // Dispose any previously shown colour menu to avoid leaks.
+        _activeColourMenu?.Dispose();
+        _activeColourMenu = null;
 
-        swatch.BackColor = colorDialog.Color;
+        // Build a 10×2 grid of colour cells hosted inside a lightweight dropdown.
+        var palette = NmsColourPalette.PaintPalette;
+        const int cols = 10;
+        const int cellSize = 24;
+        const int cellMargin = 1;
+        int rows = (palette.Length + cols - 1) / cols;
 
-        // Write back to save
+        var grid = new TableLayoutPanel
+        {
+            ColumnCount = cols,
+            RowCount = rows,
+            AutoSize = true,
+            Padding = new Padding(2),
+            Margin = Padding.Empty,
+            BackColor = SystemColors.Control,
+        };
+
+        var tip = new ToolTip();
+        foreach (var pe in palette)
+        {
+            var cell = new Panel
+            {
+                Size = new Size(cellSize, cellSize),
+                BackColor = pe.Colour,
+                Margin = new Padding(cellMargin),
+                Cursor = Cursors.Hand,
+            };
+            tip.SetToolTip(cell, pe.Name);
+            var capturedColour = pe.Colour;
+            cell.Click += (_, _) =>
+            {
+                swatch.BackColor = capturedColour;
+                WriteColourToSave(slotData, colourIndex, capturedColour);
+                _activeColourMenu?.Close();
+            };
+            grid.Controls.Add(cell);
+        }
+
+        var host = new ToolStripControlHost(grid)
+        {
+            Padding = Padding.Empty,
+            Margin = Padding.Empty,
+        };
+
+        var dropdown = new ToolStripDropDown { Padding = Padding.Empty };
+        dropdown.Items.Add(host);
+
+        _activeColourMenu = dropdown;
+        dropdown.Show(swatch, new Point(0, swatch.Height));
+    }
+
+    /// <summary>
+    /// Writes a chosen colour to the save data for a specific accessory slot and colour index.
+    /// </summary>
+    private static void WriteColourToSave(JsonObject slotData, int colourIndex, Color colour)
+    {
         var customData = slotData.GetObject("CustomData");
         if (customData == null) return;
 
@@ -1259,13 +1382,11 @@ public partial class CompanionPanel : UserControl
             var colArr = colourEntry?.GetArray("Colour");
             if (colArr != null && colArr.Length >= 4)
             {
-                double r = colorDialog.Color.R / 255.0;
-                double g = colorDialog.Color.G / 255.0;
-                double b = colorDialog.Color.B / 255.0;
-                colArr.Set(0, r);
-                colArr.Set(1, g);
-                colArr.Set(2, b);
-                colArr.Set(3, 1.0);
+                var rgba = NmsColourPalette.ToNormalisedRgba(colour);
+                colArr.Set(0, rgba[0]);
+                colArr.Set(1, rgba[1]);
+                colArr.Set(2, rgba[2]);
+                colArr.Set(3, rgba[3]);
             }
         }
         catch { }
@@ -1278,19 +1399,21 @@ public partial class CompanionPanel : UserControl
         // The game always pre-populates these, so this is a safety check.
     }
 
-    /// <summary>Handles accessory scale change for a given slot.</summary>
-    private void OnAccessoryScaleChanged(int slotIndex)
+    /// <summary>Handles accessory scale change for a given UI row.</summary>
+    private void OnAccessoryScaleChanged(int uiRow)
     {
         if (_loading) return;
         var entry = SelectedEntry;
         if (entry.Source != "Pet" || _playerState == null) return;
+        int saveIndex = GetSaveIndexForUiRow(uiRow);
+        if (saveIndex < 0) return;
 
         var pacEntry = GetPetAccessoryCustomisationEntry(entry.OriginalIndex);
         if (pacEntry == null) return;
-        var slotData = GetAccessorySlotData(pacEntry, slotIndex);
+        var slotData = GetAccessorySlotData(pacEntry, saveIndex);
         if (slotData == null) return;
 
-        if (double.TryParse(_accessoryScaleFields[slotIndex].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out double val))
+        if (_accessoryScaleFields[uiRow].NumericValue is double val)
         {
             var customData = slotData.GetObject("CustomData");
             customData?.Set("Scale", val);
@@ -1298,14 +1421,16 @@ public partial class CompanionPanel : UserControl
     }
 
     /// <summary>Handles per-slot accessory reset.</summary>
-    private void OnAccessoryReset(int slotIndex)
+    private void OnAccessoryReset(int uiRow)
     {
         var entry = SelectedEntry;
         if (entry.Source != "Pet" || _playerState == null) return;
+        int saveIndex = GetSaveIndexForUiRow(uiRow);
+        if (saveIndex < 0) return;
 
         var pacEntry = GetPetAccessoryCustomisationEntry(entry.OriginalIndex);
         if (pacEntry == null) return;
-        var slotData = GetAccessorySlotData(pacEntry, slotIndex);
+        var slotData = GetAccessorySlotData(pacEntry, saveIndex);
         if (slotData == null) return;
 
         slotData.Set("SelectedPreset", "^DEFAULT_PET");
@@ -1321,27 +1446,28 @@ public partial class CompanionPanel : UserControl
         _loading = true;
         try
         {
-            _accessoryCombos[slotIndex].SelectedIndex = 0; // "None"
-            _accessoryDescriptorLabels[slotIndex].Text = "";
-            _accessoryPrimarySwatches[slotIndex].BackColor = SystemColors.Control;
-            _accessoryAltSwatches[slotIndex].BackColor = SystemColors.Control;
-            _accessoryScaleFields[slotIndex].Text = "1.0";
+            _accessoryCombos[uiRow].SelectedIndex = 0; // "None"
+            _accessoryDescriptorLabels[uiRow].Text = "";
+            _accessoryPrimarySwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryAltSwatches[uiRow].BackColor = SystemColors.Control;
+            _accessoryScaleFields[uiRow].Text = "1.0";
         }
         finally { _loading = false; }
     }
 
-    /// <summary>Enables or disables all accessory controls.</summary>
+    /// <summary>Enables or disables all accessory controls based on slot layout.</summary>
     private void SetAccessoryControlsEnabled(bool enabled)
     {
         for (int i = 0; i < 3; i++)
         {
-            _accessoryCombos[i].Enabled = enabled;
-            _accessoryPrimarySwatches[i].Enabled = enabled;
-            _accessoryAltSwatches[i].Enabled = enabled;
-            _accessoryPrimarySwatches[i].Cursor = enabled ? Cursors.Hand : Cursors.Default;
-            _accessoryAltSwatches[i].Cursor = enabled ? Cursors.Hand : Cursors.Default;
-            _accessoryScaleFields[i].Enabled = enabled;
-            _accessoryResetBtns[i].Enabled = enabled;
+            bool active = enabled && i < _currentSlotLayout.Length;
+            _accessoryCombos[i].Enabled = active;
+            _accessoryPrimarySwatches[i].Enabled = active;
+            _accessoryAltSwatches[i].Enabled = active;
+            _accessoryPrimarySwatches[i].Cursor = active ? Cursors.Hand : Cursors.Default;
+            _accessoryAltSwatches[i].Cursor = active ? Cursors.Hand : Cursors.Default;
+            _accessoryScaleFields[i].Enabled = active;
+            _accessoryResetBtns[i].Enabled = active;
         }
     }
 
@@ -1634,7 +1760,7 @@ public partial class CompanionPanel : UserControl
             foreach (var move in _allowedMovesPerSlot[i])
                 _moveSlotCombos[i].Items.Add(move);
 
-            // Read current move ID from the string array
+            // Read current move ID from the JsonArray
             string moveId = "";
 
             if (moves != null && i < moves.Length)
@@ -1691,9 +1817,24 @@ public partial class CompanionPanel : UserControl
             panel.Controls.Clear();
             panel.RowStyles.Clear();
 
-            // Left column: base fields (Type, Target, Multi-Turn, Basic Move, Stat Affected, Strength, Effect)
+            // Left column: base fields (Effect first, then Type, Target, Multi-Turn, Basic Move, Stat Affected, Strength)
             var leftEntries = new List<(string Label, string Value)>();
-            leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_type") ?? "Type:", $"{move.IconEmoji} {move.IconStyleDisplay}"));
+
+            // Effect at the top with emoji. For single-phase moves use that phase's effect.
+            // For multi-phase moves, use the first phase's effect as the top-level value.
+            string topEffect = "";
+            string topEffectEmoji = "";
+            if (move.Phases.Count >= 1)
+            {
+                topEffect = move.Phases[0].EffectDisplay;
+                topEffectEmoji = move.Phases[0].EffectEmoji;
+            }
+            string effectValue = !string.IsNullOrEmpty(topEffectEmoji)
+                ? $"{topEffectEmoji} {topEffect}"
+                : topEffect;
+            leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_effect") ?? "Effect:", effectValue));
+
+            leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_type") ?? "Type:", move.IconStyleDisplay));
             leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_target") ?? "Target:", move.TargetDisplay));
             leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_multiturn") ?? "Multi-Turn:",
                 move.MultiTurnMove ? (UiStrings.GetOrNull("companion.battle_move_detail_yes") ?? "Yes") : (UiStrings.GetOrNull("companion.battle_move_detail_no") ?? "No")));
@@ -1707,14 +1848,13 @@ public partial class CompanionPanel : UserControl
                 leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_stat") ?? "Stat Affected:", statDesc));
             }
 
-            // Single-phase moves: Strength/Effect go in left column, no phase prefix
+            // Single-phase moves: Strength goes in left column, no phase prefix
             // Multi-phase moves: all phase entries go in right column with phase prefix
             var rightEntries = new List<(string Label, string Value)>();
             if (move.Phases.Count == 1)
             {
                 var phase = move.Phases[0];
                 leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_strength") ?? "Strength:", phase.StrengthDisplay));
-                leftEntries.Add((UiStrings.GetOrNull("companion.battle_move_detail_effect") ?? "Effect:", phase.EffectDisplay));
             }
             else
             {
@@ -1722,8 +1862,12 @@ public partial class CompanionPanel : UserControl
                 {
                     var phase = move.Phases[p];
                     string prefix = UiStrings.Format("companion.battle_move_detail_phase", p + 1) + " ";
+                    string phaseEffectEmoji = phase.EffectEmoji;
+                    string phaseEffectVal = !string.IsNullOrEmpty(phaseEffectEmoji)
+                        ? $"{phaseEffectEmoji} {phase.EffectDisplay}"
+                        : phase.EffectDisplay;
+                    rightEntries.Add(($"{prefix}{UiStrings.GetOrNull("companion.battle_move_detail_effect") ?? "Effect:"}", phaseEffectVal));
                     rightEntries.Add(($"{prefix}{UiStrings.GetOrNull("companion.battle_move_detail_strength") ?? "Strength:"}", phase.StrengthDisplay));
-                    rightEntries.Add(($"{prefix}{UiStrings.GetOrNull("companion.battle_move_detail_effect") ?? "Effect:"}", phase.EffectDisplay));
                 }
             }
 
@@ -2242,7 +2386,7 @@ public partial class CompanionPanel : UserControl
             targetSlot = combo.SelectedIndex;
 
             // Confirm replacement
-            string confirmMsg = string.Format(
+            string confirmMsg = string.Format(CultureInfo.CurrentCulture,
                 UiStrings.GetOrNull("companion.induce_egg_replace_confirm") ?? "Are you sure you want to replace {0} with the new egg?",
                 slotNames[targetSlot]);
             if (MessageBox.Show(this, confirmMsg,
@@ -2532,7 +2676,7 @@ public partial class CompanionPanel : UserControl
         ExosuitCargoModified?.Invoke(this, EventArgs.Empty);
 
         MessageBox.Show(this,
-            string.Format(UiStrings.GetOrNull("companion.place_egg_success") ?? "Egg placed in exosuit cargo at position ({0}, {1}).", targetX, targetY),
+            string.Format(CultureInfo.CurrentCulture, UiStrings.GetOrNull("companion.place_egg_success") ?? "Egg placed in exosuit cargo at position ({0}, {1}).", targetX, targetY),
             UiStrings.GetOrNull("companion.place_egg_in_exosuit") ?? "Place Egg in Exosuit",
             MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
@@ -2605,9 +2749,10 @@ public partial class CompanionPanel : UserControl
 
         // Accessory Customisation section
         _accessoryHeading.Text = UiStrings.GetOrNull("companion.accessory_customisation") ?? "Accessory Customisation";
-        _accessorySlotLabels[0].Text = UiStrings.GetOrNull("companion.accessory_slot_right") ?? "Right:";
-        _accessorySlotLabels[1].Text = UiStrings.GetOrNull("companion.accessory_slot_left") ?? "Left:";
-        _accessorySlotLabels[2].Text = UiStrings.GetOrNull("companion.accessory_slot_chest") ?? "Chest:";
+        _noAccessoriesLabel.Text = UiStrings.GetOrNull("companion.no_accessories") ?? "This companion cannot use accessories.";
+        // Slot labels are set dynamically in UpdateAccessorySlotLabels based on creature type.
+        // Apply the current layout labels in case the locale changed.
+        UpdateAccessorySlotLabels();
         for (int i = 0; i < 3; i++)
         {
             _accessoryResetBtns[i].Text = UiStrings.GetOrNull("companion.accessory_reset") ?? "Reset";

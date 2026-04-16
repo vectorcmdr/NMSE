@@ -287,13 +287,25 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_DEER"
+				"RequiredDescriptor": "_BODY_DEER",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_SKINNY"
+				"RequiredDescriptor": "_BODY_SKINNY",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_FAT"
+				"RequiredDescriptor": "_BODY_FAT",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -309,12 +321,15 @@
 		"MinScale": 0.4,
 		"MaxScale": 3.0,
 		"Rarity": "Common",
-		"EggType": "DEFAULT",
+		"EggType": "ROBO",
 		"CanBeUsedInPetBattler": false,
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_1"
+				"RequiredDescriptor": "_BODY_1",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -335,19 +350,39 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_DIPLO"
+				"RequiredDescriptor": "_BODY_DIPLO",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_TAPIR"
+				"RequiredDescriptor": "_BODY_TAPIR",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_TURTLE"
+				"RequiredDescriptor": "_BODY_TURTLE",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_RHINO"
+				"RequiredDescriptor": "_BODY_RHINO",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_TRI"
+				"RequiredDescriptor": "_BODY_TRI",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -368,13 +403,25 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_SLOTH"
+				"RequiredDescriptor": "_BODY_SLOTH",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_RODENT"
+				"RequiredDescriptor": "_BODY_RODENT",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_LIZARD"
+				"RequiredDescriptor": "_BODY_LIZARD",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -412,10 +459,18 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_ROCK"
+				"RequiredDescriptor": "_BODY_ROCK",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_COW"
+				"RequiredDescriptor": "_BODY_COW",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -436,16 +491,32 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_MESH_CAT"
+				"RequiredDescriptor": "_MESH_CAT",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_MESH_WOLF"
+				"RequiredDescriptor": "_MESH_WOLF",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_MESH_LIZ"
+				"RequiredDescriptor": "_MESH_LIZ",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_SHAPE_XRARE"
+				"RequiredDescriptor": "_SHAPE_XRARE",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -466,7 +537,11 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_SHAPE_XRARE"
+				"RequiredDescriptor": "_SHAPE_XRARE",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -487,10 +562,18 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_CURVESPIKE"
+				"RequiredDescriptor": "_BODY_CURVESPIKE",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_ROUNDA"
+				"RequiredDescriptor": "_BODY_ROUNDA",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -511,25 +594,52 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_HEAD_FLATHEAD"
+				"RequiredDescriptor": "_HEAD_FLATHEAD",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_STRIDER"
+				"RequiredDescriptor": "_HEAD_STRIDER",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_STRIDER2"
+				"RequiredDescriptor": "_HEAD_STRIDER2",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_FIN_NONE"
+				"RequiredDescriptor": "_FIN_NONE",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_FIN_1XRARE"
+				"RequiredDescriptor": "_FIN_1XRARE",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_FIN_2XRARE"
+				"RequiredDescriptor": "_FIN_2XRARE",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_BUG"
+				"RequiredDescriptor": "_HEAD_BUG",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -550,13 +660,25 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_HEAD_01"
+				"RequiredDescriptor": "_HEAD_01",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_02"
+				"RequiredDescriptor": "_HEAD_02",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_03"
+				"RequiredDescriptor": "_HEAD_03",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -577,19 +699,42 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_TREX_3XRARE"
+				"RequiredDescriptor": "_TREX_3XRARE",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_RAT"
+				"RequiredDescriptor": "_BODY_RAT",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_TREX"
+				"RequiredDescriptor": "_BODY_TREX",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_BIRDREX"
+				"RequiredDescriptor": "_BODY_BIRDREX",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_HOLESXRARE"
+				"RequiredDescriptor": "_BODY_HOLESXRARE",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -610,16 +755,28 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_HEAD_GDANE"
+				"RequiredDescriptor": "_HEAD_GDANE",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_BUFF"
+				"RequiredDescriptor": "_HEAD_BUFF",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_AEATER"
+				"RequiredDescriptor": "_HEAD_AEATER",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_HEAD_DEER"
+				"RequiredDescriptor": "_HEAD_DEER",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -640,10 +797,18 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_6LEGCOW1"
+				"RequiredDescriptor": "_BODY_6LEGCOW1",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_6LEGROCK1"
+				"RequiredDescriptor": "_BODY_6LEGROCK1",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -664,13 +829,25 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_SIXLEGCAT"
+				"RequiredDescriptor": "_BODY_SIXLEGCAT",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_SIXLEGWOLF"
+				"RequiredDescriptor": "_BODY_SIXLEGWOLF",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_SIXLEGLIZ"
+				"RequiredDescriptor": "_BODY_SIXLEGLIZ",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -691,16 +868,32 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_MESH_GRUNT"
+				"RequiredDescriptor": "_MESH_GRUNT",
+				"AccessoryGroups": [
+					"BACK",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_TBACC_NONE"
+				"RequiredDescriptor": "_TBACC_NONE",
+				"AccessoryGroups": [
+					"FRONT",
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_TBACC_2"
+				"RequiredDescriptor": "_TBACC_2",
+				"AccessoryGroups": [
+					"BACK",
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_TBACC_1"
+				"RequiredDescriptor": "_TBACC_1",
+				"AccessoryGroups": [
+					"FRONT",
+					"BACK"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -721,28 +914,52 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_EYEBALLPLANT"
+				"RequiredDescriptor": "_BODY_EYEBALLPLANT",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_BLOBBY"
+				"RequiredDescriptor": "_BODY_BLOBBY",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_FINGERS"
+				"RequiredDescriptor": "_BODY_FINGERS",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_PLANT"
+				"RequiredDescriptor": "_BODY_PLANT",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_SHROOM"
+				"RequiredDescriptor": "_BODY_SHROOM",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_EEL"
+				"RequiredDescriptor": "_BODY_EEL",
+				"AccessoryGroups": [
+					"FRONT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_OCTO"
+				"RequiredDescriptor": "_BODY_OCTO",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_BLOB"
+				"RequiredDescriptor": "_BODY_BLOB",
+				"AccessoryGroups": [
+					"BACK"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -763,28 +980,60 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_1XRARE"
+				"RequiredDescriptor": "_BODY_1XRARE",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_2"
+				"RequiredDescriptor": "_BODY_2",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_01"
+				"RequiredDescriptor": "_CRABSHELL_01",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_02"
+				"RequiredDescriptor": "_CRABSHELL_02",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_03"
+				"RequiredDescriptor": "_CRABSHELL_03",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_04"
+				"RequiredDescriptor": "_CRABSHELL_04",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_05"
+				"RequiredDescriptor": "_CRABSHELL_05",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_CRABSHELL_06"
+				"RequiredDescriptor": "_CRABSHELL_06",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -839,10 +1088,18 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BODY_1XRARE"
+				"RequiredDescriptor": "_BODY_1XRARE",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			},
 			{
-				"RequiredDescriptor": "_BODY_2"
+				"RequiredDescriptor": "_BODY_2",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -1543,7 +1800,11 @@
 		"PetBattlerForcedAffinity": null,
 		"PetAccessorySlots": [
 			{
-				"RequiredDescriptor": "_BONEANTELOPE_A"
+				"RequiredDescriptor": "_BONEANTELOPE_A",
+				"AccessoryGroups": [
+					"LEFT",
+					"RIGHT"
+				]
 			}
 		],
 		"RidingPartModifiers": null
@@ -1562,7 +1823,15 @@
 		"EggType": "ROBO",
 		"CanBeUsedInPetBattler": false,
 		"PetBattlerForcedAffinity": null,
-		"PetAccessorySlots": null,
+		"PetAccessorySlots": [
+			{
+				"RequiredDescriptor": "",
+				"AccessoryGroups": [
+					"RIGHT",
+					"LEFT"
+				]
+			}
+		],
 		"RidingPartModifiers": null
 	},
 	{

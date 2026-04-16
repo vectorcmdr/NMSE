@@ -1,6 +1,7 @@
 #nullable enable
 using NMSE.Core;
 using NMSE.Data;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 using System.Diagnostics;
 
@@ -182,11 +183,11 @@ partial class CompanionPanel
         _creatureTypeField.Items.AddRange(CompanionDatabase.CreatureTypes);
         _creatureTypeField.SelectedIndexChanged += (s, e) => { if (!_loading) WriteCreatureType(); };
 
-        _scaleField = new TextBox { Dock = DockStyle.Fill };
-        _scaleField.Leave += (s, e) => WriteScale();
+        _scaleField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _scaleField.NumericValueChanged += (s, e) => WriteScale();
 
-        _trustField = new TextBox { Dock = DockStyle.Fill };
-        _trustField.Leave += (s, e) => WriteTrust();
+        _trustField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _trustField.NumericValueChanged += (s, e) => WriteTrust();
 
         _boneScaleSeedField = new TextBox { Dock = DockStyle.Fill };
         _boneScaleSeedField.Leave += (s, e) => WriteBoneScaleSeed();
@@ -197,20 +198,20 @@ partial class CompanionPanel
         _hasFurField = new CheckBox { Text = "", AutoSize = true };
         _hasFurField.CheckedChanged += (s, e) => { if (!_loading) WriteHasFur(); };
 
-        _helpfulnessField = new TextBox { Dock = DockStyle.Fill };
-        _helpfulnessField.Leave += (s, e) => WriteTrait(0, _helpfulnessField);
+        _helpfulnessField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _helpfulnessField.NumericValueChanged += (s, e) => WriteTrait(0, _helpfulnessField);
 
-        _aggressionField = new TextBox { Dock = DockStyle.Fill };
-        _aggressionField.Leave += (s, e) => WriteTrait(1, _aggressionField);
+        _aggressionField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _aggressionField.NumericValueChanged += (s, e) => WriteTrait(1, _aggressionField);
 
-        _independenceField = new TextBox { Dock = DockStyle.Fill };
-        _independenceField.Leave += (s, e) => WriteTrait(2, _independenceField);
+        _independenceField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _independenceField.NumericValueChanged += (s, e) => WriteTrait(2, _independenceField);
 
-        _hungryField = new TextBox { Dock = DockStyle.Fill };
-        _hungryField.Leave += (s, e) => WriteMood(0, _hungryField);
+        _hungryField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _hungryField.NumericValueChanged += (s, e) => WriteMood(0, _hungryField);
 
-        _lonelyField = new TextBox { Dock = DockStyle.Fill };
-        _lonelyField.Leave += (s, e) => WriteMood(1, _lonelyField);
+        _lonelyField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
+        _lonelyField.NumericValueChanged += (s, e) => WriteMood(1, _lonelyField);
 
         // Slot Unlocked checkbox
         _unlockedCheck = new CheckBox { Text = "", AutoSize = true };
@@ -478,6 +479,15 @@ partial class CompanionPanel
         _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Scale label + field
         _accessoryPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));   // Reset
 
+        _noAccessoriesLabel = new Label
+        {
+            Text = "This companion cannot use accessories.",
+            AutoSize = true,
+            Padding = new Padding(5, 5, 5, 5),
+            ForeColor = SystemColors.GrayText,
+            Visible = false,
+        };
+
         string[] slotLabels = { "Right:", "Left:", "Chest:" };
         _accessorySlotLabels = new Label[3];
         _accessoryCombos = new ComboBox[3];
@@ -486,7 +496,7 @@ partial class CompanionPanel
         _accessoryAltColourBtns = new Button[3];
         _accessoryPrimarySwatches = new Panel[3];
         _accessoryAltSwatches = new Panel[3];
-        _accessoryScaleFields = new TextBox[3];
+        _accessoryScaleFields = new InvariantNumericTextBox[3];
         _accessoryScaleLabels = new Label[3];
         _accessoryResetBtns = new Button[3];
 
@@ -555,8 +565,9 @@ partial class CompanionPanel
             // Scale with label
             var scaleRow = new FlowLayoutPanel { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(0) };
             _accessoryScaleLabels[slot] = new Label { Text = "Scale:", AutoSize = true, Padding = new Padding(5, 5, 2, 0) };
-            _accessoryScaleFields[slot] = new TextBox { Width = 50, Text = "1.0" };
-            _accessoryScaleFields[slot].Leave += (sender, e) => OnAccessoryScaleChanged(s);
+            _accessoryScaleFields[slot] = new InvariantNumericTextBox { Width = 50 };
+            _accessoryScaleFields[slot].NumericValue = 1.0;
+            _accessoryScaleFields[slot].NumericValueChanged += (sender, e) => OnAccessoryScaleChanged(s);
             scaleRow.Controls.Add(_accessoryScaleLabels[slot]);
             scaleRow.Controls.Add(_accessoryScaleFields[slot]);
 
@@ -609,6 +620,7 @@ partial class CompanionPanel
             WrapContents = false,
         };
         accColumn.Controls.Add(_accessoryHeading);
+        accColumn.Controls.Add(_noAccessoriesLabel);
         accColumn.Controls.Add(_accessoryPanel);
         descAccessoryRow.Controls.Add(accColumn, 1, 0);
 
@@ -1057,16 +1069,16 @@ partial class CompanionPanel
     private CheckBox _predatorField = null!;
     private ComboBox _biomeField = null!;
     private ComboBox _creatureTypeField = null!;
-    private TextBox _scaleField = null!;
-    private TextBox _trustField = null!;
+    private InvariantNumericTextBox _scaleField = null!;
+    private InvariantNumericTextBox _trustField = null!;
     private TextBox _boneScaleSeedField = null!;
     private TextBox _colourBaseSeedField = null!;
     private CheckBox _hasFurField = null!;
-    private TextBox _helpfulnessField = null!;
-    private TextBox _aggressionField = null!;
-    private TextBox _independenceField = null!;
-    private TextBox _hungryField = null!;
-    private TextBox _lonelyField = null!;
+    private InvariantNumericTextBox _helpfulnessField = null!;
+    private InvariantNumericTextBox _aggressionField = null!;
+    private InvariantNumericTextBox _independenceField = null!;
+    private InvariantNumericTextBox _hungryField = null!;
+    private InvariantNumericTextBox _lonelyField = null!;
     private DateTimePicker _birthTimePicker = null!;
     private DateTimePicker _lastEggTimePicker = null!;
     private CheckBox _unlockedCheck = null!;
@@ -1130,6 +1142,7 @@ partial class CompanionPanel
     // Accessory Customisation section
     private Label _accessoryHeading = null!;
     private TableLayoutPanel _accessoryPanel = null!;
+    private Label _noAccessoriesLabel = null!;
     private Label[] _accessorySlotLabels = null!;
     private ComboBox[] _accessoryCombos = null!;
     private Label[] _accessoryDescriptorLabels = null!;
@@ -1137,7 +1150,8 @@ partial class CompanionPanel
     private Button[] _accessoryAltColourBtns = null!;
     private Panel[] _accessoryPrimarySwatches = null!;
     private Panel[] _accessoryAltSwatches = null!;
-    private TextBox[] _accessoryScaleFields = null!;
+    private ToolStripDropDown? _activeColourMenu;
+    private InvariantNumericTextBox[] _accessoryScaleFields = null!;
     private Label[] _accessoryScaleLabels = null!;
     private Button[] _accessoryResetBtns = null!;
 

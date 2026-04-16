@@ -4,6 +4,22 @@ using NMSE.Core.Utilities;
 
 namespace NMSE.Data;
 
+/// <summary>
+/// Describes the accessory groups supported by a single body variant of a creature.
+/// A creature may have multiple variants, each supporting different groups.
+/// </summary>
+public class CreatureAccessoryVariant
+{
+    /// <summary>Body descriptor that selects this variant (e.g. "_BODY_DEER").</summary>
+    public string RequiredDescriptor { get; init; } = "";
+
+    /// <summary>
+    /// Ordered list of accessory group names supported by this variant.
+    /// Values are "RIGHT", "LEFT", "FRONT", "BACK".
+    /// </summary>
+    public IReadOnlyList<string> AccessoryGroups { get; init; } = Array.Empty<string>();
+}
+
 /// <summary>Represents a companion creature entry with an ID and species name.</summary>
 public class CompanionEntry
 {
@@ -11,6 +27,12 @@ public class CompanionEntry
     public string Id { get; init; } = "";
     /// <summary>Display name for the species. May be blank if not yet populated from game data.</summary>
     public string Species { get; init; } = "";
+
+    /// <summary>
+    /// Per-body-variant accessory configurations. Null when the creature has no pet data
+    /// or has empty accessory slots (no accessories are supported at all).
+    /// </summary>
+    public IReadOnlyList<CreatureAccessoryVariant>? AccessoryVariants { get; init; }
 
     /// <summary>Returns a string representation showing species name and ID, or just the ID.</summary>
     public override string ToString() => !string.IsNullOrEmpty(Species) ? $"{Species} ({Id})" : Id;
@@ -106,10 +128,45 @@ public static class CompanionDatabase
                 string species = id.Replace('_', ' ');
                 species = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(species.ToLowerInvariant());
 
+                // Parse per-variant accessory configurations
+                List<CreatureAccessoryVariant>? variants = null;
+                if (elem.TryGetProperty("PetAccessorySlots", out var slotsP) &&
+                    slotsP.ValueKind == JsonValueKind.Array)
+                {
+                    variants = new List<CreatureAccessoryVariant>();
+                    foreach (var slotElem in slotsP.EnumerateArray())
+                    {
+                        string reqDesc = slotElem.TryGetProperty("RequiredDescriptor", out var rdP)
+                            ? rdP.GetString() ?? "" : "";
+
+                        var groups = new List<string>();
+                        if (slotElem.TryGetProperty("AccessoryGroups", out var agP) &&
+                            agP.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var g in agP.EnumerateArray())
+                            {
+                                string gv = g.GetString() ?? "";
+                                if (!string.IsNullOrEmpty(gv))
+                                    groups.Add(gv);
+                            }
+                        }
+
+                        variants.Add(new CreatureAccessoryVariant
+                        {
+                            RequiredDescriptor = reqDesc,
+                            AccessoryGroups = groups,
+                        });
+                    }
+
+                    if (variants.Count == 0)
+                        variants = null;
+                }
+
                 loaded.Add(new CompanionEntry
                 {
                     Id = $"^{id}",
                     Species = species,
+                    AccessoryVariants = variants,
                 });
             }
 
@@ -360,17 +417,22 @@ public static class CreaturePartDatabase
         return groups;
     }
 
-    // =======================================================================
-    // Creature part data is loaded at runtime from Creature Descriptors.json
-    // via LoadFromFile. Empty until data is loaded.
-    // =======================================================================
+    // ============================================
+    // Creature part data is loaded at runtime from
+	// Creature Descriptors.json via LoadFromFile.
+	// Empty until data is loaded.
+    // ============================================
 
     private static readonly List<CreaturePartEntry> AllEntries = new();
 }
 
-// ==================================================================
-//  Companion Accessories (from Companion Accessories.json)
-// ==================================================================
+// =======================================================
+// Companion Accessories (from Companion Accessories.json)
+// =======================================================
+// Replaces the previous hard coded implementation with
+// data loaded from the game's JSON file, which is more complete
+// and accurate. It's also not reliant on community part lists or
+// other outdated sources.
 
 /// <summary>Represents a single pet accessory entry from Companion Accessories.json.</summary>
 public class CompanionAccessoryEntry
@@ -390,7 +452,10 @@ public class CompanionAccessoryEntry
 }
 
 /// <summary>
-/// Companion accessory slot index mapping: [0] = Right, [1] = Left, [2] = Chest.
+/// Companion accessory slot index mapping: [0] = Right, [1] = Left, [2] = Front.
+/// Save data stores exactly 3 Data entries per pet; each index corresponds to a fixed group.
+/// Some creatures support a BACK group instead of or in addition to FRONT, which shares
+/// the same save index (2) as Front.
 /// </summary>
 public enum AccessorySlot
 {
@@ -398,8 +463,10 @@ public enum AccessorySlot
     Right = 0,
     /// <summary>Left side accessory (index 1 in save).</summary>
     Left = 1,
-    /// <summary>Chest/front accessory (index 2 in save).</summary>
-    Chest = 2,
+    /// <summary>Front accessory (index 2 in save).</summary>
+    Front = 2,
+    /// <summary>Back accessory (shares index 2 in save with Front; used by BLOB, GRUNT, etc.).</summary>
+    Back = 3,
 }
 
 /// <summary>Static database of companion pet accessories, loaded from Companion Accessories.json.</summary>
@@ -415,9 +482,9 @@ public static class CompanionAccessoryDatabase
     private static readonly Dictionary<string, string> _englishNameBackup = new();
 
     /// <summary>
-    /// Per-slot allowed accessory IDs, derived from the game's CHARACTERCUSTOMISATIONUIDATA.MXML(MBIN).
-    /// The same shared accessories (PET_ACC_NULL, PET_ACC_0–11) appear in all slots;
-    /// slot-specific accessories are unique to Left, Right, or Chest.
+    /// Per-slot allowed accessory IDs, derived from the game's CHARACTERCUSTOMISATIONUIDATA.MXML(MBIN)
+    /// and PETACCESSORYTABLE.MXML. The same shared accessories (PET_ACC_NULL, PET_ACC_0-11)
+    /// appear in all slots; slot-specific accessories are unique to Right, Left, Front, or Back.
     /// </summary>
     private static readonly Dictionary<AccessorySlot, HashSet<string>> SlotFilter = new()
     {
@@ -443,14 +510,22 @@ public static class CompanionAccessoryDatabase
             "PET_ACC_16", "PET_ACC_17", "PET_ACC_18",
             "PET_ACC_26", "PET_ACC_29",
         },
-        [AccessorySlot.Chest] = new(StringComparer.OrdinalIgnoreCase)
+        [AccessorySlot.Front] = new(StringComparer.OrdinalIgnoreCase)
         {
             "PET_ACC_NULL",
             "PET_ACC_0", "PET_ACC_1", "PET_ACC_2", "PET_ACC_3", "PET_ACC_4",
             "PET_ACC_5", "PET_ACC_6", "PET_ACC_7", "PET_ACC_8", "PET_ACC_9",
             "PET_ACC_10", "PET_ACC_11",
-            // Chest-specific
+            // Front-specific
             "PET_ACC_30",
+        },
+        [AccessorySlot.Back] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "PET_ACC_NULL",
+            // Back allows shared accessories only (no L/R-specific, no MechanicalPaw variants)
+            "PET_ACC_0", "PET_ACC_1", "PET_ACC_2", "PET_ACC_3", "PET_ACC_4",
+            "PET_ACC_5", "PET_ACC_6", "PET_ACC_7", "PET_ACC_8", "PET_ACC_9",
+            "PET_ACC_10", "PET_ACC_11",
         },
     };
 
@@ -463,6 +538,95 @@ public static class CompanionAccessoryDatabase
             return (IReadOnlyList<CompanionAccessoryEntry>)Entries;
 
         return Entries.Where(e => allowed.Contains(e.Id)).ToList();
+    }
+
+    /// <summary>Default slot layout used when a creature's supported groups are unknown.</summary>
+    private static readonly AccessorySlot[] DefaultSlotLayout = { AccessorySlot.Right, AccessorySlot.Left, AccessorySlot.Front };
+
+    /// <summary>
+    /// Maps a game AccessoryGroup name (e.g. "RIGHT", "LEFT", "FRONT", "BACK") to an AccessorySlot value.
+    /// Returns null for unrecognised group names.
+    /// </summary>
+    public static AccessorySlot? GroupNameToSlot(string groupName)
+    {
+        return groupName.ToUpperInvariant() switch
+        {
+            "RIGHT" => AccessorySlot.Right,
+            "LEFT" => AccessorySlot.Left,
+            "FRONT" => AccessorySlot.Front,
+            "BACK" => AccessorySlot.Back,
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Returns the save data index for a given AccessorySlot when using the default
+    /// [Right, Left, Front] layout. For non-default layouts (e.g. GRUNT with [Back, Front]),
+    /// use the positional index from <see cref="GetSlotLayoutForCreature"/> instead, since
+    /// save data stores accessories at Data[0], Data[1], Data[2] in the order they appear
+    /// in the creature's AccessoryGroups definition.
+    /// </summary>
+    [Obsolete("Save indices are positional per creature layout. Use the UI row index directly.")]
+    public static int SlotToSaveIndex(AccessorySlot slot)
+    {
+        return slot switch
+        {
+            AccessorySlot.Right => 0,
+            AccessorySlot.Left => 1,
+            AccessorySlot.Front => 2,
+            AccessorySlot.Back => 2,
+            _ => -1,
+        };
+    }
+
+    /// <summary>
+    /// Returns the ordered slot layout (up to 3 slots) for a creature based on its type ID.
+    /// When the creature type is known and has accessory variant data, this returns the
+    /// distinct groups from the first variant that has them (most creatures share the same
+    /// groups across all variants). Falls back to [Right, Left, Front] when unknown.
+    /// </summary>
+    public static AccessorySlot[] GetSlotLayoutForCreature(string? creatureId)
+    {
+        if (string.IsNullOrEmpty(creatureId))
+            return DefaultSlotLayout;
+
+        if (!CompanionDatabase.ById.TryGetValue(creatureId, out var entry))
+            return DefaultSlotLayout;
+
+        if (entry.AccessoryVariants == null || entry.AccessoryVariants.Count == 0)
+            return Array.Empty<AccessorySlot>();
+
+        // Use the first variant with groups as the representative layout.
+        // Most creatures use the same groups across all variants.
+        var firstWithGroups = entry.AccessoryVariants
+            .FirstOrDefault(v => v.AccessoryGroups.Count > 0);
+        if (firstWithGroups == null)
+            return Array.Empty<AccessorySlot>();
+
+        var slots = new List<AccessorySlot>();
+        foreach (var g in firstWithGroups.AccessoryGroups)
+        {
+            var slot = GroupNameToSlot(g);
+            if (slot.HasValue && !slots.Contains(slot.Value))
+                slots.Add(slot.Value);
+        }
+
+        return slots.ToArray();
+    }
+
+    /// <summary>
+    /// Returns the localisation key for the label of a given AccessorySlot.
+    /// </summary>
+    public static string GetSlotLabelLocKey(AccessorySlot slot)
+    {
+        return slot switch
+        {
+            AccessorySlot.Right => "companion.accessory_slot_right",
+            AccessorySlot.Left => "companion.accessory_slot_left",
+            AccessorySlot.Front => "companion.accessory_slot_front",
+            AccessorySlot.Back => "companion.accessory_slot_back",
+            _ => "companion.accessory_slot_right",
+        };
     }
 
     /// <summary>
@@ -543,9 +707,10 @@ public static class CompanionAccessoryDatabase
     }
 }
 
-// ==================================================================
-//  Pet Battle Moves (from Pet Battle Moves.json)
-// ==================================================================
+// ===================================================
+// Pet Battle Moves (from Pet Battle Moves.json)
+// Needs further processing to resolve display strings
+// ===================================================
 
 /// <summary>Represents a single phase within a pet battle move.</summary>
 public class PetBattleMovePhase
@@ -555,12 +720,71 @@ public class PetBattleMovePhase
     /// <summary>Visual effect type (e.g. "Projectile", "Beam").</summary>
     public string Effect { get; set; } = "";
 
-    /// <summary>Normalised display string for Strength.</summary>
-    public string StrengthDisplay => StringHelper.NormalizeDisplayString(Strength);
-    /// <summary>Normalised display string for Effect.</summary>
-    public string EffectDisplay => Effect == "DoTDamage"
-        ? "Damage over Time"
-        : StringHelper.NormalizeDisplayString(Effect);
+    /// <summary>Normalised display string for Strength, using localisation if available.</summary>
+    public string StrengthDisplay => GetLocalisedStrength(Strength);
+    /// <summary>Normalised display string for Effect, using localisation if available.</summary>
+    public string EffectDisplay => GetLocalisedEffect(Effect);
+
+    /// <summary>Returns an emoji matching the effect type for visual display.</summary>
+    public string EffectEmoji => GetEffectEmoji(Effect);
+
+    /// <summary>Resolves a strength raw value to a localised display string.</summary>
+    internal static string GetLocalisedStrength(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        string suffix = raw.ToLowerInvariant() switch
+        {
+            "verylight" => "very_light",
+            "light" => "light",
+            "medium" => "medium",
+            "heavy" => "heavy",
+            _ => "",
+        };
+        if (string.IsNullOrEmpty(suffix)) return StringHelper.NormalizeDisplayString(raw);
+        string key = "companion.battle_val_strength_" + suffix;
+        return UiStrings.GetOrNull(key) ?? StringHelper.NormalizeDisplayString(raw);
+    }
+
+    /// <summary>Resolves an effect raw value to a localised display string.</summary>
+    internal static string GetLocalisedEffect(string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return "";
+        string suffix = raw.ToLowerInvariant() switch
+        {
+            "buff" => "buff",
+            "damagenoprojectile" => "damage_no_projectile",
+            "debuff" => "debuff",
+            "dotdamage" => "dot_damage",
+            "heal" => "heal",
+            "projectile" => "projectile",
+            "shield" => "shield",
+            "stun" => "stun",
+            _ => "",
+        };
+        if (string.IsNullOrEmpty(suffix)) return StringHelper.NormalizeDisplayString(raw);
+        string key = "companion.battle_val_effect_" + suffix;
+        return UiStrings.GetOrNull(key) ?? (raw == "DoTDamage" ? "Damage over Time" : StringHelper.NormalizeDisplayString(raw));
+    }
+
+    /// <summary>Returns an emoji matching the effect type for visual display.</summary>
+    internal static string GetEffectEmoji(string effect)
+    {
+        return effect?.ToLowerInvariant() switch
+        {
+			// These really should change to UI elements,
+			// just need time to find and add them to NMSE.Extractor
+            "projectile" => "🏹",
+            "damagenoprojectile" => "⚔️",
+            "dotdamage" => "🔥",
+            "heal" => "💚",
+            "buff" => "🔺",
+            "debuff" => "🔻",
+            "shield" => "🛡️",
+            "stun" => "⚡",
+            "" or null => "",
+            _ => "",
+        };
+    }
 }
 
 /// <summary>Represents a pet battle move from Pet Battle Moves.json.</summary>
@@ -585,19 +809,53 @@ public class PetBattleMoveEntry
     /// <summary>Phases of this move.</summary>
     public IReadOnlyList<PetBattleMovePhase> Phases { get; set; } = Array.Empty<PetBattleMovePhase>();
 
-    /// <summary>Normalised display string for Target.</summary>
-    public string TargetDisplay => StringHelper.NormalizeDisplayString(Target);
+    /// <summary>Normalised display string for Target, using localisation if available.</summary>
+    public string TargetDisplay
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Target)) return "";
+            string suffix = Target.ToLowerInvariant() switch
+            {
+                "activeenemy" => "active_enemy",
+                "self" => "self",
+                _ => "",
+            };
+            if (string.IsNullOrEmpty(suffix)) return StringHelper.NormalizeDisplayString(Target);
+            string key = "companion.battle_val_target_" + suffix;
+            return UiStrings.GetOrNull(key) ?? StringHelper.NormalizeDisplayString(Target);
+        }
+    }
 
-    /// <summary>Normalised display string for IconStyle.</summary>
-    public string IconStyleDisplay => StringHelper.NormalizeDisplayString(IconStyle);
+    /// <summary>Normalised display string for IconStyle, using localisation if available.</summary>
+    public string IconStyleDisplay
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(IconStyle)) return "";
+            string suffix = IconStyle.ToLowerInvariant() switch
+            {
+                "attack" => "attack",
+                "cooldown" => "cooldown",
+                "heal" => "heal",
+                "power" => "power",
+                _ => "",
+            };
+            if (string.IsNullOrEmpty(suffix)) return StringHelper.NormalizeDisplayString(IconStyle);
+            string key = "companion.battle_val_type_" + suffix;
+            return UiStrings.GetOrNull(key) ?? StringHelper.NormalizeDisplayString(IconStyle);
+        }
+    }
 
     /// <summary>
     /// Returns an emoji/symbol matching the icon style.
     /// </summary>
     public string IconEmoji => IconStyle?.ToLowerInvariant() switch
     {
-        // Yeah, emojis - I know... leave me alone lol.
-        "attack" => "⚔️",
+		// Yeah, emojis - I know... leave me alone lol.
+		// These really should change to UI elements,
+		// just need time to find and add them to NMSE.Extractor
+		"attack" => "⚔️",
         "buff" => "🛡️",
         "heal" => "💚",
         "debuff" => "💀",
@@ -692,9 +950,11 @@ public static class PetBattleMoveDatabase
     }
 }
 
-// ==================================================================
-//  Pet Battle Movesets (from Pet Battle Movesets.json)
-// ==================================================================
+// ===================================================
+// Pet Battle Movesets (from Pet Battle Movesets.json)
+// These also need further processing to resolve
+// display strings to a more useful format
+// ===================================================
 
 /// <summary>A single allowed move option within a moveset slot.</summary>
 public class PetBattleMoveSlotOption
@@ -726,8 +986,19 @@ public class PetBattleMovesetEntry
     /// <summary>The 5 move slots for this moveset.</summary>
     public IReadOnlyList<PetBattleMoveSlot> Slots { get; set; } = Array.Empty<PetBattleMoveSlot>();
 
-    /// <summary>Normalised display name (e.g. "BASIC" -> "Basic", "DOT_BOMBER" -> "Dot Bomber").</summary>
-    public string DisplayName => StringHelper.NormalizeDisplayString(Id);
+    /// <summary>
+    /// Localised display name. Looks up "companion.battle_moveset_{id_lower}" first,
+    /// falling back to NormalizeDisplayString if no loc key exists.
+    /// </summary>
+    public string DisplayName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Id)) return "";
+            string key = "companion.battle_moveset_" + Id.ToLowerInvariant().Replace('_', '_');
+            return UiStrings.GetOrNull(key) ?? StringHelper.NormalizeDisplayString(Id);
+        }
+    }
 
     public override string ToString() => DisplayName;
 }
@@ -829,9 +1100,10 @@ public static class PetBattleMovesetDatabase
     }
 }
 
-// ==================================================================
-//  Pet Biome Affinity Map (from Game Table Globals.json)
-// ==================================================================
+// ===========================================================
+// Pet Biome Affinity Map (from Game Table Globals.json)
+// This should move to an extracted JSON file when time allows
+// ===========================================================
 
 /// <summary>
 /// Maps biome types to pet battler affinities and their localisation keys.
@@ -917,8 +1189,10 @@ public static class PetBiomeAffinityMap
     {
         return affinity?.ToLowerInvariant() switch
         {
-            // Updated with the new affinity name lookup and glyph vs unicode ID.
-            "toxic" => "☠️",
+			// Updated with the new affinity name lookup and glyph vs unicode ID.
+			// These really should change to UI elements,
+			// just need time to find and add them to NMSE.Extractor
+			"toxic" => "☠️",
             "radioactive" => "☢️",
             "fire" => "🔥",
             "cold" or "frozen" or "frost" => "❄️",
@@ -943,8 +1217,9 @@ public static class PetBiomeAffinityMap
     }
 
     /// <summary>
-    /// Returns a normalised display name for an affinity value, prefixed with an emoji.
-    /// Uses the game-correct affinity name (e.g. "Frost" instead of "Cold").
+    /// Returns a localised display name for an affinity value, prefixed with an emoji.
+    /// Uses the game-correct affinity name (e.g. "Frost" instead of "Cold") and
+    /// resolves a loc key for the translated name.
     /// </summary>
     public static string GetAffinityDisplayName(string affinity, LocalisationService? service = null)
     {
@@ -952,7 +1227,8 @@ public static class PetBiomeAffinityMap
 
         string gameName = GetAffinityGameName(affinity);
         string emoji = GetAffinityEmoji(gameName);
-        return !string.IsNullOrEmpty(emoji) ? $"{emoji}{gameName}" : gameName;
+        string displayName = GetLocalisedAffinityName(gameName);
+        return !string.IsNullOrEmpty(emoji) ? $"{emoji}{displayName}" : displayName;
     }
 
     /// <summary>
@@ -968,6 +1244,7 @@ public static class PetBiomeAffinityMap
 
     /// <summary>
     /// Formats a list of affinity names with their emoji prefixes, joined by a separator.
+    /// Uses localised display names for the affinity values.
     /// </summary>
     public static string FormatAffinityList(string[] affinities, string separator = ", ")
     {
@@ -976,9 +1253,21 @@ public static class PetBiomeAffinityMap
         for (int i = 0; i < affinities.Length; i++)
         {
             string emoji = GetAffinityEmoji(affinities[i]);
-            parts[i] = !string.IsNullOrEmpty(emoji) ? $"{emoji}{affinities[i]}" : affinities[i];
+            string displayName = GetLocalisedAffinityName(affinities[i]);
+            parts[i] = !string.IsNullOrEmpty(emoji) ? $"{emoji}{displayName}" : displayName;
         }
         return string.Join(separator, parts);
+    }
+
+    /// <summary>
+    /// Resolves a game-correct affinity name to its localised display string.
+    /// Falls back to the raw name if no loc key exists.
+    /// </summary>
+    public static string GetLocalisedAffinityName(string gameName)
+    {
+        if (string.IsNullOrEmpty(gameName)) return "";
+        string key = "companion.battle_val_affinity_" + gameName.ToLowerInvariant();
+        return UiStrings.GetOrNull(key) ?? gameName;
     }
 
     /// <summary>
