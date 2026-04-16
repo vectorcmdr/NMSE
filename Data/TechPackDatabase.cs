@@ -789,8 +789,8 @@ public static partial class TechPacks
         }
         // Try exact match, then with/without ^ prefix
         if (_idToClass.TryGetValue(itemId, out var cls)) return cls;
-        if (itemId.StartsWith("^") && _idToClass.TryGetValue(itemId[1..], out cls)) return cls;
-        if (!itemId.StartsWith("^") && _idToClass.TryGetValue("^" + itemId, out cls)) return cls;
+        if (itemId.StartsWith("^", StringComparison.Ordinal) && _idToClass.TryGetValue(itemId[1..], out cls)) return cls;
+        if (!itemId.StartsWith("^", StringComparison.Ordinal) && _idToClass.TryGetValue("^" + itemId, out cls)) return cls;
         return null;
     }
 }

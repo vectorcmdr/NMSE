@@ -1,6 +1,7 @@
-using NMSE.Models;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using NMSE.Models;
 
 namespace NMSE.Config;
 
@@ -106,25 +107,25 @@ public class AppConfig
     public int MainFrameX
     {
         get => int.TryParse(GetProperty("MainFrame.X"), out int v) ? v : 100;
-        set => SetProperty("MainFrame.X", value.ToString());
+        set => SetProperty("MainFrame.X", value.ToString(CultureInfo.InvariantCulture));
     }
 
     public int MainFrameY
     {
         get => int.TryParse(GetProperty("MainFrame.Y"), out int v) ? v : 100;
-        set => SetProperty("MainFrame.Y", value.ToString());
+        set => SetProperty("MainFrame.Y", value.ToString(CultureInfo.InvariantCulture));
     }
 
     public int MainFrameWidth
     {
         get => int.TryParse(GetProperty("MainFrame.Width"), out int v) ? v : 1200;
-        set => SetProperty("MainFrame.Width", value.ToString());
+        set => SetProperty("MainFrame.Width", value.ToString(CultureInfo.InvariantCulture));
     }
 
     public int MainFrameHeight
     {
         get => int.TryParse(GetProperty("MainFrame.Height"), out int v) ? v : 800;
-        set => SetProperty("MainFrame.Height", value.ToString());
+        set => SetProperty("MainFrame.Height", value.ToString(CultureInfo.InvariantCulture));
     }
 
     public static string BuildSaveScopeKey(string? saveFilePath)

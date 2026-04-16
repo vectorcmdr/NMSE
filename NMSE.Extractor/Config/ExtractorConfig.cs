@@ -143,11 +143,11 @@ public static class ExtractorConfig
         if (firstDot >= 0)
         {
             string type = nameUpper[(firstDot + 1)..];
-            if (type.StartsWith("TEX"))
+            if (type.StartsWith("TEX", StringComparison.Ordinal))
                 return TextureFilters;
 
             // EntitySceneMBIN paks contain SCENE.MBIN files with descriptor trees
-            if (type.StartsWith("ENTITYSCENEMBIN"))
+            if (type.StartsWith("ENTITYSCENEMBIN", StringComparison.Ordinal))
                 return SceneMbinFilters;
         }
 

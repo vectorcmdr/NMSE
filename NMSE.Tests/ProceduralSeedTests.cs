@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using NMSE.Core;
 using NMSE.Core.Utilities;
@@ -104,10 +105,10 @@ public class ProceduralSeedTests
     [Fact]
     public void GenerateProceduralSeed_ZeroPaddingWorks()
     {
-        string zeroPadded = 0.ToString("D5");
+        string zeroPadded = 0.ToString("D5", CultureInfo.InvariantCulture);
         Assert.Equal("00000", zeroPadded);
 
-        string ninePadded = 123.ToString("D5");
+        string ninePadded = 123.ToString("D5", CultureInfo.InvariantCulture);
         Assert.Equal("00123", ninePadded);
     }
 

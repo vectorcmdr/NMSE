@@ -1257,7 +1257,7 @@ public class Program
         foreach (var item in others)
         {
             string? id = item.GetValueOrDefault("Id")?.ToString();
-            if (id != null && id.StartsWith("BOBBLE_"))
+            if (id != null && id.StartsWith("BOBBLE_", StringComparison.Ordinal))
                 productIds.Add(id);
         }
         if (productIds.Count == 0) return;
@@ -1298,8 +1298,9 @@ public class Program
             || !finalFiles.TryGetValue("Technology Module.json", out var techModules))
             return;
 
-        // Upgrades WITH DeploysInto → move to Technology Module
-        var toTechModule = new List<Dictionary<string, object?>>();
+		// 'Upgrades' WITH DeploysInto value are recategorised into 'Technology Module'
+		// Corrects previous misclassification of tech modules
+		var toTechModule = new List<Dictionary<string, object?>>();
         var keepInUpgrades = new List<Dictionary<string, object?>>();
         foreach (var item in upgrades)
         {
@@ -1310,8 +1311,9 @@ public class Program
                 keepInUpgrades.Add(item);
         }
 
-        // Technology Module WITHOUT DeploysInto → move to Upgrades
-        var toUpgrades = new List<Dictionary<string, object?>>();
+		// 'Technology Module' WITHOUT DeploysInto value are recategorised into 'Upgrades'
+		// Corrects previous misclassification of actual tech upgrades
+		var toUpgrades = new List<Dictionary<string, object?>>();
         var keepInTechModule = new List<Dictionary<string, object?>>();
         foreach (var item in techModules)
         {
@@ -1724,10 +1726,10 @@ public class Program
         static string InferClass(string id, bool isUpgrade)
         {
             if (!isUpgrade) return "NONE";
-            if (id.EndsWith("1")) return "C";
-            if (id.EndsWith("2")) return "B";
-            if (id.EndsWith("3")) return "A";
-            if (id.EndsWith("4")) return "S";
+            if (id.EndsWith("1", StringComparison.Ordinal)) return "C";
+            if (id.EndsWith("2", StringComparison.Ordinal)) return "B";
+            if (id.EndsWith("3", StringComparison.Ordinal)) return "A";
+            if (id.EndsWith("4", StringComparison.Ordinal)) return "S";
             // X-class (alien/sentinel/robot/royal upgrades)
             if (id.Contains("_ALIEN") || id.Contains("_SENT") || id.Contains("_ROBO")
                 || id.Contains("_ROYAL")) return "X";
@@ -1741,8 +1743,8 @@ public class Program
         sb.AppendLine("// It provides a tech catalog for enriching TechPackDatabase entries.");
         sb.AppendLine("// Regenerate by running the extractor against updated game files.");
         sb.AppendLine($"// NMS Version: 6.24 REMNANT (27 February 2026)");
-        sb.AppendLine($"// Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-        sb.AppendLine($"// Total technologies catalogued: {catalog.Count}");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"// Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"// Total technologies catalogued: {catalog.Count}");
         sb.AppendLine("// </auto-generated>");
         sb.AppendLine();
         sb.AppendLine("using System.Collections.Generic;");
@@ -1780,7 +1782,7 @@ public class Program
         // Tech catalog - the real value: a dictionary mapping tech ID -> metadata from game data
         sb.AppendLine("    /// <summary>");
         sb.AppendLine("    /// Game-data tech catalog extracted from NMS_REALITY_GCTECHNOLOGYTABLE.");
-        sb.AppendLine($"    /// Contains {catalog.Count} technology entries with icon paths and category info.");
+        sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"    /// Contains {catalog.Count} technology entries with icon paths and category info.");
         sb.AppendLine("    /// </summary>");
         sb.AppendLine("    public sealed class TechCatalogEntry");
         sb.AppendLine("    {");
@@ -1801,7 +1803,9 @@ public class Program
             string cls = InferClass(id, isUpgrade);
             // Normalize all path separators to forward slashes for the generated C# string literal
             string escapedIcon = iconPath.Replace('\\', '/');
-            sb.AppendLine($"        [\"{id}\"] = new TechCatalogEntry {{ Id = \"{id}\", IconPath = \"{escapedIcon}\", Category = \"{category}\", InferredClass = \"{cls}\", IsUpgrade = {(isUpgrade ? "true" : "false")}, IsCore = {(isCore ? "true" : "false")}, IsProcedural = {(isProcedural ? "true" : "false")} }},");
+            sb.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "        [\"{0}\"] = new TechCatalogEntry {{ Id = \"{0}\", IconPath = \"{1}\", Category = \"{2}\", InferredClass = \"{3}\", IsUpgrade = {4}, IsCore = {5}, IsProcedural = {6} }},",
+                id, escapedIcon, category, cls, isUpgrade ? "true" : "false", isCore ? "true" : "false", isProcedural ? "true" : "false"));
         }
 
         sb.AppendLine("    };");

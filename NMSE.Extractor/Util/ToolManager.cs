@@ -156,7 +156,7 @@ public static class ToolManager
             throw new InvalidOperationException("Could not resolve latest 7-Zip release tag.");
         }
 
-        string downloadUrl = string.Format(ExtractorConfig.SevenZipDownloadPattern, latestTag);
+        string downloadUrl = string.Format(System.Globalization.CultureInfo.InvariantCulture, ExtractorConfig.SevenZipDownloadPattern, latestTag);
         Console.WriteLine($"[INFO] Downloading 7zr.exe ({latestTag})...");
         byte[] exeBytes = await DownloadClient.GetByteArrayAsync(downloadUrl);
         await File.WriteAllBytesAsync(exePath, exeBytes);
@@ -200,7 +200,7 @@ public static class ToolManager
         if (!File.Exists(sevenZrPath))
             await Ensure7zrAsync(toolsDir);
 
-        string downloadUrl = string.Format(ExtractorConfig.ImageMagickDownloadPattern, latestTag);
+        string downloadUrl = string.Format(System.Globalization.CultureInfo.InvariantCulture, ExtractorConfig.ImageMagickDownloadPattern, latestTag);
         string archivePath = Path.Combine(toolsDir, "imagemagick_portable.7z");
 
         Console.WriteLine($"[INFO] Downloading ImageMagick portable ({latestTag})...");

@@ -852,7 +852,7 @@ public partial class InventoryGridPanel : UserControl
 
         // Allow users to prefix a search with '^' (e.g. ^FUEL1) but strip it for the actual search.
         // TrimStart supports multiple carets but that's harmless.
-        string query = raw.StartsWith("^") ? raw.TrimStart('^').Trim() : raw;
+        string query = raw.StartsWith("^", StringComparison.Ordinal) ? raw.TrimStart('^').Trim() : raw;
 
         // If stripping the caret produced an empty query, restore full list
         if (string.IsNullOrEmpty(query))
@@ -1262,7 +1262,7 @@ public partial class InventoryGridPanel : UserControl
     {
         if (string.IsNullOrEmpty(itemId))
             return "^";
-        if (itemId.StartsWith("^"))
+        if (itemId.StartsWith("^", StringComparison.Ordinal))
             return itemId;
         return "^" + itemId;
     }
@@ -1637,7 +1637,7 @@ public partial class InventoryGridPanel : UserControl
         if (itemType.Equals("Upgrades", StringComparison.OrdinalIgnoreCase))
         {
             // Exclude inventory token items (e.g. WEAP_INV_TOKEN, SUIT_INV_TOKEN)
-            string baseId = itemId.StartsWith("^") ? itemId[1..] : itemId;
+            string baseId = itemId.StartsWith("^", StringComparison.Ordinal) ? itemId[1..] : itemId;
             if (baseId.EndsWith("INV_TOKEN", StringComparison.OrdinalIgnoreCase))
                 return false;
             return true;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Config;
 using NMSE.Core;
 using NMSE.Core.Utilities;
@@ -3877,7 +3878,7 @@ public class LogicTests
         for (int i = 0; i < 50; i++)
         {
             if (i > 0) parts.Append(',');
-            parts.Append($"\"key{i}\":{i}");
+            parts.Append(CultureInfo.InvariantCulture, $"\"key{i}\":{i}");
         }
         parts.Append('}');
 
@@ -3995,13 +3996,162 @@ public class LogicTests
 
             double val = 1.75;
             // Without InvariantCulture, German locale would produce "1,75"
-            string withoutCulture = val.ToString();
+            string withoutCulture = val.ToString(CultureInfo.CurrentCulture);
             Assert.Contains(",", withoutCulture); // sanity: German uses comma
 
             // With InvariantCulture, it must use dot
             string withCulture = val.ToString(System.Globalization.CultureInfo.InvariantCulture);
             Assert.Contains(".", withCulture);
             Assert.DoesNotContain(",", withCulture);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    // --- NumericParseHelper tests ------------------------------------------
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_InvariantDotAlwaysWorks()
+    {
+        Assert.True(NumericParseHelper.TryParseDouble("1.5", out double v));
+        Assert.Equal(1.5, v, 10);
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_GermanComma()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("de-DE");
+
+            // German user types "1,5" — should parse as 1.5
+            Assert.True(NumericParseHelper.TryParseDouble("1,5", out double v));
+            Assert.Equal(1.5, v, 10);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_FrenchComma()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("fr-FR");
+
+            Assert.True(NumericParseHelper.TryParseDouble("3,14", out double v));
+            Assert.Equal(3.14, v, 10);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_DotStillWorksUnderGermanLocale()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("de-DE");
+
+            // Even under German locale, "1.5" should parse as 1.5 (invariant wins
+            // because the input contains a dot).
+            Assert.True(NumericParseHelper.TryParseDouble("1.5", out double v));
+            Assert.Equal(1.5, v, 10);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_EmptyAndNullReturnFalse()
+    {
+        Assert.False(NumericParseHelper.TryParseDouble("", out _));
+        Assert.False(NumericParseHelper.TryParseDouble(null, out _));
+        Assert.False(NumericParseHelper.TryParseDouble("   ", out _));
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseDouble_InvalidTextReturnsFalse()
+    {
+        Assert.False(NumericParseHelper.TryParseDouble("abc", out _));
+        Assert.False(NumericParseHelper.TryParseDouble("not-a-number", out _));
+    }
+
+    [Fact]
+    public void NumericParseHelper_FormatDouble_AlwaysUsesDot()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("de-DE");
+
+            string formatted = NumericParseHelper.FormatDouble(1.5);
+            Assert.Contains(".", formatted);
+            Assert.DoesNotContain(",", formatted);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_FormatDouble_WithFormat_UsesInvariant()
+    {
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("fr-FR");
+
+            string formatted = NumericParseHelper.FormatDouble(1234.5678, "F2");
+            Assert.Contains(".", formatted);
+            Assert.DoesNotContain(",", formatted);
+            Assert.Equal("1234.57", formatted);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_RoundTrip_UnderCommaLocale()
+    {
+        // Simulates when a user enters a value in their locale via:
+		// locale input (in) -> format for JSON (x) -> parse back (out)
+        var saved = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new System.Globalization.CultureInfo("de-DE");
+
+            // User types "23,7"
+            Assert.True(NumericParseHelper.TryParseDouble("23,7", out double parsed));
+            Assert.Equal(23.7, parsed, 10);
+
+            // Format for JSON
+            string json = NumericParseHelper.FormatDouble(parsed);
+            Assert.Equal("23.7", json);
+
+            // Parse back from JSON (invariant format)
+            Assert.True(NumericParseHelper.TryParseDouble(json, out double roundTrip));
+            Assert.Equal(23.7, roundTrip, 10);
         }
         finally
         {
@@ -6316,8 +6466,8 @@ public class LogicTests
         sbNew.AppendLine("CHANGED_NEW_START");
         for (int i = 0; i < 50; i++)
         {
-            sbOld.AppendLine($"  unchanged line {i}");
-            sbNew.AppendLine($"  unchanged line {i}");
+            sbOld.AppendLine(CultureInfo.InvariantCulture, $"  unchanged line {i}");
+            sbNew.AppendLine(CultureInfo.InvariantCulture, $"  unchanged line {i}");
         }
         sbOld.AppendLine("CHANGED_OLD_END");
         sbNew.AppendLine("CHANGED_NEW_END");
@@ -6343,8 +6493,8 @@ public class LogicTests
         sbNew.AppendLine("NEW_FIRST");
         for (int i = 0; i < 10; i++)
         {
-            sbOld.AppendLine($"  same {i}");
-            sbNew.AppendLine($"  same {i}");
+            sbOld.AppendLine(CultureInfo.InvariantCulture, $"  same {i}");
+            sbNew.AppendLine(CultureInfo.InvariantCulture, $"  same {i}");
         }
         sbOld.AppendLine("OLD_LAST");
         sbNew.AppendLine("NEW_LAST");
@@ -6386,8 +6536,8 @@ public class LogicTests
 
         // Should have exactly 1 removed and 1 added line (the changed value)
         var lines = diff.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        int addedCount = lines.Count(l => l.StartsWith("+ "));
-        int removedCount = lines.Count(l => l.StartsWith("- "));
+        int addedCount = lines.Count(l => l.StartsWith("+ ", StringComparison.Ordinal));
+        int removedCount = lines.Count(l => l.StartsWith("- ", StringComparison.Ordinal));
 
         Assert.Equal(1, addedCount);
         Assert.Equal(1, removedCount);

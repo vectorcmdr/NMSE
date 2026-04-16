@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
@@ -200,9 +201,9 @@ public partial class FrigatePanel : UserControl
             // Level-up progress
             int numExp = (int)_expeditionsField.Value;
             int levelUpIn = FrigateLogic.GetLevelUpIn(numExp);
-            _levelUpInField.Text = levelUpIn >= 0 ? levelUpIn.ToString() : UiStrings.Get("frigate.level_max");
+            _levelUpInField.Text = levelUpIn >= 0 ? levelUpIn.ToString(CultureInfo.CurrentCulture) : UiStrings.Get("frigate.level_max");
             int levelsLeft = FrigateLogic.GetLevelUpsRemaining(numExp);
-            _levelUpsRemainingField.Text = levelsLeft.ToString();
+            _levelUpsRemainingField.Text = levelsLeft.ToString(CultureInfo.CurrentCulture);
 
             // Expedition state
             int frigateIdx = _frigateList.SelectedIndex;
@@ -501,7 +502,7 @@ public partial class FrigatePanel : UserControl
                     _loading = true;
                     _expeditionsField.Value = threshold - 1;
                     _levelUpInField.Text = "1";
-                    _levelUpsRemainingField.Text = FrigateLogic.GetLevelUpsRemaining(threshold - 1).ToString();
+                    _levelUpsRemainingField.Text = FrigateLogic.GetLevelUpsRemaining(threshold - 1).ToString(CultureInfo.CurrentCulture);
                     _loading = false;
                     break;
                 }

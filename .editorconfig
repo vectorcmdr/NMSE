@@ -1,0 +1,38 @@
+# EditorConfig - https://editorconfig.org
+# This file enforces consistent coding styles across the NMSE codebase.
+
+root = true
+
+# Default settings for all files
+[*]
+indent_style = tab
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C# files
+[*.cs]
+
+# --- Locale safety (Roslyn analyzers) -------------------------------------
+#
+# CA1305: Specify IFormatProvider
+#   Every call to int.ToString(), DateTime.ToString(string),
+#   double.TryParse(), string.Format(), Convert.ToXxx() etc. MUST specify
+#   an explicit IFormatProvider (usually CultureInfo.InvariantCulture for
+#   data paths, or CultureInfo.CurrentCulture for display-only paths).
+#
+# CA1310: Specify StringComparison for correctness
+#   String comparison calls must specify a StringComparison to make
+#   culture-sensitivity explicit.
+#
+# These are set to ERROR so the build breaks if a contributor introduces a
+# culture-sensitive call without an explicit provider.  All existing call
+# sites were fixed when these rules were introduced.
+#
+# This is a regression guard to mitigate future bug report friction.
+# Roz combined with test outputs allows weaponised compliance outputs.
+# --------------------------------------------------------------------------
+dotnet_diagnostic.CA1305.severity = error
+dotnet_diagnostic.CA1310.severity = error

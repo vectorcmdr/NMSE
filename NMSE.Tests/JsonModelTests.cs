@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Models;
 
 namespace NMSE.Tests;
@@ -122,6 +123,55 @@ public class JsonModelTests
         Assert.Equal(3.14, obj.GetDouble("d"), 2);
     }
 
+    [Fact]
+    public void JsonObject_GetFloat_PreservesFullDoublePrecision()
+    {
+        // GetFloat must return full double precision, not truncate to ~7 digit float
+        var obj = JsonObject.Parse("""{"FloatValue":1234567.890123456}""");
+        double result = obj.GetFloat("FloatValue");
+        // float precision would give ~1234567.875 or similar (only ~7 significant digits)
+        // double precision preserves all digits
+        Assert.Equal(1234567.890123456, result, 6);
+    }
+
+    [Fact]
+    public void JsonObject_GetFloat_LargeValue_NoRounding()
+    {
+        // Regression: GetFloat used to cast through (float), losing precision
+        var obj = JsonObject.Parse("""{"FloatValue":9876543.210987654}""");
+        double result = obj.GetFloat("FloatValue");
+        Assert.True(Math.Abs(result - 9876543.210987654) < 0.001,
+            $"GetFloat returned {result}, expected ~9876543.210987654 (precision loss detected)");
+    }
+
+    // --- Float type rejection -----------------------------------------
+
+    [Fact]
+    public void JsonArray_ValidateType_RejectsFloat()
+    {
+        // After the float-to-double migration, float values must not be stored in the JSON model.
+        // Callers should cast to double before adding.
+        var arr = new JsonArray();
+        Assert.Throws<ArgumentException>(() => arr.Add(1.5f));
+    }
+
+    [Fact]
+    public void Double_PrecisionRoundTrip_ThroughJsonModel()
+    {
+        // Verify a high-precision double value (double precision 64-bit) round trips
+		// without precision loss through parse (in) -> model (x) -> serialize (out).
+        const double original = 1234567.890123456;
+        var json = $$"""{"Value":{{original.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}}}""";
+        var obj = JsonObject.Parse(json);
+        double retrieved = obj.GetDouble("Value");
+        Assert.Equal(original, retrieved);
+
+        // Serialize back and re-parse to confirm full round-trip
+        string serialized = obj.ToString();
+        var obj2 = JsonObject.Parse(serialized);
+        Assert.Equal(original, obj2.GetDouble("Value"));
+    }
+
     // --- JsonObject: Contains ----------------------------------------
 
     [Fact]
@@ -214,7 +264,7 @@ public class JsonModelTests
     public void JsonObject_GetValue_DottedPath()
     {
         var obj = JsonObject.Parse("""{"player":{"health":100,"name":"Test"}}""");
-        Assert.Equal(100, Convert.ToInt32(obj.GetValue("player.health")));
+        Assert.Equal(100, Convert.ToInt32(obj.GetValue("player.health"), CultureInfo.InvariantCulture));
         Assert.Equal("Test", obj.GetValue("player.name") as string);
     }
 
@@ -222,7 +272,7 @@ public class JsonModelTests
     public void JsonObject_GetValue_ArrayIndexPath()
     {
         var obj = JsonObject.Parse("""{"items":[10,20,30]}""");
-        Assert.Equal(30, Convert.ToInt32(obj.GetValue("items[2]")));
+        Assert.Equal(30, Convert.ToInt32(obj.GetValue("items[2]"), CultureInfo.InvariantCulture));
     }
 
     // --- JsonArray: Add / Length --------------------------------------
@@ -446,5 +496,113 @@ public class JsonModelTests
         obj.Add("nullable", null);
         Assert.Equal(1, obj.Size());
         Assert.Null(obj.Get("nullable"));
+    }
+
+    // --- CultureInfo safety ---
+
+    [Fact]
+    public void JsonObject_GetDouble_CultureInvariant_WhenStringValue()
+    {
+        // Simulate a value stored as a string (not RawDouble) with a period decimal
+        var prevCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+        try
+        {
+            // Set a comma-decimal culture (e.g. German)
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+
+            var obj = new JsonObject();
+            obj.Add("val", "1.5"); // stored as string, not RawDouble
+            double result = obj.GetDouble("val");
+            Assert.Equal(1.5, result);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = prevCulture;
+        }
+    }
+
+    [Fact]
+    public void JsonObject_GetDecimal_CultureInvariant_WhenStringValue()
+    {
+        var prevCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("fr-FR");
+
+            var obj = new JsonObject();
+            obj.Add("val", "2.75");
+            decimal result = obj.GetDecimal("val");
+            Assert.Equal(2.75m, result);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = prevCulture;
+        }
+    }
+
+    [Fact]
+    public void JsonArray_GetDouble_CultureInvariant_WhenStringValue()
+    {
+        var prevCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+
+            var arr = new JsonArray();
+            arr.Add("3.14"); // stored as string
+            double result = arr.GetDouble(0);
+            Assert.Equal(3.14, result);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = prevCulture;
+        }
+    }
+
+    [Fact]
+    public void JsonArray_GetInt_CultureInvariant_WhenStringValue()
+    {
+        var prevCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+
+            var arr = new JsonArray();
+            arr.Add("42");
+            int result = arr.GetInt(0);
+            Assert.Equal(42, result);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = prevCulture;
+        }
+    }
+
+    [Fact]
+    public void JsonArray_FishCatchValue_RoundTrip_PreservesPrecision()
+    {
+        // Simulates the fish catch data flow: parse JSON -> read double -> format to string -> parse back -> serialize
+        string json = """{"LargestCatchList":[0.0,1234567.890123456,42.5]}""";
+        var obj = JsonObject.Parse(json);
+        var arr = obj.GetArray("LargestCatchList")!;
+
+        // Step 1: read large double from array (simulates LoadKnownFish)
+        double largestCatch = arr.GetDouble(1);
+        Assert.Equal(1234567.890123456, largestCatch, 6);
+
+        // Step 2: convert to string for display (simulates grid cell value)
+        string displayed = largestCatch.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // Step 3: parse back from display string (simulates SaveKnownFish)
+        Assert.True(double.TryParse(displayed, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out double parsed));
+        Assert.Equal(largestCatch, parsed);
+
+        // Step 4: write back to array
+        arr.Set(1, parsed);
+
+        // Step 5: serialize and verify full precision is preserved
+        string serialized = JsonParser.Serialize(obj, false);
+        Assert.Contains("1234567.890123456", serialized);
     }
 }

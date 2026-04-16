@@ -1,5 +1,6 @@
 using NMSE.Models;
 using System.Buffers;
+using System.Globalization;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
@@ -183,7 +184,7 @@ public class SaveFileManager
             existingBackups.RemoveAt(0);
         }
 
-        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         string backupName = $"{dirName}_{timestamp}.zip";
         string backupPath = Path.Combine(backupRoot, backupName);
 

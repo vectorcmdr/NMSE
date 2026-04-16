@@ -14,10 +14,13 @@ namespace NMSE.Tests;
 /// </summary>
 public class UiConventionTests
 {
-    // TODO: This class needs to be built upon over time as new conventions are added, as well as old ones being captured - but bigger fish to fry right now.
-    // In the future, consider using Roslyn.
+	// TODO: This class needs to be built upon over time as new conventions are added
+	//
+	// 16/04/26: Added decimal indicator invariant culture check explicit for Roslyn
+	// because I am sick of it being mentioned as a "regression fear" - so now Roz and
+	// the tests will error it so I can paste a test/build output into tickets and move on.
 
-    private readonly ITestOutputHelper _output;
+	private readonly ITestOutputHelper _output;
     private const string UiDir = "../../../../../UI";
 
     public UiConventionTests(ITestOutputHelper output) { _output = output; }
@@ -105,6 +108,76 @@ public class UiConventionTests
     }
 
     /// <summary>
+    /// Every floating-point TryParse/Parse call in the UI layer must specify
+    /// <c>CultureInfo.InvariantCulture</c> to prevent locale-dependent decimal
+    /// separators from corrupting JSON save data.
+    ///
+    /// Preferred: use <c>InvariantNumericTextBox</c> for TextBox fields that hold
+    /// decimal numbers - it handles culture normalisation automatically.
+    ///
+    /// If raw parsing is unavoidable (e.g. DataGridView cell validation), always
+    /// pass <c>CultureInfo.InvariantCulture</c>.
+    /// </summary>
+    [Fact]
+    public void AllFloatingPointParses_UseInvariantCulture()
+    {
+        if (!Directory.Exists(UiDir))
+        {
+            _output.WriteLine("UI directory not found, skipping.");
+            return;
+        }
+
+        var csFiles = Directory.GetFiles(UiDir, "*.cs", SearchOption.AllDirectories);
+        var violations = new System.Collections.Generic.List<string>();
+
+        // Matches double.TryParse / double.Parse / float.TryParse / float.Parse /
+        // decimal.TryParse / decimal.Parse calls.
+        var parsePattern = new Regex(
+            @"\b(double|float|decimal)\.(Try)?Parse\s*\(",
+            RegexOptions.Compiled);
+
+        foreach (var file in csFiles)
+        {
+            // Skip Designer.cs files - they don't contain parsing logic
+            if (file.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+
+                // Skip comment lines
+                string trimmed = line.TrimStart();
+                if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("*", StringComparison.Ordinal) || trimmed.StartsWith("///", StringComparison.Ordinal))
+                    continue;
+
+                if (!parsePattern.IsMatch(line))
+                    continue;
+
+                // The call must mention InvariantCulture somewhere on this line
+                // or the next line (multi-line calls are common in this codebase).
+                bool hasCulture = line.Contains("InvariantCulture");
+                if (!hasCulture && i + 1 < lines.Length)
+                    hasCulture = lines[i + 1].Contains("InvariantCulture");
+                if (!hasCulture && i + 2 < lines.Length)
+                    hasCulture = lines[i + 2].Contains("InvariantCulture");
+
+                if (!hasCulture)
+                {
+                    string relative = Path.GetRelativePath(UiDir, file);
+                    violations.Add($"{relative}:{i + 1}: {trimmed}");
+                }
+            }
+        }
+
+        foreach (var v in violations)
+            _output.WriteLine(v);
+
+        Assert.Empty(violations);
+    }
+
+    /// <summary>
     /// Heuristic check: scans backwards from the given line looking for a
     /// 'static' keyword in a method signature before hitting a closing brace
     /// at column 0-4 (indicating a prior method boundary).
@@ -119,8 +192,8 @@ public class UiConventionTests
                 || trimmed.Contains("string ") || trimmed.Contains("int ") || trimmed.Contains("Task ")))
                 return true;
             // Stop scanning at class/struct boundary
-            if (trimmed.StartsWith("public class ") || trimmed.StartsWith("internal class ")
-                || trimmed.StartsWith("private class ") || trimmed.StartsWith("public partial class "))
+            if (trimmed.StartsWith("public class ", StringComparison.Ordinal) || trimmed.StartsWith("internal class ", StringComparison.Ordinal)
+                || trimmed.StartsWith("private class ", StringComparison.Ordinal) || trimmed.StartsWith("public partial class ", StringComparison.Ordinal))
                 return false;
         }
         return false;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using NMSE.Core;
 
@@ -179,7 +180,7 @@ public static class UiStrings
         string template = Get(key);
         try
         {
-            return string.Format(template, args);
+            return string.Format(CultureInfo.InvariantCulture, template, args);
         }
         catch (FormatException)
         {

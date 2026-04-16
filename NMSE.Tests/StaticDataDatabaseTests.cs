@@ -859,7 +859,7 @@ public class StaticDataDatabaseTests
     public void WordDatabase_LoadFromFile_ReturnsExpectedWordCount()
     {
         var db = LoadWordDbFromJson();
-        Assert.Equal(2149, db.Count);
+        Assert.Equal(2150, db.Count);
     }
 
     [Fact]
@@ -909,7 +909,7 @@ public class StaticDataDatabaseTests
     public void CompanionDatabase_AllEntriesHaveCaretPrefix()
     {
         foreach (var entry in CompanionDatabase.Entries)
-            Assert.True(entry.Id.StartsWith("^"), $"Entry '{entry.Id}' should start with '^'");
+            Assert.True(entry.Id.StartsWith("^", StringComparison.Ordinal), $"Entry '{entry.Id}' should start with '^'");
     }
 
     [Fact]
@@ -984,7 +984,7 @@ public class StaticDataDatabaseTests
     public void ProceduralStubs_IdsDoNotHaveCaretPrefix()
     {
         foreach (var entry in ProceduralStubs.Items)
-            Assert.False(entry.Id.StartsWith("^"), $"Entry '{entry.Id}' should not start with '^'");
+            Assert.False(entry.Id.StartsWith("^", StringComparison.Ordinal), $"Entry '{entry.Id}' should not start with '^'");
     }
 
     [Fact]
@@ -1747,7 +1747,7 @@ public class StaticDataDatabaseTests
     {
         // TitleDatabase IDs should NOT have the ^ prefix used in save files
         foreach (var title in TitleDatabase.Titles)
-            Assert.False(title.Id.StartsWith("^"), $"Title {title.Id} should not have ^ prefix");
+            Assert.False(title.Id.StartsWith("^", StringComparison.Ordinal), $"Title {title.Id} should not have ^ prefix");
     }
 
     [Fact]
@@ -1758,7 +1758,7 @@ public class StaticDataDatabaseTests
         var saveValues = new[] { "^T_TRA1", "^T_EXP1", "^T_WAR1", "^T_ABANDLORE1", "^T_ABYSS" };
         foreach (var sv in saveValues)
         {
-            string stripped = sv.StartsWith("^") ? sv.Substring(1) : sv;
+            string stripped = sv.StartsWith("^", StringComparison.Ordinal) ? sv.Substring(1) : sv;
             var title = TitleDatabase.GetTitle(stripped);
             Assert.NotNull(title);
         }

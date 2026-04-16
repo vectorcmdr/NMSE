@@ -24,7 +24,7 @@ public class JsonNameMapper
         string content = reader.ReadToEnd();
 
         var trimmed = content.TrimStart();
-        if (!trimmed.StartsWith("{"))
+        if (!trimmed.StartsWith("{", StringComparison.Ordinal))
             throw new InvalidDataException("Mapping file is not JSON. Only Resources/db/mapping.json (JSON) is supported.");
 
         try

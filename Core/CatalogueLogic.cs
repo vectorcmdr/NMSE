@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Data;
 using NMSE.Models;
 
@@ -332,7 +333,7 @@ internal static class CatalogueLogic
             var val = playerState.Get("KnownPortalRunes");
             if (val is int i) runesBitfield = i;
             else if (val is long l) runesBitfield = (int)l;
-            else if (val != null) runesBitfield = Convert.ToInt32(val);
+            else if (val != null) runesBitfield = Convert.ToInt32(val, CultureInfo.InvariantCulture);
         }
         catch { }
         return runesBitfield;

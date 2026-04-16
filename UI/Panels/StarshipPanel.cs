@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Config;
 using NMSE.Core;
 using NMSE.Core.Utilities;
@@ -1163,7 +1164,7 @@ public partial class StarshipPanel : UserControl
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, string.Format("Optimisation failed: {0}", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, string.Format(CultureInfo.CurrentCulture, "Optimisation failed: {0}", ex.Message), UiStrings.Get("common.error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

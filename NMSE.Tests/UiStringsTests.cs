@@ -634,4 +634,45 @@ public class UiStringsTests : IDisposable
             }
         }
     }
+
+    [Fact]
+    public void UiStrings_AccessorySlotFrontBack_ExistInAllLanguages()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        string[] requiredKeys =
+        [
+            "companion.accessory_slot_front",
+            "companion.accessory_slot_back",
+        ];
+
+        foreach (var lang in AllLanguages)
+        {
+            UiStrings.SetDirectory(langDir);
+            UiStrings.Load(lang);
+
+            foreach (var key in requiredKeys)
+            {
+                string value = UiStrings.Get(key);
+                Assert.NotEqual(key, value);
+            }
+        }
+    }
+
+    [Fact]
+    public void UiStrings_NoAccessories_ExistsInAllLanguages()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        foreach (var lang in AllLanguages)
+        {
+            UiStrings.SetDirectory(langDir);
+            UiStrings.Load(lang);
+
+            string value = UiStrings.Get("companion.no_accessories");
+            Assert.NotEqual("companion.no_accessories", value);
+        }
+    }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Xml.Linq;
 
 namespace NMSE.Core;
@@ -157,7 +158,7 @@ internal static class MxmlRewardEditor
                 var elem = new XElement(PropertyElementName,
                     new XAttribute("name", RewardPropertyName),
                     new XAttribute("value", toUnlock[i]),
-                    new XAttribute("_index", i.ToString()));
+                    new XAttribute("_index", i.ToString(CultureInfo.InvariantCulture)));
                 container.Add(elem);
             }
 

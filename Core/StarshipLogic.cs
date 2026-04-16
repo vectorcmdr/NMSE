@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using NMSE.Core.Utilities;
 using NMSE.Data;
@@ -1203,7 +1204,7 @@ internal static class StarshipLogic
         if (priority == Data.StarshipDatabase.AccessPriority ||
             priority == Data.StarshipDatabase.CockpitPriority)
         {
-            return origIndex.ToString("D6");
+            return origIndex.ToString("D6", CultureInfo.InvariantCulture);
         }
 
         // Other (int.MaxValue): alphabetical by object list display name, fallback to ObjectID
@@ -1214,6 +1215,6 @@ internal static class StarshipLogic
         }
 
         // Categories 1 -> 4 (Reactor, Thruster, Wing, Gear) by fixed sub-order
-        return Data.StarshipDatabase.GetSubOrder(objectId).ToString("D6");
+        return Data.StarshipDatabase.GetSubOrder(objectId).ToString("D6", CultureInfo.InvariantCulture);
     }
 }

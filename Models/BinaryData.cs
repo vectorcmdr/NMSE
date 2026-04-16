@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace NMSE.Models;
@@ -52,7 +53,7 @@ public class BinaryData : IEquatable<BinaryData>
     {
         var sb = new StringBuilder(_data.Length * 2);
         foreach (byte b in _data)
-            sb.Append(b.ToString("X2"));
+            sb.Append(b.ToString("X2", CultureInfo.InvariantCulture));
         return sb.ToString();
     }
 

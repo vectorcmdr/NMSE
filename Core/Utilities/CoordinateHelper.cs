@@ -85,7 +85,7 @@ public static class CoordinateHelper
             else if (c >= 'A' && c <= 'F') val = c - 'A' + 10;
             else if (c >= 'a' && c <= 'f') val = c - 'a' + 10;
             else continue;
-            parts.Add((val + 1).ToString());
+            parts.Add((val + 1).ToString(CultureInfo.InvariantCulture));
         }
         return string.Join(",", parts);
     }

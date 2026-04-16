@@ -163,10 +163,10 @@ public class JsonWriterTests
             JsonWriter.SaveJson(data, tempDir, "test.json");
             string json = File.ReadAllText(Path.Combine(tempDir, "test.json"));
 
-            int idPos = json.IndexOf("\"Id\"");
-            int iconPos = json.IndexOf("\"Icon\"");
-            int namePos = json.IndexOf("\"Name\"");
-            int valuePos = json.IndexOf("\"Value\"");
+            int idPos = json.IndexOf("\"Id\"", StringComparison.Ordinal);
+            int iconPos = json.IndexOf("\"Icon\"", StringComparison.Ordinal);
+            int namePos = json.IndexOf("\"Name\"", StringComparison.Ordinal);
+            int valuePos = json.IndexOf("\"Value\"", StringComparison.Ordinal);
 
             // Properties should appear in dictionary insertion order
             Assert.True(idPos < iconPos);

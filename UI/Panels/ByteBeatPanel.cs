@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Core;
 using NMSE.Data;
 using NMSE.Models;
@@ -355,7 +356,7 @@ public partial class ByteBeatPanel : UserControl
         _authorPlatformLabel.Text = UiStrings.Get("bytebeat.author_platform");
         _sectionDataLabel.Text = UiStrings.Get("bytebeat.section_data");
         for (int i = 0; i < _dataLabels.Length; i++)
-            _dataLabels[i].Text = string.Format(UiStrings.Get("bytebeat.data_channel"), i);
+            _dataLabels[i].Text = string.Format(CultureInfo.CurrentCulture, UiStrings.Get("bytebeat.data_channel"), i);
         _sectionLibraryLabel.Text = UiStrings.Get("bytebeat.section_library");
     }
 }

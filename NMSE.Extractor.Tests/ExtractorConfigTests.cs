@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Extractor.Config;
 
 namespace NMSE.Extractor.Tests;
@@ -105,7 +106,7 @@ public class ExtractorConfigTests
     public void ImageMagickDownloadPattern_ContainsPlaceholder()
     {
         Assert.Contains("{0}", ExtractorConfig.ImageMagickDownloadPattern);
-        string url = string.Format(ExtractorConfig.ImageMagickDownloadPattern, "7.1.2-15");
+        string url = string.Format(CultureInfo.InvariantCulture, ExtractorConfig.ImageMagickDownloadPattern, "7.1.2-15");
         Assert.Contains("7.1.2-15", url);
         Assert.EndsWith(".7z", url);
     }
@@ -114,7 +115,7 @@ public class ExtractorConfigTests
     public void SevenZipDownloadPattern_ContainsPlaceholder()
     {
         Assert.Contains("{0}", ExtractorConfig.SevenZipDownloadPattern);
-        string url = string.Format(ExtractorConfig.SevenZipDownloadPattern, "24.09");
+        string url = string.Format(CultureInfo.InvariantCulture, ExtractorConfig.SevenZipDownloadPattern, "24.09");
         Assert.Contains("24.09", url);
         Assert.EndsWith("7zr.exe", url);
     }

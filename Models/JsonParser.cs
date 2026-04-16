@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Globalization;
 using System.Text;
 using System.Text.Unicode;
 
@@ -103,7 +104,7 @@ public static class JsonParser
             case decimal d: sb.Append(d.ToString("G", System.Globalization.CultureInfo.InvariantCulture)); break;
             case int i: sb.Append(i); break;
             case long l: sb.Append(l); break;
-            case float f: AppendFloat(sb, f); break;
+            case float f: AppendDouble(sb, (double)f); break;
             case RawDouble rd: sb.Append(rd.Text); break;
             case double d: AppendDouble(sb, d); break;
             case string s: AppendQuotedString(sb, s); break;
@@ -128,16 +129,6 @@ public static class JsonParser
             sb.Append(".0");
     }
 
-    /// <summary>
-    /// Append a float value using round-trip format ("R") with decimal point preservation.
-    /// </summary>
-    private static void AppendFloat(StringBuilder sb, float f)
-    {
-        string s = f.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-        sb.Append(s);
-        if (s.IndexOfAny(_floatIndicators) < 0)
-            sb.Append(".0");
-    }
 
     private static readonly char[] _floatIndicators = { '.', 'E', 'e' };
 
@@ -692,7 +683,7 @@ public static class JsonParser
             numBuf = new char[MaxJsonNumberLength];
             if (negative) numBuf[numLen++] = '-';
             // Write the integer part we already accumulated
-            string intStr = intValue.ToString();
+            string intStr = intValue.ToString(CultureInfo.InvariantCulture);
             intStr.CopyTo(0, numBuf, numLen, intStr.Length);
             numLen += intStr.Length;
             numBuf[numLen++] = '.';
@@ -709,7 +700,7 @@ public static class JsonParser
                 // No decimal point but has exponent - build the buffer now
                 numBuf = new char[MaxJsonNumberLength];
                 if (negative) numBuf[numLen++] = '-';
-                string intStr = intValue.ToString();
+                string intStr = intValue.ToString(CultureInfo.InvariantCulture);
                 intStr.CopyTo(0, numBuf, numLen, intStr.Length);
                 numLen += intStr.Length;
             }

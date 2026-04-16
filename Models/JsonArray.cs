@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace NMSE.Models;
 
 /// <summary>
@@ -170,7 +172,7 @@ public class JsonArray
     public int GetInt(int index)
     {
         var val = Get(index);
-        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val);
+        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="long"/>.</summary>
@@ -179,7 +181,7 @@ public class JsonArray
     public long GetLong(int index)
     {
         var val = Get(index);
-        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val);
+        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="double"/>.</summary>
@@ -188,18 +190,18 @@ public class JsonArray
     public double GetDouble(int index)
     {
         var val = Get(index);
-        return val is RawDouble rd ? rd.Value : Convert.ToDouble(val);
+        return val is RawDouble rd ? rd.Value : Convert.ToDouble(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="bool"/>.</summary>
     /// <param name="index">The zero-based element index.</param>
     /// <returns>The boolean value.</returns>
-    public bool GetBool(int index) => Convert.ToBoolean(Get(index));
+    public bool GetBool(int index) => Convert.ToBoolean(Get(index), CultureInfo.InvariantCulture);
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="decimal"/>.</summary>
     /// <param name="index">The zero-based element index.</param>
     /// <returns>The decimal value.</returns>
-    public decimal GetDecimal(int index) => Convert.ToDecimal(Get(index));
+    public decimal GetDecimal(int index) => Convert.ToDecimal(Get(index), CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Creates a deep copy of this array, recursively cloning all nested objects and arrays.
@@ -238,7 +240,7 @@ public class JsonArray
 
     private static void ValidateType(object? value)
     {
-        if (value is null or bool or int or long or float or double or decimal or string or JsonObject or JsonArray or BinaryData)
+        if (value is null or bool or int or long or double or decimal or string or JsonObject or JsonArray or BinaryData)
             return;
         throw new ArgumentException($"Unsupported JSON value type: {value.GetType().Name}");
     }

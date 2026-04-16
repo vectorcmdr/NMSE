@@ -837,7 +837,7 @@ public static class TechAdjacencyDatabase
     {
         if (string.IsNullOrEmpty(itemId)) return null;
         // Strip ^ prefix
-        string id = itemId.StartsWith("^") ? itemId.Substring(1) : itemId;
+        string id = itemId.StartsWith("^", StringComparison.Ordinal) ? itemId.Substring(1) : itemId;
         // Strip #variant suffix
         int hashIdx = id.IndexOf('#');
         if (hashIdx >= 0) id = id.Substring(0, hashIdx);

@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
@@ -265,8 +266,8 @@ public partial class MainStatsPanel : UserControl
             catch { _playerStateField.SelectedIndex = -1; }
 
             double dist = CoordinateHelper.GetDistanceToCenter(voxelX, voxelY, voxelZ);
-            _distanceToCenterField.Text = $"{dist:F0} ly";
-            _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString();
+            _distanceToCenterField.Text = $"{dist.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ly";
+            _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString(CultureInfo.CurrentCulture);
 
             // Freighter/Nexus in system
             try
@@ -320,7 +321,7 @@ public partial class MainStatsPanel : UserControl
                         catch { }
                     }
                 }
-                _planetsInSystemField.Text = count.ToString();
+                _planetsInSystemField.Text = count.ToString(CultureInfo.CurrentCulture);
             }
             catch { _planetsInSystemField.Text = "0"; }
 
@@ -399,7 +400,7 @@ public partial class MainStatsPanel : UserControl
         try
         {
             var lastWrite = File.GetLastWriteTime(path);
-            _lastSaveDateLabel.Text = lastWrite.ToString("g");
+            _lastSaveDateLabel.Text = lastWrite.ToString("g", CultureInfo.CurrentCulture);
         }
         catch { _lastSaveDateLabel.Text = ""; }
     }
@@ -634,8 +635,8 @@ public partial class MainStatsPanel : UserControl
         _signalBoosterField.Text = CoordinateHelper.VoxelToSignalBooster(voxelX, voxelY, voxelZ, solarIdx);
 
         double dist = CoordinateHelper.GetDistanceToCenter(voxelX, voxelY, voxelZ);
-        _distanceToCenterField.Text = $"{dist:F0} ly";
-        _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString();
+        _distanceToCenterField.Text = $"{dist.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ly";
+        _jumpsToCenterField.Text = CoordinateHelper.GetJumpsToCenter(dist, CoordinateHelper.DefaultHyperdriveRange).ToString(CultureInfo.CurrentCulture);
     }
 
     private void OnConvertPortalCode(object? sender, EventArgs e)
@@ -994,7 +995,7 @@ public partial class MainStatsPanel : UserControl
 
             foreach (var title in TitleDatabase.Titles)
             { 
-                var fixedName = string.Format(title.Name, PlayerName);
+                var fixedName = string.Format(CultureInfo.CurrentCulture, title.Name, PlayerName);
                 int rowIdx = _titlesGrid.Rows.Add(title.Id, fixedName, title.UnlockDescription, unlockedSet.Contains(title.Id));
                 _titlesGrid.Rows[rowIdx].Tag = title.Id;
             }

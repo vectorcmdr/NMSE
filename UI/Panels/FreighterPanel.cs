@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
@@ -95,7 +96,7 @@ public partial class FreighterPanel : UserControl
 
             _freighterBase = data.FreighterBase;
             if (_freighterBase != null)
-                _baseItemsField.Text = data.BaseItemCount.ToString();
+                _baseItemsField.Text = data.BaseItemCount.ToString(CultureInfo.CurrentCulture);
             else
                 _baseItemsField.Text = UiStrings.Get("common.na");
 
@@ -271,7 +272,7 @@ public partial class FreighterPanel : UserControl
                         try
                         {
                             var objects = _freighterBase.GetArray("Objects");
-                            _baseItemsField.Text = objects != null ? objects.Length.ToString() : "0";
+                            _baseItemsField.Text = objects != null ? objects.Length.ToString(CultureInfo.CurrentCulture) : "0";
                         }
                         catch { _baseItemsField.Text = "0"; }
 

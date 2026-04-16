@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 using NMSE.Core;
 using NMSE.Core.Utilities;
@@ -606,7 +607,7 @@ internal class BasesSubPanel : UserControl
             if (objects != null) objectCount = objects.Length;
         }
         catch { }
-        _baseItems.Text = objectCount.ToString();
+        _baseItems.Text = objectCount.ToString(CultureInfo.CurrentCulture);
         _exportBtn.Enabled = true;
         _importBtn.Enabled = true;
         _moveBaseComputerBtn.Enabled = true;

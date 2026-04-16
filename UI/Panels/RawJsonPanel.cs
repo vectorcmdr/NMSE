@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Models;
 using NMSE.Core;
 using NMSE.Data;
@@ -54,7 +55,7 @@ public partial class RawJsonPanel : UserControl
             BuildTree(saveData);
         else
             _jsonTextBox.Text = RawJsonLogic.ToDisplayString(saveData);
-        _statusLabel.Text = UiStrings.Format("raw_json.loaded_keys", saveData.Size().ToString("N0"));
+        _statusLabel.Text = UiStrings.Format("raw_json.loaded_keys", saveData.Size().ToString("N0", CultureInfo.CurrentCulture));
         _statusLabel.ForeColor = Color.Gray;
     }
 
@@ -106,7 +107,7 @@ public partial class RawJsonPanel : UserControl
                 BuildTree(_accountData);
             else
                 _jsonTextBox.Text = RawJsonLogic.ToDisplayString(_accountData);
-            _statusLabel.Text = UiStrings.Format("raw_json.edited_account", _accountData.Size().ToString("N0"));
+            _statusLabel.Text = UiStrings.Format("raw_json.edited_account", _accountData.Size().ToString("N0", CultureInfo.CurrentCulture));
             _statusLabel.ForeColor = Color.DarkBlue;
         }
         else if (_saveData != null)
@@ -121,7 +122,7 @@ public partial class RawJsonPanel : UserControl
                 BuildTree(_saveData);
             else
                 _jsonTextBox.Text = RawJsonLogic.ToDisplayString(_saveData);
-            _statusLabel.Text = UiStrings.Format("raw_json.loaded_keys", _saveData.Size().ToString("N0"));
+            _statusLabel.Text = UiStrings.Format("raw_json.loaded_keys", _saveData.Size().ToString("N0", CultureInfo.CurrentCulture));
             _statusLabel.ForeColor = Color.Gray;
         }
     }
@@ -296,7 +297,7 @@ public partial class RawJsonPanel : UserControl
             if (count % 500 == 0)
             {
                 _treeView.EndUpdate();
-                _statusLabel.Text = UiStrings.Format("raw_json.expanding_count", count.ToString("N0"));
+                _statusLabel.Text = UiStrings.Format("raw_json.expanding_count", count.ToString("N0", CultureInfo.CurrentCulture));
                 await Task.Delay(1); // Yield to UI thread
                 _treeView.BeginUpdate();
             }
@@ -307,7 +308,7 @@ public partial class RawJsonPanel : UserControl
         _expandAllButton.Enabled = true;
         _collapseAllButton.Enabled = true;
         _stopExpandBtn.Visible = false;
-        _statusLabel.Text = _cancelExpand ? UiStrings.Format("raw_json.stopped_at", count.ToString("N0")) : UiStrings.Format("raw_json.expanded_nodes", count.ToString("N0"));
+        _statusLabel.Text = _cancelExpand ? UiStrings.Format("raw_json.stopped_at", count.ToString("N0", CultureInfo.CurrentCulture)) : UiStrings.Format("raw_json.expanded_nodes", count.ToString("N0", CultureInfo.CurrentCulture));
         _statusLabel.ForeColor = Color.Gray;
     }
 
@@ -407,7 +408,7 @@ public partial class RawJsonPanel : UserControl
         JsonObject => 0,
         JsonArray => 1,
         string => 2,
-        int or long or double or decimal or float => 3,
+        int or long or double or decimal => 3,
         bool => 4,
         null => 5,
         _ => 2

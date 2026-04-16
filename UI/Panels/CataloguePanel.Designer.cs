@@ -553,7 +553,7 @@ partial class CataloguePanel
         _fishGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "CaughtFish", HeaderText = "Caught Fish", ReadOnly = true, FillWeight = 20 });
         _fishGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Name", ReadOnly = true, FillWeight = 25 });
         _fishGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Count", HeaderText = "Count", ReadOnly = false, FillWeight = 12 });
-        _fishGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "LargestCatch", HeaderText = "Largest Catch", ReadOnly = false, FillWeight = 15, DefaultCellStyle = new DataGridViewCellStyle { Format = "F1" } });
+        _fishGrid.Columns.Add(new DataGridViewTextBoxColumn { Name = "LargestCatch", HeaderText = "Largest Catch", ReadOnly = false, FillWeight = 15 });
         _fishGrid.CellValidating += OnFishCellValidating;
         fishLayout.Controls.Add(_fishGrid, 0, 1);
 

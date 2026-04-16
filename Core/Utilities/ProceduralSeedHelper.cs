@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace NMSE.Core.Utilities;
@@ -17,7 +18,7 @@ internal static class ProceduralSeedHelper
     /// </summary>
     internal static string Generate()
     {
-        return Random.Shared.Next(0, 100000).ToString("D5");
+        return Random.Shared.Next(0, 100000).ToString("D5", CultureInfo.InvariantCulture);
     }
 
     /// <summary>

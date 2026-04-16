@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace NMSE.Models;
@@ -307,7 +308,7 @@ public partial class JsonObject
     public int GetInt(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val);
+        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="long"/>.</summary>
@@ -316,7 +317,7 @@ public partial class JsonObject
     public long GetLong(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val);
+        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="double"/>.</summary>
@@ -325,27 +326,34 @@ public partial class JsonObject
     public double GetDouble(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? rd.Value : Convert.ToDouble(val);
+        return val is RawDouble rd ? rd.Value : Convert.ToDouble(val, CultureInfo.InvariantCulture);
     }
 
-    /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="float"/>.</summary>
+    /// <summary>
+    /// Returns the value at <paramref name="name"/> converted to a <see cref="double"/>.
+    /// This method exists for callers that conceptually deal with float-precision values
+    /// (e.g., NMS "FloatValue" fields) but returns a full <see cref="double"/> to avoid
+    /// silent precision loss that a <c>(float)</c> cast would cause for large numbers.
+	/// This is explicitly because of the 'everything is an int64 in the end' math logic
+	/// employed in the engine for almost all numbers that aren't split words etc.
+    /// </summary>
     /// <param name="name">The property name or dotted path.</param>
-    /// <returns>The single-precision floating-point value.</returns>
+    /// <returns>The double-precision floating-point value.</returns>
     public double GetFloat(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? (float)rd.Value : Convert.ToSingle(val);
+        return val is RawDouble rd ? rd.Value : Convert.ToDouble(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="bool"/>.</summary>
     /// <param name="name">The property name or dotted path.</param>
     /// <returns>The boolean value.</returns>
-    public bool GetBool(string name) => Convert.ToBoolean(GetValue(name));
+    public bool GetBool(string name) => Convert.ToBoolean(GetValue(name), CultureInfo.InvariantCulture);
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="decimal"/>.</summary>
     /// <param name="name">The property name or dotted path.</param>
     /// <returns>The decimal value.</returns>
-    public decimal GetDecimal(string name) => Convert.ToDecimal(GetValue(name));
+    public decimal GetDecimal(string name) => Convert.ToDecimal(GetValue(name), CultureInfo.InvariantCulture);
 
     // Path-based access
     // Supports dotted paths like "PlayerStateData.Health" and transforms
@@ -378,7 +386,7 @@ public partial class JsonObject
             if (key is not null && current is JsonObject obj)
                 current = obj.Get(key);
             else if (indexStr is not null && current is JsonArray arr)
-                current = arr.Get(int.Parse(indexStr));
+                current = arr.Get(int.Parse(indexStr, CultureInfo.InvariantCulture));
             else
                 return null;
         }
@@ -397,7 +405,7 @@ public partial class JsonObject
                 var result = kvp.Value(this);
                 if (result is string s) return s;
             }
-            else if (path.StartsWith(kvp.Key + ".") || path.StartsWith(kvp.Key + "["))
+            else if (path.StartsWith(kvp.Key + ".", StringComparison.Ordinal) || path.StartsWith(kvp.Key + "[", StringComparison.Ordinal))
             {
                 var result = kvp.Value(this);
                 if (result is string s)

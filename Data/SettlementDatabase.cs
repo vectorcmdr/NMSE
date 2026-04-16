@@ -21,7 +21,7 @@ public class PerkStatChange
         {
             if (!SettlementDatabase.PerkStatRanges.TryGetValue(Type, out var ranges)) return "";
             int[] r = ranges[(int)Strength];
-            string sign = Strength.ToString().StartsWith("Negative") ? "" : "+";
+            string sign = Strength.ToString().StartsWith("Negative", StringComparison.Ordinal) ? "" : "+";
             return $"{sign}{r[0]}..{r[1]}";
         }
     }

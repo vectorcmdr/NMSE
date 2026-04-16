@@ -1,3 +1,4 @@
+using System.Globalization;
 using NMSE.Data;
 using NMSE.Models;
 using NMSE.Core;
@@ -300,7 +301,7 @@ public partial class AccountPanel : UserControl
             if (hasExpeditionCol)
             {
                 // Season grid: include Expedition column
-                string expLabel = row.SeasonId >= 0 ? row.SeasonId.ToString() : "";
+                string expLabel = row.SeasonId >= 0 ? row.SeasonId.ToString(CultureInfo.CurrentCulture) : "";
                 idx = grid.Rows.Add((object?)icon ?? DBNull.Value, row.Id, row.Name,
                     expLabel, row.Unlocked, row.Redeemed);
             }
