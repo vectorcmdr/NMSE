@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO.Compression;
 using NMSE.Config;
 using NMSE.Core;
@@ -905,13 +906,12 @@ public partial class MainFormResources : Form
                         int slotNum = kvp.Key;
                         var entries = kvp.Value;
 
-                        // Sort so Manual comes before Auto (matching Steam save convention:
-                        // manual is listed first in the file combo)
+                        // Sort so Auto comes before Manual (save.hg is auto, save2.hg is manual)
                         entries.Sort((a, b) =>
                         {
                             bool aIsAuto = a.Identifier.Contains("Auto", StringComparison.OrdinalIgnoreCase);
                             bool bIsAuto = b.Identifier.Contains("Auto", StringComparison.OrdinalIgnoreCase);
-                            return aIsAuto.CompareTo(bIsAuto);
+                            return bIsAuto.CompareTo(aIsAuto);
                         });
 
                         var slotFiles = new List<string>();
@@ -924,7 +924,7 @@ public partial class MainFormResources : Form
 
                         _saveSlotFiles.Add(slotFiles);
                         _xboxFileIdentifiers.Add(slotIdentifiers);
-                        _platformSlotIdentifiers.Add(slotNum.ToString());
+                        _platformSlotIdentifiers.Add(slotNum.ToString(CultureInfo.InvariantCulture));
 
                         // Detect save name and difficulty from the first available data file
                         string saveName = "";
@@ -974,9 +974,10 @@ public partial class MainFormResources : Form
                     string? testData = MemoryDatManager.ExtractSlotData(memoryDatPath, i);
                     if (testData != null && testData.Length > MinimumSlotDataLength)
                     {
-                        _platformSlotIdentifiers.Add(i.ToString());
+                        _platformSlotIdentifiers.Add(i.ToString(CultureInfo.InvariantCulture));
                         _saveSlotFiles.Add(new List<string> { memoryDatPath });
-                        bool isAuto = i % 2 == 1;
+                        // Even sub-slot indices are auto-saves, odd are manual saves
+                        bool isAuto = i % 2 == 0;
                         _saveSlotCombo.Items.Add($"PS4 Slot {i / 2 + 1}{(isAuto ? " (Auto)" : " (Manual)")}");
                     }
                 }
@@ -989,20 +990,22 @@ public partial class MainFormResources : Form
             var saveFiles = new List<List<string>>();
             for (int i = 0; i < 15; i++)
             {
-                string manualSave = i == 0 ? "save.hg" : $"save{i * 2 + 1}.hg";
-                string autoSave = $"save{i * 2 + 2}.hg";
+                // save.hg (slot 0 auto), save2.hg (slot 0 manual),
+                // save3.hg (slot 1 auto), save4.hg (slot 1 manual), etc.
+                string autoSave = i == 0 ? "save.hg" : $"save{i * 2 + 1}.hg";
+                string manualSave = $"save{i * 2 + 2}.hg";
 
-                string manualPath = Path.Combine(dir, manualSave);
                 string autoPath = Path.Combine(dir, autoSave);
+                string manualPath = Path.Combine(dir, manualSave);
 
-                bool hasManual = File.Exists(manualPath);
                 bool hasAuto = File.Exists(autoPath);
+                bool hasManual = File.Exists(manualPath);
 
-                if (hasManual || hasAuto)
+                if (hasAuto || hasManual)
                 {
                     var slotFiles = new List<string>();
-                    if (hasManual) slotFiles.Add(manualPath);
                     if (hasAuto) slotFiles.Add(autoPath);
+                    if (hasManual) slotFiles.Add(manualPath);
 
                     saveFiles.Add(slotFiles);
                     string difficulty = DetectDifficulty(slotFiles[0]);
@@ -1109,14 +1112,16 @@ public partial class MainFormResources : Form
                     suffix = "";
                 else if (fileName.Equals("save.hg", StringComparison.OrdinalIgnoreCase))
                 {
-                    suffix = " (Manual)";
+                    // save.hg is the first slot's auto-save (metaIndex 2, collectionIndex 0)
+                    suffix = " (Auto)";
                 }
                 else
                 {
-                    // Odd-numbered saves are manual; even-numbered are auto
+                    // Odd-numbered files (save3, save5, ...) are auto-saves;
+                    // even-numbered files (save2, save4, save6, ...) are manual saves.
                     string numPart = fileName.Replace("save", "").Replace(".hg", "");
                     bool isAuto = int.TryParse(numPart, System.Globalization.NumberStyles.Integer,
-                        System.Globalization.CultureInfo.InvariantCulture, out int num) && num % 2 == 0;
+                        System.Globalization.CultureInfo.InvariantCulture, out int num) && num % 2 == 1;
                     suffix = isAuto ? " (Auto)" : " (Manual)";
                 }
 
@@ -1274,7 +1279,7 @@ public partial class MainFormResources : Form
             _saveButton.Enabled = true;
             EnableMenuItems();
 
-            _statusLabel.Text = UiStrings.Format("status.loaded_save", Path.GetFileName(filePath), loadTimer.ElapsedMilliseconds.ToString("N0"));
+            _statusLabel.Text = UiStrings.Format("status.loaded_save", Path.GetFileName(filePath), loadTimer.ElapsedMilliseconds.ToString("N0", CultureInfo.CurrentCulture));
             _hasUnsavedChanges = false;
         }
         catch (Exception ex)
@@ -1485,7 +1490,7 @@ public partial class MainFormResources : Form
             _progressBar.Visible = false;
             _saveButton.Enabled = true;
             EnableMenuItems();
-            _statusLabel.Text = UiStrings.Format("status.loaded_xbox", slotId, loadTimer.ElapsedMilliseconds.ToString("N0"));
+            _statusLabel.Text = UiStrings.Format("status.loaded_xbox", slotId, loadTimer.ElapsedMilliseconds.ToString("N0", CultureInfo.CurrentCulture));
             _hasUnsavedChanges = false;
         }
         catch (Exception ex)
@@ -1552,7 +1557,7 @@ public partial class MainFormResources : Form
             _progressBar.Visible = false;
             _saveButton.Enabled = true;
             EnableMenuItems();
-            _statusLabel.Text = UiStrings.Format("status.loaded_ps4", slotIndex, loadTimer.ElapsedMilliseconds.ToString("N0"));
+            _statusLabel.Text = UiStrings.Format("status.loaded_ps4", slotIndex, loadTimer.ElapsedMilliseconds.ToString("N0", CultureInfo.CurrentCulture));
             _hasUnsavedChanges = false;
         }
         catch (Exception ex)
@@ -1569,7 +1574,7 @@ public partial class MainFormResources : Form
     {
         if (_menuStrip.Items.Count > 0 && _menuStrip.Items[0] is ToolStripMenuItem fileMenu)
             foreach (ToolStripItem item in fileMenu.DropDownItems)
-                if (item is ToolStripMenuItem mi && (mi.Text?.StartsWith("&Save") == true || mi.Text?.StartsWith("Save") == true))
+                if (item is ToolStripMenuItem mi && (mi.Text?.StartsWith("&Save", StringComparison.Ordinal) == true || mi.Text?.StartsWith("Save", StringComparison.Ordinal) == true))
                     mi.Enabled = true;
         if (_menuStrip.Items.Count > 1 && _menuStrip.Items[1] is ToolStripMenuItem editMenu)
             foreach (ToolStripItem item in editMenu.DropDownItems)
@@ -1735,7 +1740,7 @@ public partial class MainFormResources : Form
         string backupName = Path.GetFileName(latestBackup);
 
         var result = MessageBox.Show(this,
-            UiStrings.Format("dialog.restore_confirm", fileName, backupName, File.GetCreationTime(latestBackup).ToString("g")),
+            UiStrings.Format("dialog.restore_confirm", fileName, backupName, File.GetCreationTime(latestBackup).ToString("g", CultureInfo.CurrentCulture)),
             UiStrings.Get("dialog.restore_backup"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
@@ -1805,7 +1810,7 @@ public partial class MainFormResources : Form
             fileList += $"\n  • {accountFileName}";
 
         var result = MessageBox.Show(this,
-            UiStrings.Format("dialog.restore_single_confirm", fileList, backupName, File.GetCreationTime(latestBackup).ToString("g")),
+            UiStrings.Format("dialog.restore_single_confirm", fileList, backupName, File.GetCreationTime(latestBackup).ToString("g", CultureInfo.CurrentCulture)),
             UiStrings.Get("dialog.restore_backup_single"), MessageBoxButtons.YesNo, MessageBoxIcon.Question);
         if (result != DialogResult.Yes) return;
 
