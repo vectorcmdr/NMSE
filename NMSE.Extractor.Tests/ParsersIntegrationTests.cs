@@ -981,4 +981,147 @@ public class ParsersIntegrationTests
             try { Directory.Delete(tmpDir, true); } catch { }
         }
     }
+
+    [Fact]
+    public void ParseCreatureSpecies_ExtractsAccessoryGroups()
+    {
+        string tmpDir = CreateTempDir();
+        try
+        {
+            string xml = @"<?xml version=""1.0"" encoding=""utf-8""?>
+<Data template=""cGcCreatureDataTable"">
+  <Property name=""Table"">
+    <Property name=""Table"" value=""GcCreatureData"" _id=""TESTCREATURE"">
+      <Property name=""Id"" value=""TESTCREATURE"" />
+      <Property name=""OnlySpawnWhenIdIsForced"" value=""false"" />
+      <Property name=""ForceType"" value=""GcCreatureTypes""><Property name=""CreatureType"" value=""None"" /></Property>
+      <Property name=""RealType"" value=""GcCreatureTypes""><Property name=""CreatureType"" value=""Tyrannosaurus"" /></Property>
+      <Property name=""EcoSystemCreature"" value=""true"" />
+      <Property name=""CanBeFemale"" value=""true"" />
+      <Property name=""Tags"" />
+      <Property name=""MoveArea"" value=""Ground"" />
+      <Property name=""MinScale"" value=""0.5"" />
+      <Property name=""MaxScale"" value=""5.0"" />
+      <Property name=""FurChance"" value=""0.0"" />
+      <Property name=""Rarity"" value=""GcCreatureRarity""><Property name=""CreatureRarity"" value=""Common"" /></Property>
+      <Property name=""PredatorProbabilityModifier"" value=""GcCreatureRoleFrequencyModifier""><Property name=""CreatureRoleFrequencyModifier"" value=""Normal"" /></Property>
+      <Property name=""HerbivoreProbabilityModifier"" value=""GcCreatureRoleFrequencyModifier""><Property name=""CreatureRoleFrequencyModifier"" value=""Normal"" /></Property>
+      <Property name=""KillStatID"" value="""" />
+      <Property name=""KillingBlowMessageID"" value="""" />
+      <Property name=""EggType"" value=""DEFAULT"" />
+      <Property name=""Data"">
+        <Property name=""Data"" value=""GcCreatureMovementData"" _index=""0"">
+          <Property name=""GcCreatureMovementData""><Property name=""Anims"" /></Property>
+        </Property>
+        <Property name=""Data"" value=""GcCreaturePetData"" _index=""1"">
+          <Property name=""GcCreaturePetData"">
+            <Property name=""AccessorySlots"">
+              <Property name=""AccessorySlots"" value=""GcCreaturePetAccessory"" _index=""0"">
+                <Property name=""RequiredDescriptor"" value=""_BODY_TEST"" />
+                <Property name=""Slots"">
+                  <Property name=""Slots"" value=""GcCreaturePetAccessorySlot"" _index=""0"">
+                    <Property name=""AttachLocator"" value=""PETACC_TestR"" />
+                    <Property name=""AccessoryGroup"" value=""RIGHT"" />
+                  </Property>
+                  <Property name=""Slots"" value=""GcCreaturePetAccessorySlot"" _index=""1"">
+                    <Property name=""AttachLocator"" value=""PETACC_TestL"" />
+                    <Property name=""AccessoryGroup"" value=""LEFT"" />
+                  </Property>
+                  <Property name=""Slots"" value=""GcCreaturePetAccessorySlot"" _index=""2"">
+                    <Property name=""AttachLocator"" value=""PETACC_TestF"" />
+                    <Property name=""AccessoryGroup"" value=""FRONT"" />
+                  </Property>
+                </Property>
+                <Property name=""HideParts"" />
+              </Property>
+              <Property name=""AccessorySlots"" value=""GcCreaturePetAccessory"" _index=""1"">
+                <Property name=""RequiredDescriptor"" value=""_BODY_ALT"" />
+                <Property name=""Slots"">
+                  <Property name=""Slots"" value=""GcCreaturePetAccessorySlot"" _index=""0"">
+                    <Property name=""AttachLocator"" value=""PETACC_AltB"" />
+                    <Property name=""AccessoryGroup"" value=""BACK"" />
+                  </Property>
+                </Property>
+                <Property name=""HideParts"" />
+              </Property>
+            </Property>
+          </Property>
+        </Property>
+      </Property>
+      <Property name=""CanBeUsedInPetBattler"" value=""false"" />
+      <Property name=""PetBattlerForcedAffinity"" value=""GcPetBattlerAffinity""><Property name=""PetBattlerAffinity"" value=""Normal"" /></Property>
+    </Property>
+    <Property name=""Table"" value=""GcCreatureData"" _id=""NOSLOTS"">
+      <Property name=""Id"" value=""NOSLOTS"" />
+      <Property name=""OnlySpawnWhenIdIsForced"" value=""true"" />
+      <Property name=""ForceType"" value=""GcCreatureTypes""><Property name=""CreatureType"" value=""None"" /></Property>
+      <Property name=""RealType"" value=""GcCreatureTypes""><Property name=""CreatureType"" value=""None"" /></Property>
+      <Property name=""EcoSystemCreature"" value=""false"" />
+      <Property name=""CanBeFemale"" value=""false"" />
+      <Property name=""Tags"" />
+      <Property name=""MoveArea"" value=""Ground"" />
+      <Property name=""MinScale"" value=""1.0"" />
+      <Property name=""MaxScale"" value=""1.0"" />
+      <Property name=""FurChance"" value=""0.0"" />
+      <Property name=""Rarity"" value=""GcCreatureRarity""><Property name=""CreatureRarity"" value=""Rare"" /></Property>
+      <Property name=""PredatorProbabilityModifier"" value=""GcCreatureRoleFrequencyModifier""><Property name=""CreatureRoleFrequencyModifier"" value=""Normal"" /></Property>
+      <Property name=""HerbivoreProbabilityModifier"" value=""GcCreatureRoleFrequencyModifier""><Property name=""CreatureRoleFrequencyModifier"" value=""Normal"" /></Property>
+      <Property name=""KillStatID"" value="""" />
+      <Property name=""KillingBlowMessageID"" value="""" />
+      <Property name=""EggType"" value=""DEFAULT"" />
+      <Property name=""Data"">
+        <Property name=""Data"" value=""GcCreaturePetData"" _index=""0"">
+          <Property name=""GcCreaturePetData"">
+            <Property name=""AccessorySlots"" />
+          </Property>
+        </Property>
+      </Property>
+      <Property name=""CanBeUsedInPetBattler"" value=""false"" />
+      <Property name=""PetBattlerForcedAffinity"" value=""GcPetBattlerAffinity""><Property name=""PetBattlerAffinity"" value=""Normal"" /></Property>
+    </Property>
+  </Property>
+</Data>";
+
+            string file = Path.Combine(tmpDir, "METADATA_CREATUREDATATABLE.MXML");
+            File.WriteAllText(file, xml);
+            MxmlParser.ClearXmlCache();
+
+            var results = Parsers.ParseCreatureSpecies(file);
+
+            Assert.Equal(2, results.Count);
+
+            // TESTCREATURE
+            var tc = results.First(r => (string?)r["Id"] == "TESTCREATURE");
+            Assert.Equal("None", tc["ForceType"]);
+            Assert.Equal("Tyrannosaurus", tc["RealType"]);
+            Assert.Equal(true, tc["EcoSystemCreature"]);
+            Assert.Equal(true, tc["CanBeFemale"]);
+            Assert.Equal(false, tc["OnlySpawnWhenIdIsForced"]);
+
+            var accSlots = tc["PetAccessorySlots"] as List<Dictionary<string, object?>>;
+            Assert.NotNull(accSlots);
+            Assert.Equal(2, accSlots.Count);
+
+            Assert.Equal("_BODY_TEST", accSlots[0]["RequiredDescriptor"]);
+            var groups0 = accSlots[0]["AccessoryGroups"] as List<string>;
+            Assert.NotNull(groups0);
+            Assert.Equal(new[] { "RIGHT", "LEFT", "FRONT" }, groups0);
+
+            Assert.Equal("_BODY_ALT", accSlots[1]["RequiredDescriptor"]);
+            var groups1 = accSlots[1]["AccessoryGroups"] as List<string>;
+            Assert.NotNull(groups1);
+            Assert.Equal(new[] { "BACK" }, groups1);
+
+            // NOSLOTS -- empty AccessorySlots yields null
+            var ns = results.First(r => (string?)r["Id"] == "NOSLOTS");
+            Assert.Equal("None", ns["ForceType"]);
+            Assert.Equal("None", ns["RealType"]);
+            Assert.Equal(true, ns["OnlySpawnWhenIdIsForced"]);
+            Assert.Null(ns["PetAccessorySlots"]);
+        }
+        finally
+        {
+            try { Directory.Delete(tmpDir, true); } catch { }
+        }
+    }
 }

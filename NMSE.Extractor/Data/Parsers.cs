@@ -408,7 +408,7 @@ public static class Parsers
                                 ["Name"] = MxmlParser.FormatStatTypeName(statType, "Suit_"),
                                 ["LocaleKeyTemplate"] = "enabled",
                                 ["Image"] = statType.Contains('_') ? statType.ToLower().Split('_').Last() : "enabled",
-                                ["Value"] = ((int)double.Parse(bonus, System.Globalization.CultureInfo.InvariantCulture)).ToString()
+                                ["Value"] = ((int)double.Parse(bonus, System.Globalization.CultureInfo.InvariantCulture)).ToString(System.Globalization.CultureInfo.InvariantCulture)
                             });
                         }
                     }
@@ -790,11 +790,11 @@ public static class Parsers
     {
         if (string.IsNullOrEmpty(rewardId)) return "Unknown";
         var rid = rewardId.ToUpperInvariant();
-        if (rid.StartsWith("DE_FOOD_JETPACK")) return "Jetpack";
-        if (rid.StartsWith("DE_FOOD_HAZ")) return "Hazard Protection";
-        if (rid.StartsWith("DE_FOOD_ENERGY")) return "Life Support";
-        if (rid.StartsWith("DE_FOOD_HEALTH")) return "Health";
-        if (rid.StartsWith("DE_FOOD_STAMINA")) return "Stamina";
+        if (rid.StartsWith("DE_FOOD_JETPACK", StringComparison.Ordinal)) return "Jetpack";
+        if (rid.StartsWith("DE_FOOD_HAZ", StringComparison.Ordinal)) return "Hazard Protection";
+        if (rid.StartsWith("DE_FOOD_ENERGY", StringComparison.Ordinal)) return "Life Support";
+        if (rid.StartsWith("DE_FOOD_HEALTH", StringComparison.Ordinal)) return "Health";
+        if (rid.StartsWith("DE_FOOD_STAMINA", StringComparison.Ordinal)) return "Stamina";
         return "Unknown";
     }
 
@@ -860,7 +860,7 @@ public static class Parsers
             if (!hasMarker) return;
 
             var parsed = MxmlParser.ParseValue(rawValue);
-            if (parsed is not (int or double or float or bool)) return;
+            if (parsed is not (int or double or bool)) return;
 
             string shortKey = path.Contains(".Reward.")
                 ? path.Split(".Reward.", 2)[1]
@@ -2226,7 +2226,7 @@ public static class Parsers
             if (sortedGroups.Count > 0)
             {
                 string firstGroup = sortedGroups[0].Group;
-                textLocStr = firstGroup.StartsWith("^") ? firstGroup.Substring(1) : firstGroup;
+                textLocStr = firstGroup.StartsWith("^", StringComparison.Ordinal) ? firstGroup.Substring(1) : firstGroup;
             }
 
             words.Add(new Dictionary<string, object?>
@@ -2695,8 +2695,29 @@ public static class Parsers
                                 .Where(e => e.Attribute("value")?.Value == "GcCreaturePetAccessory"))
                             {
                                 string reqDesc = MxmlParser.GetPropertyValue(accSlot, "RequiredDescriptor");
-                                if (!string.IsNullOrEmpty(reqDesc))
-                                    accessorySlots.Add(new() { ["RequiredDescriptor"] = reqDesc });
+
+                                // Extract the AccessoryGroup from each Slots child element
+                                var groups = new List<string>();
+                                var slotsContainer = accSlot.Elements("Property")
+                                    .FirstOrDefault(e => e.Attribute("name")?.Value == "Slots");
+                                if (slotsContainer != null)
+                                {
+                                    foreach (var slotElem in slotsContainer.Elements("Property")
+                                        .Where(e => e.Attribute("value")?.Value == "GcCreaturePetAccessorySlot"))
+                                    {
+                                        string group = MxmlParser.GetPropertyValue(slotElem, "AccessoryGroup");
+                                        if (!string.IsNullOrEmpty(group))
+                                            groups.Add(group);
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(reqDesc) || groups.Count > 0)
+                                {
+                                    var entry = new Dictionary<string, object?> { ["RequiredDescriptor"] = reqDesc };
+                                    if (groups.Count > 0)
+                                        entry["AccessoryGroups"] = groups;
+                                    accessorySlots.Add(entry);
+                                }
                             }
                         }
                     }

@@ -465,12 +465,12 @@ public static class Categorizer
         if (!ShipComponentGroups.Contains(group) && !NameFilterExemptGroups.Contains(group))
         {
             if (string.IsNullOrEmpty(name) ||
-                name.StartsWith("UI_") ||
-                name.StartsWith("Ui ") ||
+                name.StartsWith("UI_", StringComparison.Ordinal) ||
+                name.StartsWith("Ui ", StringComparison.Ordinal) ||
                 name == itemId ||
-                (name.StartsWith("Ui") && !name.Contains('_') && name.Split(' ').Length <= 4) ||
-                (name.StartsWith("Food ") && new[] { "Bug", "Pcat", "Horror", "Bjam", "Pcatbut", "Pcatgek" }.Any(x => name.Contains(x))) ||
-                (group.StartsWith("Ui ") && group.EndsWith(" Sub")))
+                (name.StartsWith("Ui", StringComparison.Ordinal) && !name.Contains('_') && name.Split(' ').Length <= 4) ||
+                (name.StartsWith("Food ", StringComparison.Ordinal) && new[] { "Bug", "Pcat", "Horror", "Bjam", "Pcatbut", "Pcatgek" }.Any(x => name.Contains(x))) ||
+                (group.StartsWith("Ui ", StringComparison.Ordinal) && group.EndsWith(" Sub", StringComparison.Ordinal)))
                 return null;
         }
 
@@ -500,7 +500,7 @@ public static class Categorizer
         if (groupLower.Contains("exocraft") || nameLower.Contains("exocraft") ||
             groupLower.Contains("submarine") || nameLower.Contains("submarine") ||
             groupLower.Contains("nautilon") || nameLower.Contains("nautilon") ||
-            itemIdLower.StartsWith("up_veh") || itemIdLower.StartsWith("u_exo"))
+            itemIdLower.StartsWith("up_veh", StringComparison.Ordinal) || itemIdLower.StartsWith("u_exo", StringComparison.Ordinal))
             return "Exocraft.json";
 
         // Dynamic TechnologyModule pattern
