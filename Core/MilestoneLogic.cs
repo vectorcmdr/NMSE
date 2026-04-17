@@ -84,7 +84,11 @@ internal static class MilestoneLogic
         if (valueObj != null)
         {
             valueObj.Set("IntValue", value);
-            valueObj.Set("FloatValue", (double)value);
+            // Preserve RawDouble for FloatValue if the numeric value matches
+            var existing = valueObj.Get("FloatValue");
+            double dval = (double)value;
+            if (!(existing is RawDouble rd && rd.Value == dval))
+                valueObj.Set("FloatValue", dval);
         }
     }
 }

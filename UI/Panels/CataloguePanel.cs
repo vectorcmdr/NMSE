@@ -1064,11 +1064,11 @@ public partial class CataloguePanel : UserControl
                 if (string.IsNullOrEmpty(productId) || productId == "^") continue;
 
                 int catchCount = 0;
-                double largestCatch = 0;
+                string largestCatchText = "0";
                 if (countList != null && i < countList.Length)
                     try { catchCount = countList.GetInt(i); } catch { }
                 if (largestList != null && i < largestList.Length)
-                    try { largestCatch = largestList.GetDouble(i); } catch { }
+                    try { largestCatchText = largestList.GetDoubleText(i); } catch { }
 
                 // Strip "^" prefix for database lookup
                 string lookupId = productId.StartsWith('^') ? productId[1..] : productId;
@@ -1079,7 +1079,7 @@ public partial class CataloguePanel : UserControl
                 var row = new DataGridViewRow();
                 row.CreateCells(_fishGrid, icon ?? (object)PlaceholderIcon, productId, name,
                     catchCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    largestCatch.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    largestCatchText);
                 row.Tag = i; // store array index for saving
                 rowList.Add(row);
             }
@@ -1122,10 +1122,21 @@ public partial class CataloguePanel : UserControl
                 }
                 if (largestList != null && idx < largestList.Length)
                 {
-                    if (double.TryParse(row.Cells["LargestCatch"].Value?.ToString(),
-                            System.Globalization.NumberStyles.Float,
-                            System.Globalization.CultureInfo.InvariantCulture, out double lc))
-                        largestList.Set(idx, lc);
+                    string cellText = row.Cells["LargestCatch"].Value?.ToString() ?? "";
+                    // Compare against the original text to avoid overwriting RawDouble
+                    // values that the user has not modified.
+                    string existingText = largestList.GetDoubleText(idx);
+                    if (cellText != existingText)
+                    {
+                        if (double.TryParse(cellText,
+                                System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out double lc))
+                        {
+                            // Store as RawDouble to preserve the exact text representation
+                            string text = lc.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                            largestList.Set(idx, new RawDouble(lc, text));
+                        }
+                    }
                 }
             }
         }

@@ -66,7 +66,13 @@ internal static class InventorySlotHelper
         // Copy numeric fields
         try { newSlot.Add("Amount", sourceSlot.GetInt("Amount")); } catch { newSlot.Add("Amount", 0); }
         try { newSlot.Add("MaxAmount", sourceSlot.GetInt("MaxAmount")); } catch { newSlot.Add("MaxAmount", 0); }
-        try { newSlot.Add("DamageFactor", sourceSlot.GetDouble("DamageFactor")); } catch { newSlot.Add("DamageFactor", 0.0); }
+        try
+        {
+            // Copy the raw value to preserve RawDouble text representation
+            var dmg = sourceSlot.Get("DamageFactor");
+            newSlot.Add("DamageFactor", dmg is RawDouble ? dmg : sourceSlot.GetDouble("DamageFactor"));
+        }
+        catch { newSlot.Add("DamageFactor", 0.0); }
 
         // Copy boolean fields
         newSlot.Add("FullyInstalled", true);

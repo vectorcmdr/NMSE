@@ -193,6 +193,22 @@ public class JsonArray
         return val is RawDouble rd ? rd.Value : Convert.ToDouble(val, CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Returns the display-safe text representation of the double at <paramref name="index"/>.
+    /// If the value is a <see cref="RawDouble"/>, returns its original JSON text to preserve
+    /// exact representations from the game save. Otherwise, formats the double using round-trip
+    /// ("R") format to avoid silent precision loss.
+    /// </summary>
+    /// <param name="index">The zero-based element index.</param>
+    /// <returns>The text representation suitable for display and lossless round-tripping.</returns>
+    public string GetDoubleText(int index)
+    {
+        var val = Get(index);
+        if (val is RawDouble rd) return rd.Text;
+        if (val is double d) return d.ToString("R", CultureInfo.InvariantCulture);
+        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture);
+    }
+
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="bool"/>.</summary>
     /// <param name="index">The zero-based element index.</param>
     /// <returns>The boolean value.</returns>
@@ -240,7 +256,7 @@ public class JsonArray
 
     private static void ValidateType(object? value)
     {
-        if (value is null or bool or int or long or double or decimal or string or JsonObject or JsonArray or BinaryData)
+        if (value is null or bool or int or long or double or decimal or string or RawDouble or JsonObject or JsonArray or BinaryData)
             return;
         throw new ArgumentException($"Unsupported JSON value type: {value.GetType().Name}");
     }

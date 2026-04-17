@@ -2455,8 +2455,15 @@ public partial class InventoryGridPanel : UserControl
             slot.Set("Amount", amount);
             slot.Set("MaxAmount", maxAmount);
 
-            // Update DamageFactor
-            try { slot.Set("DamageFactor", (double)_detailDamageFactor.Value); } catch { }
+            // Update DamageFactor (preserve RawDouble if value unchanged)
+            try
+            {
+                double newDmg = (double)_detailDamageFactor.Value;
+                var existing = slot.Get("DamageFactor");
+                if (!(existing is RawDouble rd && rd.Value == newDmg))
+                    slot.Set("DamageFactor", newDmg);
+            }
+            catch { }
 
             // Update inventory type based on item
             try
@@ -2632,8 +2639,15 @@ public partial class InventoryGridPanel : UserControl
             slot.Set("Amount", amount);
             slot.Set("MaxAmount", maxAmount);
 
-            // Update DamageFactor
-            try { slot.Set("DamageFactor", (double)_pickerDamageFactor.Value); } catch { }
+            // Update DamageFactor (preserve RawDouble if value unchanged)
+            try
+            {
+                double newDmg = (double)_pickerDamageFactor.Value;
+                var existing = slot.Get("DamageFactor");
+                if (!(existing is RawDouble rd && rd.Value == newDmg))
+                    slot.Set("DamageFactor", newDmg);
+            }
+            catch { }
 
             // Update inventory type based on item
             try

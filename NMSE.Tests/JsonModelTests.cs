@@ -605,4 +605,119 @@ public class JsonModelTests
         string serialized = JsonParser.Serialize(obj, false);
         Assert.Contains("1234567.890123456", serialized);
     }
+
+    [Fact]
+    public void JsonArray_ValidateType_AcceptsRawDouble()
+    {
+        // RawDouble must be accepted by the public Set/Add API for callers
+        // that need to preserve original JSON text (e.g. CataloguePanel save).
+        var arr = new JsonArray();
+        var rd = new RawDouble(3.14, "3.14");
+        arr.Add(rd);
+        Assert.Equal(3.14, arr.GetDouble(0));
+
+        // Serialization should use the preserved text
+        string json = JsonParser.Serialize(arr, false);
+        Assert.Contains("3.14", json);
+    }
+
+    [Fact]
+    public void JsonArray_GetDoubleText_PreservesRawDoubleText()
+    {
+        // GetDoubleText should return the original JSON text for RawDouble values,
+        // not a re-formatted version that might differ at trailing digits.
+        string json = """[0.30000001192092898,14.361230850219727,0.0,42]""";
+        var arr = JsonArray.Parse(json);
+
+        // RawDouble values should return their exact original text
+        Assert.Equal("0.30000001192092898", arr.GetDoubleText(0));
+        Assert.Equal("14.361230850219727", arr.GetDoubleText(1));
+        Assert.Equal("0.0", arr.GetDoubleText(2));
+    }
+
+    [Fact]
+    public void JsonObject_GetDoubleText_PreservesRawDoubleText()
+    {
+        string json = """{"Scale":0.30000001192092898,"Trust":14.361230850219727}""";
+        var obj = JsonObject.Parse(json);
+
+        Assert.Equal("0.30000001192092898", obj.GetDoubleText("Scale"));
+        Assert.Equal("14.361230850219727", obj.GetDoubleText("Trust"));
+    }
+
+    [Fact]
+    public void FishCatchList_UnmodifiedValues_PreserveExactText()
+    {
+        // Simulates the FIXED CataloguePanel flow where unmodified values
+        // are NOT written back, preserving the original RawDouble text.
+        string json = """{"LargestCatchList":[0.30000001192092898,14.361230850219727,0.6000000238418579]}""";
+        var obj = JsonObject.Parse(json);
+        var arr = obj.GetArray("LargestCatchList")!;
+
+        // LoadKnownFish: use GetDoubleText for display
+        string displayed0 = arr.GetDoubleText(0);
+        string displayed1 = arr.GetDoubleText(1);
+        string displayed2 = arr.GetDoubleText(2);
+
+        // SaveKnownFish: compare cell text to original - all unchanged
+        Assert.Equal(displayed0, arr.GetDoubleText(0)); // no write needed
+        Assert.Equal(displayed1, arr.GetDoubleText(1)); // no write needed
+        Assert.Equal(displayed2, arr.GetDoubleText(2)); // no write needed
+
+        // Serialize and verify exact original text is preserved
+        string serialized = JsonParser.Serialize(obj, false);
+        Assert.Contains("0.30000001192092898", serialized);
+        Assert.Contains("14.361230850219727", serialized);
+        Assert.Contains("0.6000000238418579", serialized);
+    }
+
+    [Fact]
+    public void FishCatchList_ModifiedValue_UsesRawDoubleForNewValue()
+    {
+        // When a user edits a value, the new value should be stored as RawDouble
+        // with round-trip format text to ensure consistent serialization.
+        string json = """{"LargestCatchList":[0.30000001192092898,14.361230850219727]}""";
+        var obj = JsonObject.Parse(json);
+        var arr = obj.GetArray("LargestCatchList")!;
+
+        // User edits value at index 1 to "25.5"
+        string cellText = "25.5";
+        string existingText = arr.GetDoubleText(1);
+        Assert.NotEqual(cellText, existingText); // value was modified
+
+        // Parse and store as RawDouble (the fixed save path)
+        Assert.True(double.TryParse(cellText,
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out double lc));
+        string newText = lc.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        arr.Set(1, new RawDouble(lc, newText));
+
+        // Verify: unmodified value at index 0 still has original text
+        string serialized = JsonParser.Serialize(obj, false);
+        Assert.Contains("0.30000001192092898", serialized);
+        Assert.Contains("25.5", serialized);
+    }
+
+    [Fact]
+    public void RawDouble_PreservationPattern_StatHelper()
+    {
+        // Tests the RawDouble preservation pattern used across the codebase:
+        // only overwrite when the numeric value has actually changed.
+        string json = """{"Value":0.30000001192092898}""";
+        var obj = JsonObject.Parse(json);
+
+        var existing = obj.Get("Value");
+        Assert.IsType<RawDouble>(existing);
+        var rd = (RawDouble)existing;
+        Assert.Equal("0.30000001192092898", rd.Text);
+
+        // Simulate: user edit produces same numeric value
+        double userValue = rd.Value;
+        Assert.True(existing is RawDouble rdCheck && rdCheck.Value == userValue);
+        // Don't write back - preserve RawDouble
+
+        // Verify original text is preserved in serialization
+        string serialized = JsonParser.Serialize(obj, false);
+        Assert.Contains("0.30000001192092898", serialized);
+    }
 }

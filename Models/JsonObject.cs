@@ -330,6 +330,22 @@ public partial class JsonObject
     }
 
     /// <summary>
+    /// Returns the display-safe text representation of the double at <paramref name="name"/>.
+    /// If the value is a <see cref="RawDouble"/>, returns its original JSON text to preserve
+    /// exact representations from the game save. Otherwise, formats the double using round-trip
+    /// ("R") format to avoid silent precision loss.
+    /// </summary>
+    /// <param name="name">The property name or dotted path.</param>
+    /// <returns>The text representation suitable for display and lossless round-tripping.</returns>
+    public string GetDoubleText(string name)
+    {
+        var val = GetValue(name);
+        if (val is RawDouble rd) return rd.Text;
+        if (val is double d) return d.ToString("R", CultureInfo.InvariantCulture);
+        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
     /// Returns the value at <paramref name="name"/> converted to a <see cref="double"/>.
     /// This method exists for callers that conceptually deal with float-precision values
     /// (e.g., NMS "FloatValue" fields) but returns a full <see cref="double"/> to avoid

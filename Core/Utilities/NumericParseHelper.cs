@@ -68,11 +68,12 @@ public static class NumericParseHelper
     }
 
     /// <summary>
-    /// Formats a double using invariant culture, producing a string that is safe
-    /// for JSON serialisation (always uses <c>.</c> as the decimal separator).
+    /// Formats a double using invariant culture with round-trip ("R") precision,
+    /// producing a string that is safe for JSON serialisation (always uses <c>.</c>
+    /// as the decimal separator) and preserves full IEEE 754 fidelity.
     /// </summary>
     public static string FormatDouble(double value)
-        => value.ToString(CultureInfo.InvariantCulture);
+        => value.ToString("R", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Formats a double with the specified format string using invariant culture.
