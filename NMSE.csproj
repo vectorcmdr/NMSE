@@ -178,7 +178,7 @@
 		</PropertyGroup>
 
 		<!-- Write the generated partial class with VerMajor, VerMinor, VerPatch -->
-		<WriteLinesToFile File="$(GeneratedFile)" Overwrite="true" Lines="namespace NMSE.UI&#xD;&#xA;{&#xD;&#xA;    public partial class MainFormResources&#xD;&#xA;    {&#xD;&#xA;        public const string VerMajor = &quot;$(_VerMajor)&quot;%3b&#xD;&#xA;        public const string VerMinor = &quot;$(_VerMinor)&quot;%3b&#xD;&#xA;        public const string VerPatch = &quot;$(_VerPatch)&quot;%3b&#xD;&#xA;    }&#xD;&#xA;}" />
+		<WriteLinesToFile File="$(GeneratedFile)" Overwrite="true" Lines="namespace NMSE.UI&#xD;&#xA;{&#xD;&#xA;    public partial class MainFormResources&#xD;&#xA;    {&#xD;&#xA;        public const string VerMajor = &quot;$(_VerMajor)&quot;%3b&#xD;&#xA;        public const string VerMinor = &quot;$(_VerMinor)&quot;%3b&#xD;&#xA;        public const string VerPatch = &quot;$(_VerPatch)&quot;%3b&#xD;&#xA;        public const string SuppGameRel = &quot;$(_SuppGameRel)&quot;%3b&#xD;&#xA;    }&#xD;&#xA;}" />
 
 		<!-- Explicitly add the generated file to compilation.  The SDK
 		     glob is excluded via <Compile Remove="BuildInfo.g.cs" /> above
