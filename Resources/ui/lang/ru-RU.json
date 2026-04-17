@@ -363,7 +363,7 @@
   "companion.error_format": "{0} {1} (Ошибка)",
   "companion.export": "Экспорт",
   "companion.export_failed": "Ошибка экспорта: {0}",
-  "companion.gen": "Ген",
+  "companion.gen": "Генерировать",
   "companion.genus_seed": "Сид рода:",
   "companion.has_fur": "Есть мех:",
   "companion.helpfulness": "Полезность:",
