@@ -161,7 +161,7 @@ public class JsonModelTests
         // Verify a high-precision double value (double precision 64-bit) round trips
 		// without precision loss through parse (in) -> model (x) -> serialize (out).
         const double original = 1234567.890123456;
-        var json = $$"""{"Value":{{original.ToString("R", System.Globalization.CultureInfo.InvariantCulture)}}}""";
+        var json = $$"""{"Value":{{original.ToString("G17", System.Globalization.CultureInfo.InvariantCulture)}}}""";
         var obj = JsonObject.Parse(json);
         double retrieved = obj.GetDouble("Value");
         Assert.Equal(original, retrieved);
@@ -689,7 +689,7 @@ public class JsonModelTests
         Assert.True(double.TryParse(cellText,
             System.Globalization.NumberStyles.Float,
             System.Globalization.CultureInfo.InvariantCulture, out double lc));
-        string newText = lc.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        string newText = lc.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
         arr.Set(1, new RawDouble(lc, newText));
 
         // Verify: unmodified value at index 0 still has original text

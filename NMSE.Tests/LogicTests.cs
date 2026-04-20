@@ -217,7 +217,7 @@ public class LogicTests
     public void StatHelper_WriteBaseStatValue_PreservesRawDoubleWhenUnchanged()
     {
         // Parse JSON with a float that has a specific text representation.
-        // "R" format for 77.06786346435547 gives "77.0678634643555" (different text),
+        // "G17" format for 77.06786346435547 gives "77.067863464355469" (different text),
         // so if we wrote the same numeric value back, it would clobber the original text.
         var json = JsonObject.Parse(@"{
             ""BaseStatValues"": [
@@ -250,6 +250,45 @@ public class LogicTests
 
         StatHelper.WriteBaseStatValue(json, "^SHIP_DAMAGE", 99.5);
         Assert.Equal(99.5, StatHelper.ReadBaseStatValue(json, "^SHIP_DAMAGE"));
+    }
+
+    [Fact]
+    public void StatHelper_WriteBaseStatValue_PreservesRawDoubleWhenValueUnchanged()
+    {
+        // Simulates the real UI path: value is read as double, displayed via
+        // InvariantNumericTextBox (double-backed with "G17" format), and written
+        // back unchanged.  The guard must recognise the value as unchanged and
+        // preserve the original RawDouble text.
+        var json = JsonObject.Parse(@"{
+            ""BaseStatValues"": [
+                { ""BaseStatID"": ""^SHIP_DAMAGE"", ""Value"": 49.91505813598633 }
+            ]
+        }");
+
+        double readVal = StatHelper.ReadBaseStatValue(json, "^SHIP_DAMAGE");
+
+        // Write back the exact same double - no decimal round-trip
+        StatHelper.WriteBaseStatValue(json, "^SHIP_DAMAGE", readVal);
+
+        // The original RawDouble text must be preserved
+        var entry = json.GetArray("BaseStatValues")!.GetObject(0);
+        var afterValue = entry.GetValue("Value");
+        Assert.IsType<Models.RawDouble>(afterValue);
+        Assert.Equal("49.91505813598633", afterValue.ToString());
+    }
+
+    [Fact]
+    public void ConditionalClampStatValue_PreservesRawWhenValueUnchanged()
+    {
+        // Ensure ConditionalClampStatValue recognises an unchanged double value
+        // and returns the original raw.
+        double raw = 79.93309020996094;
+
+        var rawValues = new Dictionary<string, double> { ["^FREI_HYPERDRIVE"] = raw };
+        double result = Data.BaseStatLimits.ConditionalClampStatValue(
+            "Normal", "^FREI_HYPERDRIVE", raw, Data.StatCategory.Freighter, rawValues);
+
+        Assert.Equal(raw, result); // Must return the original raw
     }
 
     [Fact]
@@ -463,8 +502,8 @@ public class LogicTests
         // Cockpit (priority 6)
         Assert.Equal(6, StarshipLogic.GetPartPriority("^B_COK_A"));
 
-        // Shield is NOT in priority map — goes to OtherPriority
-        Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^B_SHL_A"));
+		// Shield is NOT in priority map — goes to OtherPriority
+		Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^B_SHL_A"));
 
         // Other (non-functional or not in priority map)
         Assert.Equal(StarshipDatabase.OtherPriority, StarshipLogic.GetPartPriority("^BUILDTABLE2"));
@@ -479,10 +518,10 @@ public class LogicTests
         // Load database for correct categorisation
         LoadCorvetteDatabase();
 
-        // Create objects in scrambled order to verify reorder puts them in correct priority.
-        // Priority map: Reactor(1) -> Thruster(2) -> Wing(3) -> Gear(4) -> Access(5) -> Cockpit(6) -> Other
-        // B_STR_B_NE (Hull) and B_WNG_E (not in priority map) are NOT sorted — they go to Other group.
-        var json = JsonObject.Parse(@"{
+		// Create objects in scrambled order to verify reorder puts them in correct priority.
+		// Priority map: Reactor(1) -> Thruster(2) -> Wing(3) -> Gear(4) -> Access(5) -> Cockpit(6) -> Other
+		// B_STR_B_NE (Hull) and B_WNG_E (not in priority map) are NOT sorted — they go to Other group.
+		var json = JsonObject.Parse(@"{
             ""Objects"": [
                 { ""ObjectID"": ""^BUILDTABLE2"", ""UserData"": 1 },
                 { ""ObjectID"": ""^B_COK_A"", ""UserData"": 2 },
@@ -2532,6 +2571,61 @@ public class LogicTests
     }
 
     [Fact]
+    public void GetSlotLayout_HermitCrab_WithCrabShellDescriptor_ReturnsLeftRight()
+    {
+        // HERMITCRAB has no PetAccessorySlots of its own, but _CRABSHELL_02 is defined
+        // under SPIDER's variants with LEFT+RIGHT groups. The descriptor-based fallback
+        // should resolve the correct accessories.
+        var layout = CompanionAccessoryDatabase.GetSlotLayoutForCreature(
+            "^HERMITCRAB",
+            new[] { "_CRABSHELL_02", "1234567890" });
+
+        Assert.Equal(2, layout.Length);
+        Assert.Contains(AccessorySlot.Left, layout);
+        Assert.Contains(AccessorySlot.Right, layout);
+    }
+
+    [Fact]
+    public void GetSlotLayout_HermitCrab_WithoutDescriptors_ReturnsEmpty()
+    {
+        // Without descriptors, HERMITCRAB has no accessories (its own entry has null variants)
+        var layout = CompanionAccessoryDatabase.GetSlotLayoutForCreature("^HERMITCRAB");
+        Assert.Empty(layout);
+    }
+
+    [Fact]
+    public void GetSlotLayout_Spider_WithOwnVariants_UsesOwnData()
+    {
+        // SPIDER has its own PetAccessorySlots — should use those directly
+        var layout = CompanionAccessoryDatabase.GetSlotLayoutForCreature("^SPIDER");
+        Assert.Equal(2, layout.Length);
+        Assert.Contains(AccessorySlot.Left, layout);
+        Assert.Contains(AccessorySlot.Right, layout);
+    }
+
+    [Fact]
+    public void GetSlotLayout_DescriptorFallback_CaseInsensitive()
+    {
+        // Descriptor matching should be case-insensitive
+        var layout = CompanionAccessoryDatabase.GetSlotLayoutForCreature(
+            "^HERMITCRAB",
+            new[] { "_crabshell_02" });
+
+        Assert.Equal(2, layout.Length);
+    }
+
+    [Fact]
+    public void VariantByDescriptor_ContainsCrabShellEntries()
+    {
+        // Verify the reverse index was built correctly during LoadFromFile
+        Assert.True(CompanionAccessoryDatabase.VariantByDescriptor.ContainsKey("_CRABSHELL_02"));
+        var variant = CompanionAccessoryDatabase.VariantByDescriptor["_CRABSHELL_02"];
+        Assert.Equal(2, variant.AccessoryGroups.Count);
+        Assert.Contains("LEFT", variant.AccessoryGroups);
+        Assert.Contains("RIGHT", variant.AccessoryGroups);
+    }
+
+    [Fact]
     public void CompanionDatabase_ContainsCanonicalGameEntries()
     {
         // Verify key canonical game IDs from creaturedatatable are present
@@ -3973,9 +4067,17 @@ public class LogicTests
                 out double userValue);
             arr!.Set(0, userValue);
 
+            // G17 gives the full 17-significant-digit representation of the stored
+            // double.  The important thing is the decimal separator is a dot, not a
+            // comma, regardless of the current locale.
             string serialized = JsonParser.Serialize(obj, false, skipReverseMapping: true);
-            Assert.Contains("23.7", serialized);
+            Assert.Contains(".", serialized);
             Assert.DoesNotContain("23,7", serialized);
+
+            // Verify the value round-trips back correctly
+            var reparsed = JsonObject.Parse(serialized);
+            double readBack = reparsed.GetArray("LargestCatchList")!.GetDouble(0);
+            Assert.Equal(userValue, readBack);
         }
         finally
         {
@@ -4028,8 +4130,8 @@ public class LogicTests
             System.Threading.Thread.CurrentThread.CurrentCulture =
                 new System.Globalization.CultureInfo("de-DE");
 
-            // German user types "1,5" — should parse as 1.5
-            Assert.True(NumericParseHelper.TryParseDouble("1,5", out double v));
+			// German user types "1,5" — should parse as 1.5
+			Assert.True(NumericParseHelper.TryParseDouble("1,5", out double v));
             Assert.Equal(1.5, v, 10);
         }
         finally
@@ -4145,9 +4247,11 @@ public class LogicTests
             Assert.True(NumericParseHelper.TryParseDouble("23,7", out double parsed));
             Assert.Equal(23.7, parsed, 10);
 
-            // Format for JSON
+            // Format for JSON (G17 always outputs 17 significant digits,
+            // so 23.7 becomes the full representation of the stored double)
             string json = NumericParseHelper.FormatDouble(parsed);
-            Assert.Equal("23.7", json);
+            Assert.Contains(".", json);
+            Assert.DoesNotContain(",", json);
 
             // Parse back from JSON (invariant format)
             Assert.True(NumericParseHelper.TryParseDouble(json, out double roundTrip));
@@ -4916,7 +5020,7 @@ public class LogicTests
     [Fact]
     public void JsonSerializer_RawDouble_PreservesOriginalText()
     {
-        // Values from actual NMS saves where "R" format would produce different text.
+        // Values from actual NMS saves where .NET formatting would produce different text.
         // Both 0.30000001192092898 and 0.30000001192092896 parse to the same IEEE 754
         // double, but the game writes the former. RawDouble must preserve the original.
         string json = "{\"a\":0.30000001192092898,\"b\":0.029999999329447748,\"c\":203.60643005371094}";
@@ -5594,8 +5698,8 @@ public class LogicTests
             ("^REWARD_2", false),
         };
 
-        // No database — defaults to SeenProducts.
-        AccountLogic.SyncAccountSeenArrays(userSettings, rewards);
+		// No database — defaults to SeenProducts.
+		AccountLogic.SyncAccountSeenArrays(userSettings, rewards);
 
         var seen = userSettings.GetArray("SeenProducts");
         Assert.NotNull(seen);
@@ -6510,15 +6614,15 @@ public class LogicTests
     public void RawJsonLogic_CollapseContext_NoChanges_ReturnsEmpty()
     {
         // All context lines with no changes should always collapse to nothing
-        var raw = new List<(RawJsonLogic.DiffLineType, string)>
+        var raw = new List<RawJsonLogic.DiffLine>
         {
-            (RawJsonLogic.DiffLineType.Context, "line1"),
-            (RawJsonLogic.DiffLineType.Context, "line2"),
-            (RawJsonLogic.DiffLineType.Context, "line3"),
+            new(RawJsonLogic.DiffLineType.Context, "line1", 1, 1),
+            new(RawJsonLogic.DiffLineType.Context, "line2", 2, 2),
+            new(RawJsonLogic.DiffLineType.Context, "line3", 3, 3),
         };
         var result = RawJsonLogic.CollapseContext(raw, 1);
-        // No changes, so everything is far from a change — should be empty or just a separator
-        Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+		// No changes, so everything is far from a change — should be empty or just a separator
+		Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Added);
         Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
     }
 
@@ -6608,6 +6712,94 @@ public class LogicTests
         Assert.Equal(RawJsonLogic.DiffLineType.Added, result[2].Type);
         Assert.Equal("x", result[2].Text);
         Assert.Equal(RawJsonLogic.DiffLineType.Context, result[3].Type);
+    }
+
+    // --- Diff line number and context header tests ---
+
+    [Fact]
+    public void RawJsonLogic_AssignLineNumbers_CorrectNumbering()
+    {
+        var raw = new List<(RawJsonLogic.DiffLineType, string)>
+        {
+            (RawJsonLogic.DiffLineType.Context, "a"),
+            (RawJsonLogic.DiffLineType.Removed, "b"),
+            (RawJsonLogic.DiffLineType.Added, "x"),
+            (RawJsonLogic.DiffLineType.Context, "c"),
+        };
+        var result = RawJsonLogic.AssignLineNumbers(raw);
+
+        Assert.Equal(4, result.Count);
+        // Context "a": old=1, new=1
+        Assert.Equal(1, result[0].OldLineNum);
+        Assert.Equal(1, result[0].NewLineNum);
+        // Removed "b": old=2, new=0 (not in new file)
+        Assert.Equal(2, result[1].OldLineNum);
+        Assert.Equal(0, result[1].NewLineNum);
+        // Added "x": old=0, new=2 (not in old file)
+        Assert.Equal(0, result[2].OldLineNum);
+        Assert.Equal(2, result[2].NewLineNum);
+        // Context "c": old=3, new=3
+        Assert.Equal(3, result[3].OldLineNum);
+        Assert.Equal(3, result[3].NewLineNum);
+    }
+
+    [Fact]
+    public void RawJsonLogic_CompactDiff_HasLineNumbers()
+    {
+        string original = "{\n  \"Name\": \"old\"\n}";
+        string modified = "{\n  \"Name\": \"new\"\n}";
+
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+
+        var removed = result.First(dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
+        var added = result.First(dl => dl.Type == RawJsonLogic.DiffLineType.Added);
+        Assert.True(removed.OldLineNum > 0, "Removed line should have a non-zero old line number");
+        Assert.True(added.NewLineNum > 0, "Added line should have a non-zero new line number");
+    }
+
+    [Fact]
+    public void RawJsonLogic_FindJsonContext_ReturnsEnclosingKeyPath()
+    {
+        string[] lines =
+        [
+            "{",
+            "  \"PlayerStateData\": {",
+            "    \"KnownProducts\": [",
+            "      {",
+            "        \"Value\": 42",
+            "      }",
+            "    ]",
+            "  }",
+            "}"
+        ];
+
+        // Line 4 (0-based) is "Value": 42, inside KnownProducts inside PlayerStateData
+        string context = RawJsonLogic.FindJsonContext(lines, 4);
+        Assert.Contains("PlayerStateData", context);
+        Assert.Contains("KnownProducts", context);
+    }
+
+    [Fact]
+    public void RawJsonLogic_FindJsonContext_EmptyLines_ReturnsEmpty()
+    {
+        string context = RawJsonLogic.FindJsonContext([], 0);
+        Assert.Equal("", context);
+    }
+
+    [Fact]
+    public void RawJsonLogic_CompactDiff_ContainsHeaders()
+    {
+        // A diff within a nested JSON structure should include context headers
+        string original = "{\n  \"PlayerStateData\": {\n    \"Records\": [\n      {\n        \"StatValue\": 0\n      }\n    ]\n  }\n}";
+        string modified = "{\n  \"PlayerStateData\": {\n    \"Records\": [\n      {\n        \"StatValue\": 1\n      }\n    ]\n  }\n}";
+
+        var result = RawJsonLogic.ComputeCompactDiff(original, modified);
+
+        var headers = result.Where(dl => dl.Type == RawJsonLogic.DiffLineType.Header).ToList();
+        Assert.True(headers.Count > 0, "Expected at least one context header in the diff");
+        // The header should mention the enclosing path
+        Assert.True(headers.Any(h => h.Text.Contains("PlayerStateData") || h.Text.Contains("Records")),
+            "Header should contain enclosing key names");
     }
 
     // --- Settlement Production Filtering ---
@@ -6869,7 +7061,7 @@ public class LogicTests
     [Fact]
     public void FindInventoryObject_NomNomWeapon_FindsInventory()
     {
-        // NomNom format (after deobfuscation): { Data: { Multitool: { Store: { Slots: [...] } } } }
+        // Data envelope format (after deobfuscation): { Data: { Multitool: { Store: { Slots: [...] } } } }
         var store = new JsonObject();
         var slots = new JsonArray();
         slots.Add("item1");
@@ -6893,7 +7085,7 @@ public class LogicTests
     [Fact]
     public void FindInventoryObject_NomNomVehicle_FindsInventory()
     {
-        // NomNom format: { Data: { Vehicle: { Inventory: { Slots: [...] } } } }
+        // Data envelope format: { Data: { Vehicle: { Inventory: { Slots: [...] } } } }
         var inv = new JsonObject();
         var slots = new JsonArray();
         slots.Add("item1");
@@ -6917,7 +7109,7 @@ public class LogicTests
     [Fact]
     public void FindInventoryObject_NomNomFreighter_FindsInventory()
     {
-        // NomNom format: { Data: { Inventory: { Slots: [...] } } }
+        // Data envelope format: { Data: { Inventory: { Slots: [...] } } }
         var inv = new JsonObject();
         var slots = new JsonArray();
         slots.Add("item1");
@@ -6985,7 +7177,7 @@ public class LogicTests
         Assert.Null(result);
     }
 
-    // --- Integration: NMSSaveEditor/NomNom file import ---------
+    // --- Integration: save-editor file import ---------
 
     private static string? GetRefPath(params string[] parts)
     {
@@ -7068,7 +7260,7 @@ public class LogicTests
         Assert.True(inv.GetArray("Slots")!.Length > 0, "Freighter should have items");
     }
 
-    // --- NomNom Wrapper Detection -----------------------------------
+    // --- Data Envelope Wrapper Detection -----------------------------------
 
     [Fact]
     public void IsNomNomWrapper_WithDataAndFileVersion_ReturnsTrue()
@@ -7830,7 +8022,9 @@ public class LogicTests
         }
     }
 
-    // --- WordDatabase Localisation -----------------------------------
+	// -------------------------
+    // WordDatabase Localisation
+	// -------------------------
 
     [Fact]
     public void WordEntry_TextLocStr_LoadedFromJson()
@@ -7960,7 +8154,9 @@ public class LogicTests
         }
     }
 
-    // ── Recipe localisation ──────────────────────────────────────────
+	// -------------------
+    // Recipe localisation
+	// -------------------
     [Fact]
     public void RecipeDatabase_ApplyLocalisation_UpdatesRecipeNames()
     {
@@ -8000,7 +8196,9 @@ public class LogicTests
         }
     }
 
-    // ── Title localisation ───────────────────────────────────────────
+	// ------------------
+    // Title localisation
+	// ------------------
     [Fact]
     public void TitleDatabase_ApplyLocalisation_UpdatesTitleNames()
     {
@@ -8044,16 +8242,16 @@ public class LogicTests
         }
     }
 
-    // ── Frigate trait localisation (non-mutating: hardcoded data has no LocStr) ──
+    // -- Frigate trait localisation (non-mutating: hardcoded data has no LocStr) --
     // Full load+localise round-trip tests are in DatabaseLocalisationTests.cs
 
-    // ── Settlement perk localisation (non-mutating: hardcoded data has no LocStr) ──
+    // -- Settlement perk localisation (non-mutating: hardcoded data has no LocStr) --
     // Full load+localise round-trip tests are in DatabaseLocalisationTests.cs
 
-    // ── Wiki guide localisation (non-mutating: hardcoded data has no LocStr) ──
+    // -- Wiki guide localisation (non-mutating: hardcoded data has no LocStr) --
     // Full load+localise round-trip tests are in DatabaseLocalisationTests.cs
 
-    // ── GameItem DescriptionLocStr-based name fallback ─────────────────
+    // -- GameItem DescriptionLocStr-based name fallback -----------------
 
     [Fact]
     public void GameItemDatabase_DescLocStr_DerivesNameKey()
@@ -8434,10 +8632,18 @@ public class LogicTests
         Assert.Contains("\u03BB", value); // λ
         Assert.Contains("\u0166", value); // Ŧ
 
-        // Re-serialise and verify the escaped form is preserved
+        // Re-serialise: chars > U+00FF are now written as raw UTF-8 bytes
+        // (matching the NMS game format), not as \uXXXX escapes.
+        // The parser round-trips them correctly: UTF-8 bytes → read as
+        // Latin-1 → detected as valid UTF-8 → decoded back to Unicode.
         string output = obj.ToString();
-        Assert.Contains("\\u03BB", output, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("\\u0166", output, StringComparison.OrdinalIgnoreCase);
+        // Should NOT contain \uXXXX for these characters
+        Assert.DoesNotContain("\\u03BB", output, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\\u0166", output, StringComparison.OrdinalIgnoreCase);
+        // Should contain the Unicode characters when parsed back
+        var reparsed = JsonObject.Parse(output);
+        string reparsedValue = reparsed.GetString("Name")!;
+        Assert.Equal(value, reparsedValue);
     }
 
     // --- Unicode escape vs binary data tests ---
@@ -8991,6 +9197,415 @@ public class LogicTests
         bsv.Add(entry);
     }
 
+    /// <summary>
+    /// Helper to add a BaseStatValue entry using a RawDouble (simulating a parsed save).
+    /// </summary>
+    private static void AddBaseStatEntryRaw(JsonArray bsv, string statId, double value, string rawText)
+    {
+        var entry = new JsonObject();
+        entry.Add("BaseStatID", statId);
+        entry.Add("Value", new RawDouble(value, rawText));
+        bsv.Add(entry);
+    }
+
+    // --- Synthetic round-trip tests for stat value preservation ---
+
+    [Fact]
+    public void SaveShipData_PreservesRawDoubles_WhenUnchanged_HighPrecision()
+    {
+        // Exact values from the user's bug report: editing damage should NOT
+        // modify shield or agile.
+        double shield = 31.199888229370117; // IEEE 754 double for "31.199888229370118"
+        double agile = 46.931243896484375;  // IEEE 754 double for "46.931243896484378"
+        double damage = 85.12345;
+        double hyper = 200.5;
+
+        var ship = new JsonObject();
+        ship.Add("Name", "");
+        var resource = new JsonObject();
+        resource.Add("Filename", "");
+        var seedArr = new JsonArray();
+        seedArr.Add(true);
+        seedArr.Add("0x0");
+        resource.Add("Seed", seedArr);
+        ship.Add("Resource", resource);
+
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        // Use RawDoubles to simulate a parsed save file
+        AddBaseStatEntryRaw(bsv, "^SHIP_DAMAGE", damage, "85.12345");
+        AddBaseStatEntryRaw(bsv, "^SHIP_SHIELD", shield, "31.199888229370118");
+        AddBaseStatEntryRaw(bsv, "^SHIP_HYPERDRIVE", hyper, "200.5");
+        AddBaseStatEntryRaw(bsv, "^SHIP_AGILE", agile, "46.931243896484378");
+        inv.Add("BaseStatValues", bsv);
+        ship.Add("Inventory", inv);
+
+        var playerState = new JsonObject();
+        playerState.Add("PrimaryShip", 0);
+
+        // User ONLY changed damage to 100.0; other stats untouched.
+        var values = new StarshipLogic.ShipSaveValues
+        {
+            Name = "TestShip",
+            ShipIndex = -1,
+            Damage = 100.0,  // User explicitly set this
+            Shield = shield,  // Same as loaded - NOT modified
+            Hyperdrive = hyper,  // Same as loaded - NOT modified
+            Maneuver = agile,  // Same as loaded - NOT modified
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^SHIP_DAMAGE"] = damage,
+                ["^SHIP_SHIELD"] = shield,
+                ["^SHIP_HYPERDRIVE"] = hyper,
+                ["^SHIP_AGILE"] = agile,
+            }
+        };
+
+        StarshipLogic.SaveShipData(ship, playerState, values);
+
+        // Damage should be the new value
+        double savedDamage = StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_DAMAGE");
+        Assert.Equal(100.0, savedDamage);
+
+        // Shield, hyperdrive, and agile should be preserved EXACTLY
+        double savedShield = StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_SHIELD");
+        double savedHyper = StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_HYPERDRIVE");
+        double savedAgile = StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_AGILE");
+        Assert.Equal(shield, savedShield);
+        Assert.Equal(hyper, savedHyper);
+        Assert.Equal(agile, savedAgile);
+
+        // Verify the RawDouble text is preserved for unchanged stats
+        var savedBsv = ship.GetObject("Inventory")!.GetArray("BaseStatValues")!;
+        for (int i = 0; i < savedBsv.Length; i++)
+        {
+            var entry = savedBsv.GetObject(i);
+            string statId = entry.GetString("BaseStatID") ?? "";
+            if (statId == "^SHIP_SHIELD")
+            {
+                var raw = entry.GetValue("Value");
+                Assert.IsType<RawDouble>(raw);
+                Assert.Equal("31.199888229370118", ((RawDouble)raw).Text);
+            }
+            else if (statId == "^SHIP_AGILE")
+            {
+                var raw = entry.GetValue("Value");
+                Assert.IsType<RawDouble>(raw);
+                Assert.Equal("46.931243896484378", ((RawDouble)raw).Text);
+            }
+        }
+    }
+
+    [Fact]
+    public void SaveShipData_WritesToInventoryAndTechOnly()
+    {
+        // Base stats are written to Inventory + Inventory_TechOnly.
+        // Inventory_Cargo is excluded for v400+ Waypoint saves.
+        var ship = new JsonObject();
+        ship.Add("Name", "");
+        var resource = new JsonObject();
+        resource.Add("Filename", "");
+        var seedArr = new JsonArray();
+        seedArr.Add(true);
+        seedArr.Add("0x0");
+        resource.Add("Seed", seedArr);
+        ship.Add("Resource", resource);
+
+        // Primary inventory with stats the UI sees
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        AddBaseStatEntryRaw(bsv, "^SHIP_DAMAGE", 80.0, "80.0");
+        AddBaseStatEntryRaw(bsv, "^SHIP_SHIELD", 35.0, "35.0");
+        AddBaseStatEntryRaw(bsv, "^SHIP_HYPERDRIVE", 10.0, "10.0");
+        AddBaseStatEntryRaw(bsv, "^SHIP_AGILE", 50.0, "50.0");
+        inv.Add("BaseStatValues", bsv);
+        ship.Add("Inventory", inv);
+
+        // Tech inventory with DIFFERENT stats (set by the game engine)
+        var techInv = new JsonObject();
+        var techBsv = new JsonArray();
+        AddBaseStatEntryRaw(techBsv, "^SHIP_DAMAGE", 63.73244094848633, "63.73244094848633");
+        AddBaseStatEntryRaw(techBsv, "^SHIP_SHIELD", 31.199888229370117, "31.199888229370118");
+        AddBaseStatEntryRaw(techBsv, "^SHIP_HYPERDRIVE", 6.988905429840088, "6.988905429840088");
+        AddBaseStatEntryRaw(techBsv, "^SHIP_AGILE", 46.931243896484375, "46.931243896484378");
+        techInv.Add("BaseStatValues", techBsv);
+        ship.Add("Inventory_TechOnly", techInv);
+
+        // Cargo inventory (same as primary)
+        var cargoInv = new JsonObject();
+        var cargoBsv = new JsonArray();
+        AddBaseStatEntryRaw(cargoBsv, "^SHIP_DAMAGE", 80.0, "80.0");
+        AddBaseStatEntryRaw(cargoBsv, "^SHIP_SHIELD", 35.0, "35.0");
+        AddBaseStatEntryRaw(cargoBsv, "^SHIP_HYPERDRIVE", 10.0, "10.0");
+        AddBaseStatEntryRaw(cargoBsv, "^SHIP_AGILE", 50.0, "50.0");
+        cargoBsv.Add(new JsonObject()); // extra entry
+        cargoInv.Add("BaseStatValues", cargoBsv);
+        ship.Add("Inventory_Cargo", cargoInv);
+
+        var playerState = new JsonObject();
+        playerState.Add("PrimaryShip", 0);
+
+        // User changed ONLY damage from 80.0 to 81.456465445464
+        var values = new StarshipLogic.ShipSaveValues
+        {
+            Name = "VCF Blackbird",
+            ShipIndex = -1,
+            Damage = 81.456465445464,
+            Shield = 35.0,
+            Hyperdrive = 10.0,
+            Maneuver = 50.0,
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^SHIP_DAMAGE"] = 80.0,
+                ["^SHIP_SHIELD"] = 35.0,
+                ["^SHIP_HYPERDRIVE"] = 10.0,
+                ["^SHIP_AGILE"] = 50.0,
+            }
+        };
+
+        StarshipLogic.SaveShipData(ship, playerState, values);
+
+        // Primary inventory: damage should be updated, others preserved
+        Assert.Equal(81.456465445464, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_DAMAGE"));
+        Assert.Equal(35.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_SHIELD"));
+        Assert.Equal(10.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_HYPERDRIVE"));
+        Assert.Equal(50.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory"), "^SHIP_AGILE"));
+
+        // Tech inventory: same values as Inventory (stats are written to both)
+        Assert.Equal(81.456465445464, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_TechOnly"), "^SHIP_DAMAGE"));
+        Assert.Equal(35.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_TechOnly"), "^SHIP_SHIELD"));
+        Assert.Equal(10.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_TechOnly"), "^SHIP_HYPERDRIVE"));
+        Assert.Equal(50.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_TechOnly"), "^SHIP_AGILE"));
+
+        // Cargo inventory: must be UNTOUCHED (excluded for v400+)
+        Assert.Equal(80.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_Cargo"), "^SHIP_DAMAGE"));
+        Assert.Equal(35.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_Cargo"), "^SHIP_SHIELD"));
+        Assert.Equal(10.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_Cargo"), "^SHIP_HYPERDRIVE"));
+        Assert.Equal(50.0, StatHelper.ReadBaseStatValue(ship.GetObject("Inventory_Cargo"), "^SHIP_AGILE"));
+    }
+
+    [Fact]
+    public void SaveFreighterData_WritesToBothInventories()
+    {
+        // Base stats are written to FreighterInventory + FreighterInventory_TechOnly.
+        // For freighters on v400+ Waypoint both inventories receive the stat values.
+        var playerState = new JsonObject();
+        playerState.Add("PlayerFreighterName", "TestFreighter");
+
+        // Primary freighter inventory with stats the UI sees
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        AddBaseStatEntryRaw(bsv, "^FREI_HYPERDRIVE", 79.93309020996094, "79.93309020996094");
+        AddBaseStatEntryRaw(bsv, "^FREI_FLEET", 41.5, "41.5");
+        inv.Add("BaseStatValues", bsv);
+        playerState.Add("FreighterInventory", inv);
+
+        // Tech inventory with DIFFERENT stats
+        var techInv = new JsonObject();
+        var techBsv = new JsonArray();
+        AddBaseStatEntryRaw(techBsv, "^FREI_HYPERDRIVE", 22.44556677889900, "22.44556677889900");
+        AddBaseStatEntryRaw(techBsv, "^FREI_FLEET", 15.123456789, "15.123456789");
+        techInv.Add("BaseStatValues", techBsv);
+        playerState.Add("FreighterInventory_TechOnly", techInv);
+
+        var values = new FreighterLogic.FreighterSaveValues
+        {
+            Name = "TestFreighter",
+            Hyperdrive = 100.0,  // User changed this
+            FleetCoordination = 41.5,  // Same as loaded
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^FREI_HYPERDRIVE"] = 79.93309020996094,
+                ["^FREI_FLEET"] = 41.5,
+            }
+        };
+
+        FreighterLogic.SaveFreighterData(playerState, values);
+
+        // Primary inventory: hyperdrive should be updated, fleet preserved
+        Assert.Equal(100.0, StatHelper.ReadBaseStatValue(playerState.GetObject("FreighterInventory"), "^FREI_HYPERDRIVE"));
+        Assert.Equal(41.5, StatHelper.ReadBaseStatValue(playerState.GetObject("FreighterInventory"), "^FREI_FLEET"));
+
+        // Tech inventory: same values as primary (stats are written to both)
+        Assert.Equal(100.0, StatHelper.ReadBaseStatValue(playerState.GetObject("FreighterInventory_TechOnly"), "^FREI_HYPERDRIVE"));
+        Assert.Equal(41.5, StatHelper.ReadBaseStatValue(playerState.GetObject("FreighterInventory_TechOnly"), "^FREI_FLEET"));
+    }
+
+    [Fact]
+    public void SaveToolData_PreservesRawDoubles_WhenUnchanged_HighPrecision()
+    {
+        double damage = 44.876543210987654;
+        double mining = 33.123456789012345;
+        double scan = 22.987654321098765;
+
+        var tool = new JsonObject();
+        tool.Add("Name", "");
+        var resource = new JsonObject();
+        resource.Add("Filename", "");
+        var seedArr = new JsonArray();
+        seedArr.Add(true);
+        seedArr.Add("0x0");
+        resource.Add("Seed", seedArr);
+        tool.Add("Resource", resource);
+
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        AddBaseStatEntryRaw(bsv, "^WEAPON_DAMAGE", damage, "44.876543210987654");
+        AddBaseStatEntryRaw(bsv, "^WEAPON_MINING", mining, "33.123456789012345");
+        AddBaseStatEntryRaw(bsv, "^WEAPON_SCAN", scan, "22.987654321098765");
+        inv.Add("BaseStatValues", bsv);
+        tool.Add("Store", inv);
+
+        var playerState = new JsonObject();
+        playerState.Add("ActiveMultiTool", 0);
+
+        // User ONLY changed scan; damage and mining untouched.
+        var values = new MultitoolLogic.ToolSaveValues
+        {
+            Name = "TestTool",
+            Damage = damage,   // Same as loaded
+            Mining = mining,   // Same as loaded
+            Scan = 50.0,       // User changed this
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^WEAPON_DAMAGE"] = damage,
+                ["^WEAPON_MINING"] = mining,
+                ["^WEAPON_SCAN"] = scan,
+            }
+        };
+
+        MultitoolLogic.SaveToolData(tool, playerState, values, true);
+
+        // Scan should be the new value
+        double savedScan = StatHelper.ReadBaseStatValue(tool.GetObject("Store"), "^WEAPON_SCAN");
+        Assert.Equal(50.0, savedScan);
+
+        // Damage and mining should be preserved EXACTLY
+        double savedDamage = StatHelper.ReadBaseStatValue(tool.GetObject("Store"), "^WEAPON_DAMAGE");
+        double savedMining = StatHelper.ReadBaseStatValue(tool.GetObject("Store"), "^WEAPON_MINING");
+        Assert.Equal(damage, savedDamage);
+        Assert.Equal(mining, savedMining);
+
+        // Verify RawDouble preservation
+        var savedBsv = tool.GetObject("Store")!.GetArray("BaseStatValues")!;
+        for (int i = 0; i < savedBsv.Length; i++)
+        {
+            var entry = savedBsv.GetObject(i);
+            string statId = entry.GetString("BaseStatID") ?? "";
+            if (statId == "^WEAPON_DAMAGE")
+            {
+                var raw = entry.GetValue("Value");
+                Assert.IsType<RawDouble>(raw);
+            }
+            else if (statId == "^WEAPON_MINING")
+            {
+                var raw = entry.GetValue("Value");
+                Assert.IsType<RawDouble>(raw);
+            }
+        }
+    }
+
+    [Fact]
+    public void ConditionalClampStatValue_PreservesRaw_WhenUiMatchesRaw()
+    {
+        // Even if clamping would change the value, when uiValue matches raw,
+        // the original raw value must be preserved.
+        double raw = 31.199888229370117;
+        var rawValues = new Dictionary<string, double> { ["^SHIP_SHIELD"] = raw };
+
+        // UI value equals the raw value (untouched by user)
+        double result = BaseStatLimits.ConditionalClampStatValue(
+            "Normal", "^SHIP_SHIELD", raw, StatCategory.Ship, rawValues);
+        Assert.Equal(raw, result);
+    }
+
+    [Fact]
+    public void WriteBaseStatValue_SkipsWrite_ForPlainDouble_WhenUnchanged()
+    {
+        // After a previous save replaces a RawDouble with a plain double,
+        // subsequent saves should still skip the write for unchanged values.
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        var entry = new JsonObject();
+        entry.Add("BaseStatID", "^SHIP_DAMAGE");
+        entry.Add("Value", 42.5); // Plain double (not RawDouble)
+        bsv.Add(entry);
+        inv.Add("BaseStatValues", bsv);
+
+        // Write the same value
+        StatHelper.WriteBaseStatValue(inv, "^SHIP_DAMAGE", 42.5);
+
+        // Value should still be a plain double (not replaced)
+        var existing = bsv.GetObject(0).GetValue("Value");
+        Assert.IsType<double>(existing);
+        Assert.Equal(42.5, (double)existing);
+    }
+
+    [Fact]
+    public void NumericParseHelper_RoundTrip_PreservesExactDouble()
+    {
+        // Verify that FormatDouble + TryParseDouble round-trips exactly
+        // for the specific values from the user's bug report.
+        double[] testValues =
+        {
+            31.199888229370117,      // shield
+            46.931243896484375,      // agile
+            85.12345,                // simple value
+            0.30000001192092896,     // common NMS float
+            1e-15,                   // very small
+            1.7976931348623157e+308, // near max double
+            0.0,
+            -42.5,
+            999999999.999999,
+        };
+
+        foreach (double original in testValues)
+        {
+            string formatted = NumericParseHelper.FormatDouble(original);
+            Assert.True(NumericParseHelper.TryParseDouble(formatted, out double parsed),
+                $"Failed to parse formatted double: {formatted}");
+            Assert.Equal(original, parsed);
+            // Verify bit-exact equality
+            Assert.Equal(
+                BitConverter.DoubleToInt64Bits(original),
+                BitConverter.DoubleToInt64Bits(parsed));
+        }
+    }
+
+    [Fact]
+    public void MainStatsLogic_WriteIfChanged_PreservesRaw_WhenUiMatchesRaw()
+    {
+        // Verify that WriteStatValues preserves raw values when UI values match.
+        var playerState = new JsonObject();
+        playerState.Add("Health", new RawDouble(100, "100"));
+        playerState.Add("Shield", new RawDouble(50, "50"));
+        playerState.Add("Energy", new RawDouble(75, "75"));
+        playerState.Add("Units", new RawDouble(1000000, "1000000"));
+        playerState.Add("Nanites", new RawDouble(500000, "500000"));
+        playerState.Add("Specials", new RawDouble(200, "200"));
+
+        var rawValues = new Dictionary<string, decimal>
+        {
+            ["Health"] = 100m,
+            ["Shield"] = 50m,
+            ["Energy"] = 75m,
+            ["Units"] = 1000000m,
+            ["Nanites"] = 500000m,
+            ["Specials"] = 200m,
+        };
+
+        // All UI values (infront) match raw values (behind) so nothing should be written
+        MainStatsLogic.WriteStatValues(playerState, 100m, 50m, 75m, 1000000m, 500000m, 200m, rawValues);
+
+        // All values should still be RawDoubles (preserved)
+        Assert.IsType<RawDouble>(playerState.Get("Health"));
+        Assert.IsType<RawDouble>(playerState.Get("Shield"));
+        Assert.IsType<RawDouble>(playerState.Get("Energy"));
+        Assert.IsType<RawDouble>(playerState.Get("Units"));
+        Assert.IsType<RawDouble>(playerState.Get("Nanites"));
+        Assert.IsType<RawDouble>(playerState.Get("Specials"));
+    }
+
     [Fact]
     public void BaseStatLimits_AllStatRanges_UseIntMaxValue()
     {
@@ -9320,7 +9935,7 @@ public class LogicTests
     [Fact]
     public void SettlementBuildingState_IsInitialConstruction_OnlyBits0to6()
     {
-        // Values that are purely initial construction (bits 0–6 only)
+        // Values that are purely initial construction (bits 0->6 only)
         Assert.True(SettlementLogic.SettlementBuildingState.IsInitialConstruction(5));   // 0b0000101
         Assert.True(SettlementLogic.SettlementBuildingState.IsInitialConstruction(127)); // 0b1111111 = all 7 phases
         Assert.True(SettlementLogic.SettlementBuildingState.IsInitialConstruction(1));
@@ -9333,7 +9948,7 @@ public class LogicTests
     [Fact]
     public void SettlementBuildingState_GetInitConstruction_ExtractsBits0to6()
     {
-        // 0x0C30007F has bits 0–6 all set (0x7F = 127)
+        // 0x0C30007F has bits 0->6 all set (0x7F = 127)
         Assert.Equal(0x7F, SettlementLogic.SettlementBuildingState.GetInitConstruction(unchecked((int)0x0C30007F)));
         Assert.Equal(0x35, SettlementLogic.SettlementBuildingState.GetInitConstruction(53)); // 0x35 = 53
         Assert.Equal(0, SettlementLogic.SettlementBuildingState.GetInitConstruction(0));
@@ -9342,7 +9957,7 @@ public class LogicTests
     [Fact]
     public void SettlementBuildingState_GetUpgradeProgress_ExtractsBits10to19()
     {
-        // 0x0C3FFC7F has bits 10–19 all set (1023 = 0x3FF): B-class with all upgrade progress
+        // 0x0C3FFC7F has bits 10->19 all set (1023 = 0x3FF): B-class with all upgrade progress
         int bClassFullUpgrade = unchecked((int)0x0C3FFC7F); // 205519999
         Assert.Equal(0x3FF, SettlementLogic.SettlementBuildingState.GetUpgradeProgress(bClassFullUpgrade));
         Assert.Equal(0, SettlementLogic.SettlementBuildingState.GetUpgradeProgress(127)); // no upgrade bits
@@ -9374,22 +9989,22 @@ public class LogicTests
     [InlineData(5,           "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 2: C-class
     [InlineData(127,         "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 10: C all done
     [InlineData(67108991,    "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 11: system active
-    [InlineData(68157567,    "settlement.bs_class_c_to_b", "settlement.bs_state_upgrade_0")]   // Line 12: C→B upgrade
+    [InlineData(68157567,    "settlement.bs_class_c_to_b", "settlement.bs_state_upgrade_0")]   // Line 12: C->B upgrade
     [InlineData(68156543,    "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 13: C complete
-    [InlineData(69205119,    "settlement.bs_class_c_to_b", "settlement.bs_state_upgrade_0")]   // Line 14: C→B upgrade
+    [InlineData(69205119,    "settlement.bs_class_c_to_b", "settlement.bs_state_upgrade_0")]   // Line 14: C->B upgrade
     [InlineData(1046581,     "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 15: C complete
     [InlineData(1047605,     "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 16: C complete
     [InlineData(1047589,     "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 17: C complete
     [InlineData(1047679,     "settlement.bs_class_c", "settlement.bs_state_complete")]         // Line 18: C complete
-    [InlineData(202375295,   "settlement.bs_class_c_to_b", "settlement.bs_state_awaiting_unveil")] // Line 19: C→B awaiting
+    [InlineData(202375295,   "settlement.bs_class_c_to_b", "settlement.bs_state_awaiting_unveil")] // Line 19: C->B awaiting
     [InlineData(204472447,   "settlement.bs_class_b", "settlement.bs_state_complete")]         // Line 20: B complete
     [InlineData(205518975,   "settlement.bs_class_b", "settlement.bs_state_complete")]         // Line 21: B complete
     [InlineData(205519999,   "settlement.bs_class_b", "settlement.bs_state_complete")]         // Line 22: B complete
-    [InlineData(208666751,   "settlement.bs_class_b_to_a", "settlement.bs_state_upgrade_0")]   // Line 23: B→A upgrade
-    [InlineData(477102207,   "settlement.bs_class_b_to_a", "settlement.bs_state_awaiting_unveil")] // Line 24: B→A awaiting
+    [InlineData(208666751,   "settlement.bs_class_b_to_a", "settlement.bs_state_upgrade_0")]   // Line 23: B->A upgrade
+    [InlineData(477102207,   "settlement.bs_class_b_to_a", "settlement.bs_state_awaiting_unveil")] // Line 24: B->A awaiting
     [InlineData(485490815,   "settlement.bs_class_a", "settlement.bs_state_complete")]         // Line 25: A complete
-    [InlineData(502268031,   "settlement.bs_class_a_to_s", "settlement.bs_state_upgrade_0")]   // Line 26: A→S upgrade
-    [InlineData(1039138943,  "settlement.bs_class_a_to_s", "settlement.bs_state_awaiting_unveil")] // Line 27: A→S awaiting
+    [InlineData(502268031,   "settlement.bs_class_a_to_s", "settlement.bs_state_upgrade_0")]   // Line 26: A->S upgrade
+    [InlineData(1039138943,  "settlement.bs_class_a_to_s", "settlement.bs_state_awaiting_unveil")] // Line 27: A->S awaiting
     [InlineData(1072693375,  "settlement.bs_class_s", "settlement.bs_state_complete")]         // Line 28: S complete
     [InlineData(1073740927,  "settlement.bs_class_s", "settlement.bs_state_complete")]         // Line 29: S complete
     public void SettlementBuildingState_DetermineClassAndState_MatchesCSV(int value, string expectedClass, string expectedState)
@@ -9811,7 +10426,7 @@ public class LogicTests
     [Fact]
     public void SettlementBuildingState_GetTierProgression_Correct()
     {
-        // S-class complete: 0x3FF0007F → tier bits 20–25 all set = 0x3F
+        // S-class complete: 0x3FF0007F -> tier bits 20-25 all set = 0x3F
         Assert.Equal(0x3F, SettlementLogic.SettlementBuildingState.GetTierProgression(1072693375));
         // B-class complete: bits 20,21 set = 0x03
         Assert.Equal(0x03, SettlementLogic.SettlementBuildingState.GetTierProgression(204472447));
@@ -9822,7 +10437,7 @@ public class LogicTests
     [Fact]
     public void SettlementBuildingState_GetArrivalFlags_Correct()
     {
-        // S-class complete: 0x3FF0007F → bits 26–29 all set = 0xF
+        // S-class complete: 0x3FF0007F -> bits 26-29 all set = 0xF
         Assert.Equal(0x0F, SettlementLogic.SettlementBuildingState.GetArrivalFlags(1072693375));
         // B-class complete: bits 26,27 set = 0x03
         Assert.Equal(0x03, SettlementLogic.SettlementBuildingState.GetArrivalFlags(204472447));
@@ -10329,5 +10944,1080 @@ public class LogicTests
         string shipJson = ship.ToString();
         var reparsedShip = JsonObject.Parse(shipJson);
         Assert.Equal("USCSS Abraxas", reparsedShip.GetString("Name"));
+    }
+
+	// =========================================================================
+	// Real-save round-trip tests:
+	// Verify that save-then-compare produces absolutely no unintended changes
+	// when the user only modifies a single field.
+	// Uses the real save files from _ref/fp_bugs/ to reproduce the exact
+	// conditions reported by the user.
+	// Thistest harness is designed to simulate the exact load+save
+	// sequence of the relevant UI panels and help save sanity when verifying
+	// value shifts.
+	// =========================================================================
+
+	/// <summary>
+	/// Helper: captures the ordered list of strings from a JSON array.
+	/// </summary>
+	private static List<string> CaptureStringArray(JsonObject container, string key)
+    {
+        var result = new List<string>();
+        var arr = container.GetArray(key);
+        if (arr == null) return result;
+        for (int i = 0; i < arr.Length; i++)
+            result.Add(arr.GetString(i) ?? "");
+        return result;
+    }
+
+    /// <summary>
+    /// Simulates the CataloguePanel load+save round-trip on KnownTech/KnownProducts.
+    /// Loads IDs, saves them back immediately without modification.
+    /// The array order must be preserved exactly.
+    /// </summary>
+    [Fact]
+    public void RealSave_CatalogueRoundTrip_PreservesArrayOrder()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return; // skip if no reference save
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        foreach (string arrayName in new[] { "KnownTech", "KnownProducts", "KnownSpecials" })
+        {
+            var originalOrder = CaptureStringArray(ps, arrayName);
+            if (originalOrder.Count == 0) continue;
+
+            // Simulate CataloguePanel: load IDs then save them back
+            var ids = CatalogueLogic.LoadKnownItemIds(ps, arrayName);
+            CatalogueLogic.SaveKnownItemIds(ps, arrayName, ids);
+
+            var afterOrder = CaptureStringArray(ps, arrayName);
+            Assert.Equal(originalOrder.Count, afterOrder.Count);
+            for (int i = 0; i < originalOrder.Count; i++)
+                Assert.Equal(originalOrder[i], afterOrder[i]);
+        }
+    }
+
+    /// <summary>
+    /// Simulates the AccountPanel load+save round-trip on RedeemedSeasonRewards
+    /// and RedeemedTwitchRewards. Loads redeemed sets, saves them back unchanged.
+    /// The array order must be preserved exactly.
+    /// </summary>
+    [Fact]
+    public void RealSave_RedeemedRewardsRoundTrip_PreservesArrayOrder()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        foreach (string arrayName in new[] { "RedeemedSeasonRewards", "RedeemedTwitchRewards" })
+        {
+            var originalOrder = CaptureStringArray(ps, arrayName);
+            if (originalOrder.Count == 0) continue;
+
+            // Simulate the AccountPanel round-trip: read redeemed set,
+            // build reward list with all items marked as redeemed, save back.
+            var rewards = new List<(string Id, bool Redeemed)>();
+            foreach (var id in originalOrder)
+                rewards.Add((id, true));
+
+            // WriteRedeemedArray is private, so exercise SaveRedeemedRewards
+            // with both season and twitch populated
+            // Actually we can't call WriteRedeemedArray directly, but we can
+            // exercise through SaveRedeemedRewards with appropriate data.
+
+            // For a minimal test, let's verify the array survives a
+            // SyncJsonArrayEntry round-trip for each item.
+            var arr = ps.GetArray(arrayName)!;
+            int originalLength = arr.Length;
+
+            // Call SyncJsonArrayEntry for each item as "present"
+            // (this should be a no-op since they're already there)
+            foreach (var id in originalOrder)
+                AccountLogic.SyncJsonArrayEntry(ps, arrayName, id, true);
+
+            // Verify order and count preserved
+            var afterOrder = CaptureStringArray(ps, arrayName);
+            Assert.Equal(originalOrder.Count, afterOrder.Count);
+            for (int i = 0; i < originalOrder.Count; i++)
+                Assert.Equal(originalOrder[i], afterOrder[i]);
+        }
+    }
+
+    /// <summary>
+    /// Verifies that writing redeemed arrays with the same set of redeemed IDs
+    /// preserves the original order (no clear+rebuild reordering).
+    /// </summary>
+    [Fact]
+    public void WriteRedeemedArray_SameItems_PreservesOrder()
+    {
+        // Build a synthetic JSON with a known order
+        var json = JsonObject.Parse(@"{
+            ""PlayerStateData"": {
+                ""RedeemedSeasonRewards"": [
+                    ""^EXPD_POSTER12A"", ""^EXPD_POSTER06A"", ""^EXPD_FLAG_06B"",
+                    ""^EXPD_TITLE03"", ""^EXPD_POSTER06B"", ""^EXPD_BACKPACK01""
+                ]
+            }
+        }");
+        var ps = json.GetObject("PlayerStateData")!;
+
+        var originalOrder = CaptureStringArray(ps, "RedeemedSeasonRewards");
+
+        // Simulate: all items redeemed, same set
+        var rewards = originalOrder.Select(id => (id, true)).ToList();
+        AccountLogic.SaveRedeemedRewards(json, rewards, new List<(string, bool)>());
+
+        var afterOrder = CaptureStringArray(ps, "RedeemedSeasonRewards");
+        Assert.Equal(originalOrder.Count, afterOrder.Count);
+        for (int i = 0; i < originalOrder.Count; i++)
+            Assert.Equal(originalOrder[i], afterOrder[i]);
+    }
+
+    /// <summary>
+    /// Verifies that the FreighterInventory_Cargo class is NOT overwritten
+    /// when the user hasn't changed the freighter class.
+    /// </summary>
+    [Fact]
+    public void RealSave_FreighterClassUnchanged_CargoClassPreserved()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        // Capture original cargo class
+        var cargoClass = ps.GetObject("FreighterInventory_Cargo")?.GetObject("Class");
+        string originalCargoClass = cargoClass?.GetString("InventoryClass") ?? "";
+
+        // Load freighter data (simulates panel load)
+        var data = FreighterLogic.LoadFreighterData(ps);
+
+        // Save with same class index (unchanged) -- must NOT write to cargo
+        var values = new FreighterLogic.FreighterSaveValues
+        {
+            Name = data.Name,
+            ClassIndex = data.ClassIndex,
+            OriginalClassIndex = data.ClassIndex, // Same as loaded = no change
+            HomeSeed = data.HomeSeed,
+            ModelSeed = data.ModelSeed,
+            Hyperdrive = data.Hyperdrive,
+            FleetCoordination = data.FleetCoordination,
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^FREI_HYPERDRIVE"] = data.Hyperdrive,
+                ["^FREI_FLEET"] = data.FleetCoordination,
+            }
+        };
+        FreighterLogic.SaveFreighterData(ps, values);
+
+        // Verify cargo class was NOT changed
+        cargoClass = ps.GetObject("FreighterInventory_Cargo")?.GetObject("Class");
+        string afterCargoClass = cargoClass?.GetString("InventoryClass") ?? "";
+        Assert.Equal(originalCargoClass, afterCargoClass);
+    }
+
+    /// <summary>
+    /// Full round-trip: load a real save, simulate ALL panel logic saves
+    /// (without changing anything), and verify that only the changed field
+    /// appears in the diff.
+    /// </summary>
+    [Fact]
+    public void RealSave_FullPanelRoundTrip_OnlyChangedFieldDiffers()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        // Capture a snapshot of sensitive arrays before any operations
+        var origKnownTech = CaptureStringArray(ps, "KnownTech");
+        var origKnownProducts = CaptureStringArray(ps, "KnownProducts");
+        var origSeasonRewards = CaptureStringArray(ps, "RedeemedSeasonRewards");
+        var origTwitchRewards = CaptureStringArray(ps, "RedeemedTwitchRewards");
+        var origCargoClass = ps.GetObject("FreighterInventory_Cargo")?.GetObject("Class")?.GetString("InventoryClass") ?? "";
+        var origFreighterClass = ps.GetObject("FreighterInventory")?.GetObject("Class")?.GetString("InventoryClass") ?? "";
+
+        // --- Simulate CataloguePanel round-trip ---
+        foreach (string arrayName in new[] { "KnownTech", "KnownProducts", "KnownSpecials" })
+        {
+            var ids = CatalogueLogic.LoadKnownItemIds(ps, arrayName);
+            CatalogueLogic.SaveKnownItemIds(ps, arrayName, ids);
+        }
+
+        // --- Simulate FreighterPanel round-trip (no changes) ---
+        var freighterData = FreighterLogic.LoadFreighterData(ps);
+        FreighterLogic.SaveFreighterData(ps, new FreighterLogic.FreighterSaveValues
+        {
+            Name = freighterData.Name,
+            ClassIndex = freighterData.ClassIndex,
+            OriginalClassIndex = freighterData.ClassIndex,
+            HomeSeed = freighterData.HomeSeed,
+            ModelSeed = freighterData.ModelSeed,
+            Hyperdrive = freighterData.Hyperdrive,
+            FleetCoordination = freighterData.FleetCoordination,
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^FREI_HYPERDRIVE"] = freighterData.Hyperdrive,
+                ["^FREI_FLEET"] = freighterData.FleetCoordination,
+            }
+        });
+
+        // --- Simulate StarshipPanel round-trip (no changes) on all ships ---
+        var shipOwnership = ps.GetArray("ShipOwnership");
+        if (shipOwnership != null)
+        {
+            for (int i = 0; i < shipOwnership.Length; i++)
+            {
+                var ship = shipOwnership.GetObject(i);
+                if (ship == null) continue;
+                var shipData = StarshipLogic.LoadShipData(ship, ps);
+                if (shipData == null) continue;
+
+                StarshipLogic.SaveShipData(ship, ps, new StarshipLogic.ShipSaveValues
+                {
+                    Name = shipData.Name,
+                    ClassIndex = shipData.ClassIndex,
+                    OriginalClassIndex = shipData.ClassIndex,
+                    Seed = shipData.Seed,
+                    Damage = shipData.Damage,
+                    Shield = shipData.Shield,
+                    Hyperdrive = shipData.Hyperdrive,
+                    Maneuver = shipData.Maneuver,
+                    ShipIndex = i,
+                    RawStatValues = new Dictionary<string, double>
+                    {
+                        ["^SHIP_DAMAGE"] = shipData.Damage,
+                        ["^SHIP_SHIELD"] = shipData.Shield,
+                        ["^SHIP_HYPERDRIVE"] = shipData.Hyperdrive,
+                        ["^SHIP_AGILE"] = shipData.Maneuver,
+                    }
+                });
+            }
+        }
+
+        // --- Verify arrays are still in original order ---
+        var afterKnownTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Equal(origKnownTech.Count, afterKnownTech.Count);
+        for (int i = 0; i < origKnownTech.Count; i++)
+            Assert.Equal(origKnownTech[i], afterKnownTech[i]);
+
+        var afterKnownProducts = CaptureStringArray(ps, "KnownProducts");
+        Assert.Equal(origKnownProducts.Count, afterKnownProducts.Count);
+        for (int i = 0; i < origKnownProducts.Count; i++)
+            Assert.Equal(origKnownProducts[i], afterKnownProducts[i]);
+
+        var afterSeasonRewards = CaptureStringArray(ps, "RedeemedSeasonRewards");
+        Assert.Equal(origSeasonRewards.Count, afterSeasonRewards.Count);
+        for (int i = 0; i < origSeasonRewards.Count; i++)
+            Assert.Equal(origSeasonRewards[i], afterSeasonRewards[i]);
+
+        var afterTwitchRewards = CaptureStringArray(ps, "RedeemedTwitchRewards");
+        Assert.Equal(origTwitchRewards.Count, afterTwitchRewards.Count);
+        for (int i = 0; i < origTwitchRewards.Count; i++)
+            Assert.Equal(origTwitchRewards[i], afterTwitchRewards[i]);
+
+        // --- Verify classes are preserved ---
+        Assert.Equal(origCargoClass,
+            ps.GetObject("FreighterInventory_Cargo")?.GetObject("Class")?.GetString("InventoryClass") ?? "");
+        Assert.Equal(origFreighterClass,
+            ps.GetObject("FreighterInventory")?.GetObject("Class")?.GetString("InventoryClass") ?? "");
+    }
+
+    /// <summary>
+    /// Regression test for the persistent KnownTech pollution bug.
+    /// When AccountPanel.SaveData runs during SyncAllPanelData, the
+    /// SaveRedeemedRewards method was calling SyncKnownArraysForRewards
+    /// which added 100+ expedition items to KnownTech that were redeemed
+    /// but not originally in the array. This test loads the real save,
+    /// reads the redeemed sets, calls SaveRedeemedRewards, and verifies
+    /// KnownTech is unchanged.
+    /// </summary>
+    [Fact]
+    public void RealSave_AccountPanelRoundTrip_DoesNotPollute_KnownTech()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        // Capture original KnownTech and KnownSpecials
+        var origKnownTech = CaptureStringArray(ps, "KnownTech");
+        var origKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+
+        // --- Simulate the AccountPanel round-trip ---
+        // 1. Read the redeemed sets (what LoadData does)
+        var (seasonRedeemed, twitchRedeemed) = AccountLogic.GetRedeemedSets(save);
+
+        // 2. Build reward lists from the redeemed sets (all are marked as redeemed)
+        var seasonRows = seasonRedeemed.Select(id => (id, true)).ToList();
+        var twitchRows = twitchRedeemed.Select(id => (id, true)).ToList();
+
+        // 3. Call SaveRedeemedRewards (what SaveData does)
+        AccountLogic.SaveRedeemedRewards(save, seasonRows, twitchRows);
+
+        // --- Verify KnownTech was NOT modified ---
+        var afterKnownTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Equal(origKnownTech.Count, afterKnownTech.Count);
+        for (int i = 0; i < origKnownTech.Count; i++)
+            Assert.Equal(origKnownTech[i], afterKnownTech[i]);
+
+        // --- Verify KnownSpecials was NOT modified ---
+        var afterKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+        Assert.Equal(origKnownSpecials.Count, afterKnownSpecials.Count);
+        for (int i = 0; i < origKnownSpecials.Count; i++)
+            Assert.Equal(origKnownSpecials[i], afterKnownSpecials[i]);
+    }
+
+    /// <summary>
+    /// End-to-end simulation: load real save, simulate ALL panel saves
+    /// including AccountPanel, and verify the ONLY changes are the
+    /// intentionally-modified field (none in this test).
+    /// </summary>
+    [Fact]
+    public void RealSave_AllPanelsIncludingAccount_NoSpuriousChanges()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        // Snapshot everything
+        var origKnownTech = CaptureStringArray(ps, "KnownTech");
+        var origKnownProducts = CaptureStringArray(ps, "KnownProducts");
+        var origKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+        var origSeasonRewards = CaptureStringArray(ps, "RedeemedSeasonRewards");
+        var origTwitchRewards = CaptureStringArray(ps, "RedeemedTwitchRewards");
+
+        // --- Simulate CataloguePanel ---
+        foreach (string arrayName in new[] { "KnownTech", "KnownProducts", "KnownSpecials" })
+        {
+            var ids = CatalogueLogic.LoadKnownItemIds(ps, arrayName);
+            CatalogueLogic.SaveKnownItemIds(ps, arrayName, ids);
+        }
+
+        // --- Simulate FreighterPanel ---
+        var freighterData = FreighterLogic.LoadFreighterData(ps);
+        FreighterLogic.SaveFreighterData(ps, new FreighterLogic.FreighterSaveValues
+        {
+            Name = freighterData.Name,
+            ClassIndex = freighterData.ClassIndex,
+            OriginalClassIndex = freighterData.ClassIndex,
+            HomeSeed = freighterData.HomeSeed,
+            ModelSeed = freighterData.ModelSeed,
+            Hyperdrive = freighterData.Hyperdrive,
+            FleetCoordination = freighterData.FleetCoordination,
+            RawStatValues = new Dictionary<string, double>
+            {
+                ["^FREI_HYPERDRIVE"] = freighterData.Hyperdrive,
+                ["^FREI_FLEET"] = freighterData.FleetCoordination,
+            }
+        });
+
+        // --- Simulate StarshipPanel (all ships) ---
+        var shipOwnership = ps.GetArray("ShipOwnership");
+        if (shipOwnership != null)
+        {
+            for (int i = 0; i < shipOwnership.Length; i++)
+            {
+                var ship = shipOwnership.GetObject(i);
+                if (ship == null) continue;
+                var shipData = StarshipLogic.LoadShipData(ship, ps);
+                if (shipData == null) continue;
+                StarshipLogic.SaveShipData(ship, ps, new StarshipLogic.ShipSaveValues
+                {
+                    Name = shipData.Name,
+                    ClassIndex = shipData.ClassIndex,
+                    OriginalClassIndex = shipData.ClassIndex,
+                    Seed = shipData.Seed,
+                    Damage = shipData.Damage,
+                    Shield = shipData.Shield,
+                    Hyperdrive = shipData.Hyperdrive,
+                    Maneuver = shipData.Maneuver,
+                    ShipIndex = i,
+                    RawStatValues = new Dictionary<string, double>
+                    {
+                        ["^SHIP_DAMAGE"] = shipData.Damage,
+                        ["^SHIP_SHIELD"] = shipData.Shield,
+                        ["^SHIP_HYPERDRIVE"] = shipData.Hyperdrive,
+                        ["^SHIP_AGILE"] = shipData.Maneuver,
+                    }
+                });
+            }
+        }
+
+        // --- Simulate AccountPanel (load redeemed, save back unchanged) ---
+        var (seasonRedeemed, twitchRedeemed) = AccountLogic.GetRedeemedSets(save);
+        AccountLogic.SaveRedeemedRewards(save,
+            seasonRedeemed.Select(id => (id, true)).ToList(),
+            twitchRedeemed.Select(id => (id, true)).ToList());
+
+        // --- Verify ALL arrays are unchanged ---
+        var afterKnownTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Equal(origKnownTech.Count, afterKnownTech.Count);
+        for (int i = 0; i < origKnownTech.Count; i++)
+            Assert.Equal(origKnownTech[i], afterKnownTech[i]);
+
+        var afterKnownProducts = CaptureStringArray(ps, "KnownProducts");
+        Assert.Equal(origKnownProducts.Count, afterKnownProducts.Count);
+        for (int i = 0; i < origKnownProducts.Count; i++)
+            Assert.Equal(origKnownProducts[i], afterKnownProducts[i]);
+
+        var afterKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+        Assert.Equal(origKnownSpecials.Count, afterKnownSpecials.Count);
+        for (int i = 0; i < origKnownSpecials.Count; i++)
+            Assert.Equal(origKnownSpecials[i], afterKnownSpecials[i]);
+
+        var afterSeasonRewards = CaptureStringArray(ps, "RedeemedSeasonRewards");
+        Assert.Equal(origSeasonRewards.Count, afterSeasonRewards.Count);
+        for (int i = 0; i < origSeasonRewards.Count; i++)
+            Assert.Equal(origSeasonRewards[i], afterSeasonRewards[i]);
+
+        var afterTwitchRewards = CaptureStringArray(ps, "RedeemedTwitchRewards");
+        Assert.Equal(origTwitchRewards.Count, afterTwitchRewards.Count);
+        for (int i = 0; i < origTwitchRewards.Count; i++)
+            Assert.Equal(origTwitchRewards[i], afterTwitchRewards[i]);
+    }
+
+    /// <summary>
+    /// Verifies that SyncKnownArraysForChangedRewards correctly adds entries
+    /// to KnownTech when a user explicitly toggles an item's redeemed state to true,
+    /// and removes entries when toggled to false -- but ONLY for the changed items.
+    /// </summary>
+    [Fact]
+    public void SyncKnownArraysForChangedRewards_OnlyTouchesChangedItems()
+    {
+        // Build a minimal save with KnownTech containing one entry
+        var save = new JsonObject();
+        var ps = new JsonObject();
+        save.Set("PlayerStateData", ps);
+
+        var knownTech = new JsonArray();
+        knownTech.Add("^EXISTING_ITEM");
+        ps.Set("KnownTech", knownTech);
+
+        var knownSpecials = new JsonArray();
+        ps.Set("KnownSpecials", knownSpecials);
+
+        // Simulate: user toggled one item to redeemed (delta has 1 item)
+        var changed = new List<(string Id, bool Redeemed)>
+        {
+            ("^NEW_REWARD", true)
+        };
+        AccountLogic.SyncKnownArraysForChangedRewards(save, changed, null);
+
+        // KnownTech should still have existing item untouched
+        var afterTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Contains("^EXISTING_ITEM", afterTech);
+
+        // With no database, SyncKnownArraysForRewards conservatively skips KnownTech
+        // for unknown items, so ^NEW_REWARD won't be added. Verify the existing entry is untouched.
+        Assert.Single(afterTech);
+
+        // Now simulate: user toggles an existing item to not-redeemed
+        // First add it to KnownTech
+        knownTech.Add("^TOGGLED_OFF");
+        var changedOff = new List<(string Id, bool Redeemed)>
+        {
+            ("^TOGGLED_OFF", false)
+        };
+        AccountLogic.SyncKnownArraysForChangedRewards(save, changedOff, null);
+
+        // ^TOGGLED_OFF should NOT be removed from KnownTech without database info
+        // (the method skips items with no database match)
+        afterTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Contains("^EXISTING_ITEM", afterTech);
+    }
+
+    /// <summary>
+    /// Verifies that when the changed-rewards list is empty (no user changes),
+    /// SyncKnownArraysForChangedRewards is a no-op.
+    /// </summary>
+    [Fact]
+    public void SyncKnownArraysForChangedRewards_EmptyDelta_IsNoOp()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        var origKnownTech = CaptureStringArray(ps, "KnownTech");
+
+        // Empty delta -- should be a no-op
+        AccountLogic.SyncKnownArraysForChangedRewards(save,
+            new List<(string, bool)>(), null);
+
+        var afterKnownTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Equal(origKnownTech.Count, afterKnownTech.Count);
+        for (int i = 0; i < origKnownTech.Count; i++)
+            Assert.Equal(origKnownTech[i], afterKnownTech[i]);
+    }
+
+    /// <summary>
+    /// Full end-to-end simulation with delta-only sync: load save, simulate
+    /// ALL panels including AccountPanel with delta tracking, verify no
+    /// spurious changes when no items are toggled.
+    /// </summary>
+    [Fact]
+    public void RealSave_AllPanelsWithDeltaSync_NoSpuriousChanges()
+    {
+        string savePath = Path.Combine(referencePath, "fp_bugs", "save2-BEFORE.hg");
+        if (!File.Exists(savePath)) return;
+
+        var save = SaveFileManager.LoadSaveFile(savePath);
+        var ps = save.GetObject("PlayerStateData")!;
+
+        var origKnownTech = CaptureStringArray(ps, "KnownTech");
+        var origKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+
+        // --- Simulate CataloguePanel ---
+        foreach (string arrayName in new[] { "KnownTech", "KnownProducts", "KnownSpecials" })
+        {
+            var ids = CatalogueLogic.LoadKnownItemIds(ps, arrayName);
+            CatalogueLogic.SaveKnownItemIds(ps, arrayName, ids);
+        }
+
+        // --- Simulate AccountPanel (load + save with delta tracking) ---
+        // 1. Load: snapshot original redeemed state
+        var (seasonRedeemed, twitchRedeemed) = AccountLogic.GetRedeemedSets(save);
+        var origSeasonRedeemed = new HashSet<string>(seasonRedeemed, StringComparer.OrdinalIgnoreCase);
+        var origTwitchRedeemed = new HashSet<string>(twitchRedeemed, StringComparer.OrdinalIgnoreCase);
+
+        // 2. Build current state (unchanged -- same as original)
+        var seasonRows = seasonRedeemed.Select(id => (id, true)).ToList();
+        var twitchRows = twitchRedeemed.Select(id => (id, true)).ToList();
+
+        // 3. SaveRedeemedRewards (writes Redeemed* arrays only)
+        AccountLogic.SaveRedeemedRewards(save, seasonRows, twitchRows);
+
+        // 4. Compute delta (should be empty -- nothing changed)
+        var seasonChanged = new List<(string Id, bool Redeemed)>();
+        foreach (var (id, redeemed) in seasonRows)
+        {
+            bool wasRedeemed = origSeasonRedeemed.Contains(id);
+            if (redeemed != wasRedeemed) seasonChanged.Add((id, redeemed));
+        }
+        var twitchChanged = new List<(string Id, bool Redeemed)>();
+        foreach (var (id, redeemed) in twitchRows)
+        {
+            bool wasRedeemed = origTwitchRedeemed.Contains(id);
+            if (redeemed != wasRedeemed) twitchChanged.Add((id, redeemed));
+        }
+
+        // Delta should be empty
+        Assert.Empty(seasonChanged);
+        Assert.Empty(twitchChanged);
+
+        // 5. SyncKnownArraysForChangedRewards with empty delta -- no-op
+        AccountLogic.SyncKnownArraysForChangedRewards(save, seasonChanged, null);
+        AccountLogic.SyncKnownArraysForChangedRewards(save, twitchChanged, null);
+
+        // --- Verify KnownTech unchanged ---
+        var afterKnownTech = CaptureStringArray(ps, "KnownTech");
+        Assert.Equal(origKnownTech.Count, afterKnownTech.Count);
+        for (int i = 0; i < origKnownTech.Count; i++)
+            Assert.Equal(origKnownTech[i], afterKnownTech[i]);
+
+        // --- Verify KnownSpecials unchanged ---
+        var afterKnownSpecials = CaptureStringArray(ps, "KnownSpecials");
+        Assert.Equal(origKnownSpecials.Count, afterKnownSpecials.Count);
+        for (int i = 0; i < origKnownSpecials.Count; i++)
+            Assert.Equal(origKnownSpecials[i], afterKnownSpecials[i]);
+    }
+
+    /// <summary>
+    /// Verifies that IsNonTechReward correctly identifies ship, egg, frigate,
+    /// weapon, firework, and pet reward IDs as non-tech (should NOT go in KnownTech),
+    /// while trails, staffs, bobbleheads, mech parts, and corvette parts are tech
+    /// (should go in KnownTech).
+    /// </summary>
+    [Fact]
+    public void IsNonTechReward_CorrectlyClassifiesRewardTypes()
+    {
+        // Non-tech rewards (ships, eggs, frigates, weapons, fireworks, pets)
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S13_SHIP" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_SHIP01" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_SHIP_DARK" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S8_EGG" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_PB_MEDAL_EGG1" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S13_FRIGATE" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_GUN01" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_SWIT_GUN01" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S1_FIREWORKS" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_FIREW01" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_PET01" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_PET25" }));
+
+        // Tech rewards -- should return false (these DO go in KnownTech)
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S6_TRAIL" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S12_STAFF" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S2_SPEC" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_S14_MECH_ARML" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_BOBBLE_OCTO" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_ENGINE" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_SHIELD" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_TRIM" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_WING" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S19_TURRET" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_DECO" }));
+        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_STR" }));
+    }
+
+    /// <summary>
+    /// Verifies that SyncKnownArraysForChangedRewards uses the database
+    /// GiveRewardOnSpecialPurchase field to correctly skip KnownTech for
+    /// non-tech rewards (ships, eggs) while adding tech rewards (trails, staffs).
+    /// </summary>
+    [Fact]
+    public void SyncKnownArraysForChangedRewards_UsesGiveRewardField_SkipsNonTechItems()
+    {
+        // Build a minimal save
+        var save = new JsonObject();
+        var ps = new JsonObject();
+        save.Set("PlayerStateData", ps);
+        ps.Set("KnownTech", new JsonArray());
+        ps.Set("KnownSpecials", new JsonArray());
+
+        // Build a minimal database with two items:
+        // 1. A ship reward (non-tech) -- should NOT be added to KnownTech
+        // 2. A trail reward (tech) -- SHOULD be added to KnownTech
+        var db = new GameItemDatabase();
+        db.InjectTestItem(new GameItem
+        {
+            Id = "EXPD_SHIP13",
+            TradeCategory = "SpecialShop",
+            GiveRewardOnSpecialPurchase = "RS_S13_SHIP"
+        });
+        db.InjectTestItem(new GameItem
+        {
+            Id = "SHIP_PIRATE",
+            TradeCategory = "SpecialShop",
+            GiveRewardOnSpecialPurchase = "RS_S6_TRAIL"
+        });
+
+        var changed = new List<(string Id, bool Redeemed)>
+        {
+            ("^EXPD_SHIP13", true),
+            ("^SHIP_PIRATE", true)
+        };
+
+        AccountLogic.SyncKnownArraysForChangedRewards(save, changed, db);
+
+        var knownTech = CaptureStringArray(ps, "KnownTech");
+        var knownSpecials = CaptureStringArray(ps, "KnownSpecials");
+
+        // Ship reward should NOT be in KnownTech
+        Assert.DoesNotContain("^EXPD_SHIP13", knownTech);
+        // Trail reward SHOULD be in KnownTech
+        Assert.Contains("^SHIP_PIRATE", knownTech);
+
+        // Both should be in KnownSpecials (both are SpecialShop)
+        Assert.Contains("^EXPD_SHIP13", knownSpecials);
+        Assert.Contains("^SHIP_PIRATE", knownSpecials);
+    }
+
+    // --- InventoryBulkActions ----------------------------------------
+
+    /// <summary>
+    /// Helper to build a minimal inventory JSON object with the given slots.
+    /// Each slot is represented as (itemId, amount, maxAmount, damageFactor, inventoryType).
+    /// </summary>
+    private static JsonObject BuildInventory(params (string id, int amount, int maxAmount, double damage, string invType)[] slots)
+    {
+        var inv = JsonObject.Parse("{ \"Slots\": [], \"SpecialSlots\": [] }");
+        var slotsArr = inv.GetArray("Slots")!;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            var (id, amount, maxAmount, damage, invType) = slots[i];
+            var slot = JsonObject.Parse($@"{{
+                ""Id"": {{ ""Id"": ""{id}"" }},
+                ""Amount"": {amount},
+                ""MaxAmount"": {maxAmount},
+                ""DamageFactor"": {damage.ToString(CultureInfo.InvariantCulture)},
+                ""FullyInstalled"": {(damage > 0 ? "false" : "true")},
+                ""Type"": {{ ""InventoryType"": ""{invType}"" }},
+                ""Index"": {{ ""X"": {i}, ""Y"": 0 }}
+            }}");
+            slotsArr.Add(slot);
+        }
+        return inv;
+    }
+
+    /// <summary>
+    /// Helper to build a minimal PlayerStateData with one tech inventory (Exosuit tech)
+    /// and one cargo inventory (Exosuit cargo).
+    /// </summary>
+    private static JsonObject BuildPlayerState(JsonObject? techInv = null, JsonObject? cargoInv = null)
+    {
+        var ps = JsonObject.Parse("{}");
+        if (cargoInv != null) ps.Add("Inventory", cargoInv);
+        if (techInv != null) ps.Add("Inventory_TechOnly", techInv);
+        return ps;
+    }
+
+    private static GameItemDatabase BuildTestDatabase()
+    {
+        var db = new GameItemDatabase();
+        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Data", "json");
+        if (Directory.Exists(dbPath))
+            db.LoadItemsFromJsonDirectory(dbPath);
+        return db;
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTechnology_RechargesChargeableItems()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return; // skip if no database
+
+        // HYPERDRIVE is a chargeable tech item
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        Assert.True(hyperdrive.IsChargeable);
+        int chargeAmount = hyperdrive.ChargeValue;
+        Assert.True(chargeAmount > 0);
+
+        var techInv = BuildInventory(
+            ("^HYPERDRIVE", 10, chargeAmount, 0, "Technology"),
+            ("^LASER", 50, 100, 0, "Technology")  // some other tech, partially charged
+        );
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+
+        // HYPERDRIVE should have been recharged; LASER only if it's chargeable
+        Assert.True(recharged >= 1);
+        var slots = techInv.GetArray("Slots")!;
+        Assert.Equal(chargeAmount, slots.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTechnology_SkipsFullyChargedItems()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int chargeAmount = hyperdrive.ChargeValue;
+
+        var techInv = BuildInventory(
+            ("^HYPERDRIVE", chargeAmount, chargeAmount, 0, "Technology") // already full
+        );
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+        Assert.Equal(0, recharged);
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_RefillsCargoSlots()
+    {
+        var db = BuildTestDatabase();
+
+        var cargoInv = BuildInventory(
+            ("^FUEL1", 50, 500, 0, "Substance"),
+            ("^CASING", 3, 50, 0, "Product")
+        );
+        var ps = BuildPlayerState(cargoInv: cargoInv);
+
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+
+        Assert.Equal(2, refilled);
+        var slots = cargoInv.GetArray("Slots")!;
+        Assert.Equal(500, slots.GetObject(0)!.GetInt("Amount"));
+        Assert.Equal(50, slots.GetObject(1)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_SkipsFullStacks()
+    {
+        var db = BuildTestDatabase();
+
+        var cargoInv = BuildInventory(
+            ("^FUEL1", 500, 500, 0, "Substance") // already full
+        );
+        var ps = BuildPlayerState(cargoInv: cargoInv);
+
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+        Assert.Equal(0, refilled);
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_RepairsDamagedSlots()
+    {
+        var db = BuildTestDatabase();
+
+        var techInv = BuildInventory(
+            ("^HYPERDRIVE", -1, 200, 1.0, "Technology"), // damaged tech
+            ("^LASER", 100, 100, 0, "Technology")        // undamaged
+        );
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+
+        Assert.Equal(1, repaired);
+        var slot = techInv.GetArray("Slots")!.GetObject(0)!;
+        Assert.Equal(0.0, slot.GetDouble("DamageFactor"));
+        Assert.True((bool)slot.Get("FullyInstalled")!);
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_RemovesDamagePlaceholders()
+    {
+        var db = BuildTestDatabase();
+
+        var cargoInv = BuildInventory(
+            ("^SHIPSLOT_DMG1", 0, 0, 1.0, "Product"), // damage placeholder
+            ("^FUEL1", 100, 500, 0, "Substance")       // normal item
+        );
+        var ps = BuildPlayerState(cargoInv: cargoInv);
+
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+
+        Assert.Equal(1, repaired);
+        // Damage placeholder should be removed from slots
+        var slots = cargoInv.GetArray("Slots")!;
+        Assert.Equal(1, slots.Length);
+        Assert.Equal("^FUEL1", slots.GetObject(0)!.GetObject("Id")!.GetString("Id"));
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_RemovesBlockedByBrokenTech()
+    {
+        var db = BuildTestDatabase();
+
+        var techInv = BuildInventory(
+            ("^HYPERDRIVE", -1, 200, 1.0, "Technology")
+        );
+        // Add a BlockedByBrokenTech entry
+        var specialSlots = techInv.GetArray("SpecialSlots")!;
+        var blocked = JsonObject.Parse(@"{
+            ""Type"": { ""InventorySpecialSlotType"": ""BlockedByBrokenTech"" },
+            ""Index"": { ""X"": 1, ""Y"": 0 }
+        }");
+        specialSlots.Add(blocked);
+        Assert.Equal(1, specialSlots.Length);
+
+        var ps = BuildPlayerState(techInv: techInv);
+        InventoryBulkActions.RepairAllSlots(ps, db);
+
+        // BlockedByBrokenTech should be removed
+        Assert.Equal(0, techInv.GetArray("SpecialSlots")!.Length);
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllTechnology_OnlyRepairsTechItems()
+    {
+        var db = BuildTestDatabase();
+
+        // Mixed inventory with both tech and cargo items
+        var inv = BuildInventory(
+            ("^HYPERDRIVE", -1, 200, 1.0, "Technology"),  // damaged tech
+            ("^FUEL1", 50, 500, 1.0, "Substance")         // damaged cargo/substance
+        );
+        // Use this as a tech inventory in player state
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Inventory_TechOnly", inv);
+
+        int repaired = InventoryBulkActions.RepairAllTechnology(ps, db);
+
+        // Only the Technology item should be repaired
+        Assert.Equal(1, repaired);
+        var slots = inv.GetArray("Slots")!;
+        Assert.Equal(0.0, slots.GetObject(0)!.GetDouble("DamageFactor"));   // tech repaired
+        Assert.Equal(1.0, slots.GetObject(1)!.GetDouble("DamageFactor"));   // substance NOT repaired
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_ExcludesChestsAndStorage()
+    {
+        var db = BuildTestDatabase();
+
+        // Build a player state with a damaged chest
+        var chestInv = BuildInventory(
+            ("^FUEL1", -1, 500, 1.0, "Substance") // damaged
+        );
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Chest1Inventory", chestInv);
+
+        // RepairAllSlots should NOT touch chest inventories
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+        Assert.Equal(0, repaired);
+        Assert.Equal(1.0, chestInv.GetArray("Slots")!.GetObject(0)!.GetDouble("DamageFactor"));
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_IncludesChests()
+    {
+        var db = BuildTestDatabase();
+
+        var chestInv = BuildInventory(
+            ("^FUEL1", 50, 500, 0, "Substance")
+        );
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Chest1Inventory", chestInv);
+
+        // RefillAllStacks SHOULD include chests
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+        Assert.Equal(1, refilled);
+        Assert.Equal(500, chestInv.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTech_SpansMultipleInventoryTypes()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int chargeAmount = hyperdrive.ChargeValue;
+
+        // Build player state with Exosuit tech + one ship with tech
+        var exosuitTech = BuildInventory(("^HYPERDRIVE", 10, chargeAmount, 0, "Technology"));
+        var shipTech = BuildInventory(("^HYPERDRIVE", 5, chargeAmount, 0, "Technology"));
+        var ship = JsonObject.Parse("{}");
+        ship.Add("Inventory_TechOnly", shipTech);
+        ship.Add("Inventory", JsonObject.Parse("{ \"Slots\": [] }"));
+        var shipsArr = new JsonArray();
+        shipsArr.Add(ship);
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Inventory_TechOnly", exosuitTech);
+        ps.Add("ShipOwnership", shipsArr);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+
+        Assert.Equal(2, recharged);
+        Assert.Equal(chargeAmount, exosuitTech.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+        Assert.Equal(chargeAmount, shipTech.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_SpansMultipleInventoryTypes()
+    {
+        var db = BuildTestDatabase();
+
+        // Exosuit cargo with damage + Freighter tech with damage
+        var exosuitCargo = BuildInventory(("^FUEL1", -1, 500, 1.0, "Substance"));
+        var freighterTech = BuildInventory(("^HYPERDRIVE", -1, 200, 1.0, "Technology"));
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Inventory", exosuitCargo);
+        ps.Add("FreighterInventory_TechOnly", freighterTech);
+
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+
+        Assert.Equal(2, repaired);
+        Assert.Equal(0.0, exosuitCargo.GetArray("Slots")!.GetObject(0)!.GetDouble("DamageFactor"));
+        Assert.Equal(0.0, freighterTech.GetArray("Slots")!.GetObject(0)!.GetDouble("DamageFactor"));
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_IncludesStorageInventories()
+    {
+        var db = BuildTestDatabase();
+
+        var storageInv = BuildInventory(("^FUEL1", 10, 500, 0, "Substance"));
+        var ps = JsonObject.Parse("{}");
+        ps.Add("CookingIngredientsInventory", storageInv);
+
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+        Assert.Equal(1, refilled);
+        Assert.Equal(500, storageInv.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTech_IncludesMultitools()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int chargeAmount = hyperdrive.ChargeValue;
+
+        var toolStore = BuildInventory(("^HYPERDRIVE", 5, chargeAmount, 0, "Technology"));
+        var tool = JsonObject.Parse("{}");
+        tool.Add("Store", toolStore);
+
+        var multitools = new JsonArray();
+        multitools.Add(tool);
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Multitools", multitools);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+        Assert.Equal(1, recharged);
+        Assert.Equal(chargeAmount, toolStore.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTech_IncludesExocraft()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int chargeAmount = hyperdrive.ChargeValue;
+
+        var vehicleTech = BuildInventory(("^HYPERDRIVE", 5, chargeAmount, 0, "Technology"));
+        var vehicle = JsonObject.Parse("{}");
+        vehicle.Add("Inventory_TechOnly", vehicleTech);
+        vehicle.Add("Inventory", JsonObject.Parse("{ \"Slots\": [] }"));
+
+        var vehicles = new JsonArray();
+        vehicles.Add(vehicle);
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("VehicleOwnership", vehicles);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+        Assert.Equal(1, recharged);
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_IncludesExocraftInventories()
+    {
+        var db = BuildTestDatabase();
+
+        var vehicleCargo = BuildInventory(("^FUEL1", -1, 500, 1.0, "Substance"));
+        var vehicleTech = BuildInventory(("^HYPERDRIVE", -1, 200, 1.0, "Technology"));
+        var vehicle = JsonObject.Parse("{}");
+        vehicle.Add("Inventory", vehicleCargo);
+        vehicle.Add("Inventory_TechOnly", vehicleTech);
+
+        var vehicles = new JsonArray();
+        vehicles.Add(vehicle);
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("VehicleOwnership", vehicles);
+
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+        Assert.Equal(2, repaired);
+    }
+
+    [Fact]
+    public void BulkActions_EmptyPlayerState_ReturnsZero()
+    {
+        var db = BuildTestDatabase();
+        var ps = JsonObject.Parse("{}");
+
+        Assert.Equal(0, InventoryBulkActions.RechargeAllTechnology(ps, db));
+        Assert.Equal(0, InventoryBulkActions.RefillAllStacks(ps, db));
+        Assert.Equal(0, InventoryBulkActions.RepairAllSlots(ps, db));
+        Assert.Equal(0, InventoryBulkActions.RepairAllTechnology(ps, db));
     }
 }

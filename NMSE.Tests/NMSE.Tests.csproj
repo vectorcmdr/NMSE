@@ -95,7 +95,6 @@
     <Compile Include="..\Core\SquadronLogic.cs" Link="Core\SquadronLogic.cs" />
     <Compile Include="..\Core\ExocraftLogic.cs" Link="Core\ExocraftLogic.cs" />
     <Compile Include="..\Core\ExosuitLogic.cs" Link="Core\ExosuitLogic.cs" />
-    <Compile Include="..\Core\ExosuitAutoStackLogic.cs" Link="Core\ExosuitAutoStackLogic.cs" />
     <Compile Include="..\Core\AccountLogic.cs" Link="Core\AccountLogic.cs" />
     <Compile Include="..\Core\Utilities\StringHelper.cs" Link="Core\Utilities\StringHelper.cs" />
     <Compile Include="..\Core\MxmlRewardEditor.cs" Link="Core\MxmlRewardEditor.cs" />
@@ -106,6 +105,8 @@
     <Compile Include="..\Core\AppJsonContext.cs" Link="Core\AppJsonContext.cs" />
     <Compile Include="..\Core\Utilities\NumericParseHelper.cs" Link="Core\Utilities\NumericParseHelper.cs" />
     <Compile Include="..\Core\Utilities\NmsColourPalette.cs" Link="Core\Utilities\NmsColourPalette.cs" />
+    <Compile Include="..\Core\Utilities\RawNumberGuard.cs" Link="Core\Utilities\RawNumberGuard.cs" />
+    <Compile Include="..\Core\InventoryBulkActions.cs" Link="Core\InventoryBulkActions.cs" />
   </ItemGroup>
 
   <!-- Config (application settings - no WinForms dependency) -->

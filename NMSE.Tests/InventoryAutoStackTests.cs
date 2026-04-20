@@ -3,7 +3,7 @@ using NMSE.Models;
 
 namespace NMSE.Tests;
 
-public class ExosuitAutoStackLogicTests
+public class InventoryAutoStackTests
 {
     [Fact]
     public void AutoStackCargoToChests_UsesSingleDestinationChestAndCreatesRemainderThere()
@@ -23,7 +23,7 @@ public class ExosuitAutoStackLogicTests
                 [], [], [], [], []
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(300, movedUnits);
@@ -56,7 +56,7 @@ public class ExosuitAutoStackLogicTests
                 [], [], [], [], [], [], [], [], []
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.False(changed);
         Assert.Equal(0, movedUnits);
@@ -81,7 +81,7 @@ public class ExosuitAutoStackLogicTests
                 [], [], [], [], [], [], [], [], []
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(500, movedUnits);
@@ -114,7 +114,7 @@ public class ExosuitAutoStackLogicTests
                 [(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (5, 0), (6, 0)]
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(300, movedUnits);
@@ -147,7 +147,7 @@ public class ExosuitAutoStackLogicTests
         var chest1Inventory = playerState.GetObject("Chest1Inventory")!;
         chest1Inventory.Set("ValidSlotIndices", null);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(300, movedUnits);
@@ -183,7 +183,7 @@ public class ExosuitAutoStackLogicTests
                 [(1, 0), (2, 0)]
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(120, movedUnits);
@@ -218,7 +218,7 @@ public class ExosuitAutoStackLogicTests
                 [(0, 0)]
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(50, movedUnits);
@@ -248,7 +248,7 @@ public class ExosuitAutoStackLogicTests
                 [(0, 0), (1, 0)]
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.False(changed);
         Assert.Equal(0, movedUnits);
@@ -278,7 +278,7 @@ public class ExosuitAutoStackLogicTests
                 [(1, 0), (2, 0)]
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(150, movedUnits);
@@ -319,7 +319,7 @@ public class ExosuitAutoStackLogicTests
         playerState.Add("ShipOwnership", ships);
         playerState.Add("PrimaryShip", 0);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToStarship(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToStarship(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.True(changed);
         Assert.Equal(150, movedUnits);
@@ -351,7 +351,7 @@ public class ExosuitAutoStackLogicTests
         playerState.Add("FreighterInventory", MakeInventory([MakeSlot("^FERRITE", 0, 0, 400, 999)]));
         playerState.Add("FreighterInventory_TechOnly", MakeInventory([]));
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToFreighter(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
+        bool changed = InventoryBulkActions.AutoStackCargoToFreighter(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots);
 
         Assert.False(changed);
         Assert.Equal(0, movedUnits);
@@ -384,7 +384,7 @@ public class ExosuitAutoStackLogicTests
         playerState.Add("PrimaryShip", 0);
 
         var pinned = new HashSet<(int x, int y)> { (0, 0) };
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToStarship(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots, pinned);
+        bool changed = InventoryBulkActions.AutoStackCargoToStarship(playerState.GetObject("Inventory")!, playerState, out int movedUnits, out int touchedCargoSlots, pinned);
 
         Assert.False(changed);
         Assert.Equal(0, movedUnits);
@@ -412,7 +412,7 @@ public class ExosuitAutoStackLogicTests
                 [], [], [], [], [], [], [], [], []
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(
             playerState.GetObject("Inventory")!,
             playerState,
             out int movedUnits,
@@ -447,7 +447,7 @@ public class ExosuitAutoStackLogicTests
                 [], [], [], [], [], [], [], [], []
             ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(
             playerState.GetObject("Inventory")!,
             playerState,
             out int movedUnits,
@@ -479,7 +479,7 @@ public class ExosuitAutoStackLogicTests
             MakeSlot("^OXYGEN", 3, 0, 600, 999)
         ]);
 
-        bool changed = ExosuitAutoStackLogic.AutoStackFromInventoryToInventory(
+        bool changed = InventoryBulkActions.AutoStackFromInventoryToInventory(
             sourceInventory,
             destinationInventory,
             out int movedUnits,
@@ -515,7 +515,7 @@ public class ExosuitAutoStackLogicTests
 
         var pinned = new HashSet<(int x, int y)> { (1, 0) };
 
-        bool changed = ExosuitAutoStackLogic.AutoStackFromInventoryToInventory(
+        bool changed = InventoryBulkActions.AutoStackFromInventoryToInventory(
             sourceInventory,
             destinationInventory,
             out int movedUnits,

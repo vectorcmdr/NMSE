@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NMSE.Data;
 
 namespace NMSE.Tests;
@@ -363,6 +364,13 @@ public class UiStringsTests : IDisposable
         "ja-JP", "ko-KR", "zh-CN", "zh-TW"
     ];
 
+    private static Dictionary<string, string> LoadLangFile(string langDir, string tag)
+    {
+        string path = Path.Combine(langDir, $"{tag}.json");
+        string json = File.ReadAllText(path);
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? [];
+    }
+
     [Fact]
     public void UiStrings_BattleKeys_ExistInAllLanguages()
     {
@@ -385,6 +393,81 @@ public class UiStringsTests : IDisposable
             {
                 string value = UiStrings.Get(key);
                 Assert.NotEqual(key, value); // Should resolve to a real string, not fall back to raw key
+            }
+        }
+    }
+
+    [Fact]
+    public void UiStrings_BattleMoveAndValueKeys_DoNotUseEnglishPlaceholdersInNonEnglishLocales()
+    {
+        var langDir = FindRealLangDir();
+        if (langDir == null) return;
+
+        var english = LoadLangFile(langDir, "en-GB");
+        var battleKeys = english.Keys
+            .Where(key => key.StartsWith("companion.battle_move_", StringComparison.Ordinal)
+                       || key.StartsWith("companion.battle_val_", StringComparison.Ordinal))
+            .ToArray();
+
+        var allowedSameAsEnglish = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+        {
+            ["de-DE"] =
+            [
+                "companion.battle_move_detail_phase",
+                "companion.battle_val_affinity_frost",
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_effect_buff",
+                "companion.battle_val_effect_debuff"
+            ],
+            ["es-419"] =
+            [
+                "companion.battle_move_detail_no",
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_affinity_tropical"
+            ],
+            ["es-ES"] =
+            [
+                "companion.battle_move_detail_no",
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_affinity_tropical"
+            ],
+            ["fr-FR"] =
+            [
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_affinity_tropical",
+                "companion.battle_val_effect_projectile"
+            ],
+            ["it-IT"] = ["companion.battle_move_detail_no"],
+            ["nl-NL"] =
+            [
+                "companion.battle_move_detail_effect",
+                "companion.battle_move_detail_type"
+            ],
+            ["pt-BR"] =
+            [
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_affinity_tropical"
+            ],
+            ["pt-PT"] =
+            [
+                "companion.battle_val_affinity_normal",
+                "companion.battle_val_affinity_tropical"
+            ],
+        };
+
+        foreach (var lang in AllLanguages.Where(lang => lang != "en-GB" && lang != "en-US"))
+        {
+            var locale = LoadLangFile(langDir, lang);
+            var allowed = allowedSameAsEnglish.TryGetValue(lang, out var sameKeys)
+                ? sameKeys
+                : [];
+
+            foreach (var key in battleKeys)
+            {
+                Assert.True(locale.TryGetValue(key, out var value), $"{lang} is missing battle key {key}");
+                Assert.True(
+                    value != english[key] || allowed.Contains(key),
+                    $"{lang} still uses English placeholder for {key}: '{value}'");
             }
         }
     }
