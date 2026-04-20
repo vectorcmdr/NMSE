@@ -196,6 +196,24 @@ public static class CompanionDatabase
 
                 ById.Clear();
                 foreach (var e in loaded) ById[e.Id] = e;
+
+                // Build reverse-lookup from descriptor → variant across all creatures.
+                // This allows creatures whose own entry has no variant data (e.g. HERMITCRAB)
+                // to resolve accessories via their part descriptors (e.g. _CRABSHELL_02 →
+                // SPIDER's variant with LEFT+RIGHT groups).
+                // TryAdd keeps the first-encountered variant for a given descriptor.
+                // In practice each descriptor is unique to one creature, but if duplicates
+                // exist the first one wins (iteration order matches the JSON array order).
+                CompanionAccessoryDatabase.VariantByDescriptor.Clear();
+                foreach (var e in loaded)
+                {
+                    if (e.AccessoryVariants == null) continue;
+                    foreach (var v in e.AccessoryVariants)
+                    {
+                        if (!string.IsNullOrEmpty(v.RequiredDescriptor))
+                            CompanionAccessoryDatabase.VariantByDescriptor.TryAdd(v.RequiredDescriptor, v);
+                    }
+                }
             }
 
             return loaded.Count > 0;
@@ -497,6 +515,16 @@ public static class CompanionAccessoryDatabase
     public static readonly Dictionary<string, CompanionAccessoryEntry> ById =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Reverse lookup from body-part descriptor (e.g. "_CRABSHELL_02") to its
+    /// <see cref="CreatureAccessoryVariant"/>. Built during
+    /// <see cref="CompanionDatabase.LoadFromFile"/> so that creatures whose own entry
+    /// has no variant data can still resolve accessories via their part descriptors.
+    /// Case-insensitive.
+    /// </summary>
+    internal static readonly Dictionary<string, CreatureAccessoryVariant> VariantByDescriptor =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private static readonly Dictionary<string, string> _englishNameBackup = new();
 
     /// <summary>
@@ -604,6 +632,27 @@ public static class CompanionAccessoryDatabase
     /// groups across all variants). Falls back to [Right, Left, Front] when unknown.
     /// </summary>
     public static AccessorySlot[] GetSlotLayoutForCreature(string? creatureId)
+        => GetSlotLayoutForCreature(creatureId, null);
+
+    /// <summary>
+    /// Returns the ordered slot layout (up to 3 slots) for a creature based on its type ID
+    /// and part descriptors.
+    /// <para>
+    /// When the creature's own entry has accessory variant data, uses the first variant
+    /// with groups as the representative layout. When the creature's entry has no variant
+    /// data (e.g. HERMITCRAB), falls back to searching the global descriptor→variant
+    /// reverse index using the companion's part <paramref name="descriptors"/>.
+    /// This handles cases where a creature type shares a rig with another type
+    /// (e.g. HERMITCRAB uses SPIDER's <c>_CRABSHELL_*</c> variants).
+    /// </para>
+    /// </summary>
+    /// <param name="creatureId">The creature type ID (e.g. "^HERMITCRAB").</param>
+    /// <param name="descriptors">
+    /// Optional list of the companion's current part descriptors (e.g. ["_CrabShell_02", "1234567890"]).
+    /// Stripped of the leading '^' prefix. When non-null and the creature has no variant data,
+    /// each descriptor is checked against the global <see cref="VariantByDescriptor"/> reverse index.
+    /// </param>
+    public static AccessorySlot[] GetSlotLayoutForCreature(string? creatureId, IReadOnlyList<string>? descriptors)
     {
         if (string.IsNullOrEmpty(creatureId))
             return DefaultSlotLayout;
@@ -611,24 +660,45 @@ public static class CompanionAccessoryDatabase
         if (!CompanionDatabase.ById.TryGetValue(creatureId, out var entry))
             return DefaultSlotLayout;
 
-        if (entry.AccessoryVariants == null || entry.AccessoryVariants.Count == 0)
+        if (entry.AccessoryVariants != null && entry.AccessoryVariants.Count > 0)
+        {
+            // Creature has its own variant data — use the first variant with groups.
+            var firstWithGroups = entry.AccessoryVariants
+                .FirstOrDefault(v => v.AccessoryGroups.Count > 0);
+            if (firstWithGroups != null)
+                return VariantToSlotLayout(firstWithGroups);
             return Array.Empty<AccessorySlot>();
+        }
 
-        // Use the first variant with groups as the representative layout.
-        // Most creatures use the same groups across all variants.
-        var firstWithGroups = entry.AccessoryVariants
-            .FirstOrDefault(v => v.AccessoryGroups.Count > 0);
-        if (firstWithGroups == null)
-            return Array.Empty<AccessorySlot>();
+        // Creature has no variant data of its own. Try matching the companion's part
+        // descriptors against the global reverse index (populated from ALL creatures).
+        if (descriptors != null)
+        {
+            foreach (var desc in descriptors)
+            {
+                if (string.IsNullOrEmpty(desc)) continue;
+                if (VariantByDescriptor.TryGetValue(desc, out var variant) &&
+                    variant.AccessoryGroups.Count > 0)
+                    return VariantToSlotLayout(variant);
+            }
+        }
 
+        return Array.Empty<AccessorySlot>();
+    }
+
+    /// <summary>
+    /// Converts a <see cref="CreatureAccessoryVariant"/>'s AccessoryGroups to an ordered
+    /// array of distinct <see cref="AccessorySlot"/> values.
+    /// </summary>
+    private static AccessorySlot[] VariantToSlotLayout(CreatureAccessoryVariant variant)
+    {
         var slots = new List<AccessorySlot>();
-        foreach (var g in firstWithGroups.AccessoryGroups)
+        foreach (var g in variant.AccessoryGroups)
         {
             var slot = GroupNameToSlot(g);
             if (slot.HasValue && !slots.Contains(slot.Value))
                 slots.Add(slot.Value);
         }
-
         return slots.ToArray();
     }
 
