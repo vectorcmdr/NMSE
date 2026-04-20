@@ -128,17 +128,18 @@ internal static class RawJsonLogic
         return sb.ToString();
     }
 
-    /// <summary>The type of a diff line: unchanged context, added, removed, or a hunk separator.</summary>
-    internal enum DiffLineType { Context, Added, Removed, Separator }
+    /// <summary>The type of a diff line: unchanged context, added, removed, a hunk separator, or a context header.</summary>
+    internal enum DiffLineType { Context, Added, Removed, Separator, Header }
 
     /// <summary>A single line in a compact diff output.</summary>
-    internal readonly record struct DiffLine(DiffLineType Type, string Text);
+    internal readonly record struct DiffLine(DiffLineType Type, string Text, int OldLineNum = 0, int NewLineNum = 0);
 
     /// <summary>
     /// Computes a compact diff showing only changed hunks with surrounding context lines.
     /// Unchanged regions between hunks are collapsed into a single separator line.
     /// This avoids building a huge string for large files where only a few values changed.
     /// Uses the Myers diff algorithm for minimal, correct diffs.
+    /// Includes line numbers and JSON path context headers above each hunk.
     /// </summary>
     /// <param name="original">The original JSON text.</param>
     /// <param name="current">The current (modified) JSON text.</param>
@@ -149,27 +150,71 @@ internal static class RawJsonLogic
         if (original == current)
             return [];
 
-        var rawDiff = ComputeRawDiff(original.Split('\n'), current.Split('\n'));
+        // Split once and reuse for both diff computation and context headers
+        // to avoid doubling the string[] memory allocation.
+        var oldLines = original.Split('\n');
+        var newLines = current.Split('\n');
 
-        // Phase 2: Collapse unchanged regions, keeping only contextLines around changes
-        return CollapseContext(rawDiff, contextLines);
+        var rawDiff = ComputeRawDiff(oldLines, newLines);
+
+        // Assign line numbers to each raw diff line
+        var numberedDiff = AssignLineNumbers(rawDiff);
+
+        // Collapse unchanged regions, keeping only contextLines around changes
+        var collapsed = CollapseContext(numberedDiff, contextLines);
+
+        // Insert JSON path context headers above each diff hunk
+        return InsertContextHeaders(collapsed, oldLines, newLines);
+    }
+
+    /// <summary>
+    /// Assigns old-file and new-file line numbers to each raw diff entry.
+    /// Removed lines only increment the old counter; added lines only increment the new counter;
+    /// context lines increment both.
+    /// </summary>
+    internal static List<DiffLine> AssignLineNumbers(List<(DiffLineType Type, string Text)> rawDiff)
+    {
+        var result = new List<DiffLine>(rawDiff.Count);
+        int oldLine = 1;
+        int newLine = 1;
+
+        foreach (var (type, text) in rawDiff)
+        {
+            switch (type)
+            {
+                case DiffLineType.Removed:
+                    result.Add(new DiffLine(type, text, oldLine, 0));
+                    oldLine++;
+                    break;
+                case DiffLineType.Added:
+                    result.Add(new DiffLine(type, text, 0, newLine));
+                    newLine++;
+                    break;
+                default: // Context
+                    result.Add(new DiffLine(type, text, oldLine, newLine));
+                    oldLine++;
+                    newLine++;
+                    break;
+            }
+        }
+
+        return result;
     }
 
     /// <summary>
     /// Collapses large unchanged regions in a diff, keeping only <paramref name="contextLines"/>
     /// lines before and after each changed hunk. Collapsed regions become a Separator line.
     /// </summary>
-    internal static List<DiffLine> CollapseContext(List<(DiffLineType Type, string Text)> rawDiff, int contextLines)
+    internal static List<DiffLine> CollapseContext(List<DiffLine> numberedDiff, int contextLines)
     {
         // Mark which lines are "near" a change
-        var nearChange = new bool[rawDiff.Count];
-        for (int k = 0; k < rawDiff.Count; k++)
+        var nearChange = new bool[numberedDiff.Count];
+        for (int k = 0; k < numberedDiff.Count; k++)
         {
-            if (rawDiff[k].Type != DiffLineType.Context)
+            if (numberedDiff[k].Type != DiffLineType.Context)
             {
-                // Mark contextLines before and after this change line
                 int start = Math.Max(0, k - contextLines);
-                int end = Math.Min(rawDiff.Count - 1, k + contextLines);
+                int end = Math.Min(numberedDiff.Count - 1, k + contextLines);
                 for (int m = start; m <= end; m++)
                     nearChange[m] = true;
             }
@@ -178,7 +223,7 @@ internal static class RawJsonLogic
         var result = new List<DiffLine>();
         bool inSkip = false;
 
-        for (int k = 0; k < rawDiff.Count; k++)
+        for (int k = 0; k < numberedDiff.Count; k++)
         {
             if (nearChange[k])
             {
@@ -187,7 +232,7 @@ internal static class RawJsonLogic
                     result.Add(new DiffLine(DiffLineType.Separator, ""));
                     inSkip = false;
                 }
-                result.Add(new DiffLine(rawDiff[k].Type, rawDiff[k].Text));
+                result.Add(numberedDiff[k]);
             }
             else
             {
@@ -196,6 +241,121 @@ internal static class RawJsonLogic
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Inserts JSON path context header lines above each hunk in the collapsed diff.
+    /// The header shows the nearest enclosing JSON object/array key for the changed lines,
+    /// similar to how GitHub shows class/method names above code diff hunks.
+    /// </summary>
+    internal static List<DiffLine> InsertContextHeaders(List<DiffLine> collapsed, string[] oldLines, string[] newLines)
+    {
+        var result = new List<DiffLine>(collapsed.Count + 10);
+        bool needHeader = true; // first hunk always gets a header
+
+        for (int i = 0; i < collapsed.Count; i++)
+        {
+            var dl = collapsed[i];
+
+            if (dl.Type == DiffLineType.Separator)
+            {
+                result.Add(dl);
+                needHeader = true;
+                continue;
+            }
+
+            if (needHeader && (dl.Type == DiffLineType.Added || dl.Type == DiffLineType.Removed || dl.Type == DiffLineType.Context))
+            {
+                // Find the nearest enclosing JSON context for this line.
+                // For removed/context lines, use the old file line number (both files have context lines).
+                // For added lines, use the new file line number.
+                int refLine;
+                string[] refLines;
+                if (dl.Type == DiffLineType.Added)
+                {
+                    refLine = dl.NewLineNum;
+                    refLines = newLines;
+                }
+                else
+                {
+                    refLine = dl.OldLineNum;
+                    refLines = oldLines;
+                }
+                string context = refLine > 0 ? FindJsonContext(refLines, refLine - 1) : ""; // convert 1-based to 0-based
+                if (!string.IsNullOrEmpty(context))
+                    result.Add(new DiffLine(DiffLineType.Header, context));
+                needHeader = false;
+            }
+
+            result.Add(dl);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Walks backward from the given line to find the nearest enclosing JSON key context.
+    /// Returns a path like <c>PlayerStateData > KnownProducts</c> showing the hierarchy
+    /// of JSON objects enclosing the given line.
+    /// </summary>
+    internal static string FindJsonContext(string[] lines, int lineIndex)
+    {
+        if (lines.Length == 0 || lineIndex < 0) return "";
+
+        var contextParts = new List<string>();
+        int depth = 0;
+
+        // Walk backward from lineIndex to find enclosing key names
+        for (int i = Math.Min(lineIndex, lines.Length - 1); i >= 0; i--)
+        {
+            string trimmed = lines[i].TrimStart();
+
+            // Track nesting depth
+            for (int c = trimmed.Length - 1; c >= 0; c--)
+            {
+                char ch = trimmed[c];
+                if (ch == '}' || ch == ']') depth++;
+                else if (ch == '{' || ch == '[') depth--;
+            }
+
+            // If we've moved up a nesting level, look for the key name
+            if (depth < 0)
+            {
+                string? keyName = ExtractKeyName(trimmed);
+                if (keyName == null && i > 0)
+                {
+                    // The key might be on the previous line (e.g., "key": \n {)
+                    keyName = ExtractKeyName(lines[i - 1].TrimStart());
+                }
+                if (keyName != null)
+                    contextParts.Add(keyName);
+                depth = 0; // Reset for next level up
+            }
+        }
+
+        contextParts.Reverse();
+        return contextParts.Count > 0 ? string.Join(" > ", contextParts) : "";
+    }
+
+    /// <summary>
+    /// Extracts a JSON key name from a line like <c>"KeyName": {</c> or <c>"KeyName": [</c>.
+    /// Returns null if the line doesn't contain a key assignment.
+    /// </summary>
+    private static string? ExtractKeyName(string trimmedLine)
+    {
+        if (!trimmedLine.StartsWith('"')) return null;
+        int endQuote = trimmedLine.IndexOf('"', 1);
+        if (endQuote <= 0) return null;
+
+        // Verify this is a key (followed by colon)
+        int afterQuote = endQuote + 1;
+        while (afterQuote < trimmedLine.Length && char.IsWhiteSpace(trimmedLine[afterQuote]))
+            afterQuote++;
+
+        if (afterQuote < trimmedLine.Length && trimmedLine[afterQuote] == ':')
+            return trimmedLine[1..endQuote];
+
+        return null;
     }
 
     #region Myers Diff Algorithm
@@ -259,8 +419,9 @@ internal static class RawJsonLogic
     }
 
     /// <summary>
-    /// Myers diff algorithm - computes the shortest edit script (minimal diff) between
-    /// two arrays of pre-normalized lines. O(N*D) time where D is the edit distance.
+    /// Myers diff algorithm - computes the shortest minimal
+	/// diff between two arrays of pre-normalized lines. 
+	/// O(N*D) time where D is the edit distance.
     /// </summary>
     private static List<(DiffLineType Type, string Text)> MyersDiff(string[] oldArr, string[] newArr)
     {
@@ -310,7 +471,7 @@ internal static class RawJsonLogic
             }
         }
 
-        // Exceeded MaxDiffDistance - fall back to all-removed + all-added
+        // Exceeded MaxDiffDistance: fall back to all-removed + all-added
         var fallback = new List<(DiffLineType, string)>();
         foreach (var l in oldArr) fallback.Add((DiffLineType.Removed, l));
         foreach (var l in newArr) fallback.Add((DiffLineType.Added, l));
@@ -345,13 +506,13 @@ internal static class RawJsonLogic
             int editX, editY;
             if (prevK == k + 1)
             {
-                // Down move: x unchanged, y increased by 1
+                // Down move: x unchanged, y = y+1
                 editX = prevX;
                 editY = prevY + 1;
             }
             else
             {
-                // Right move: x increased by 1, y unchanged
+                // Right move: x increased by 1, y = y
                 editX = prevX + 1;
                 editY = prevY;
             }
@@ -379,7 +540,7 @@ internal static class RawJsonLogic
             }
         }
 
-        // Remaining diagonal from (0, 0) to current position
+        // Remaining diagonal from (0, 0) to current pos
         while (x > 0 && y > 0)
         {
             x--;
@@ -387,7 +548,7 @@ internal static class RawJsonLogic
             result.Add((DiffLineType.Context, oldArr[x]));
         }
 
-        // Any remaining lines (shouldn't happen for well-formed input but handle gracefully)
+        // Any remaining lines (shouldn't happen for input that isn't malformed, but you never know...)
         while (x > 0)
         {
             x--;
