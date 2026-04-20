@@ -335,6 +335,11 @@ public partial class MainFormResources : Form
         var toolsMenu = new ToolStripMenuItem("&Tools");
         toolsMenu.DropDownItems.Add(new ToolStripMenuItem("&Export JSON...", null, OnExportJson) { Enabled = false });
         toolsMenu.DropDownItems.Add(new ToolStripMenuItem("&Import JSON...", null, OnImportJson) { Enabled = false });
+        toolsMenu.DropDownItems.Add(new ToolStripSeparator());
+        toolsMenu.DropDownItems.Add(new ToolStripMenuItem("Recharge All Technology", null, OnToolsRechargeAllTech) { Enabled = false });
+        toolsMenu.DropDownItems.Add(new ToolStripMenuItem("Refill All Stacks", null, OnToolsRefillAllStacks) { Enabled = false });
+        toolsMenu.DropDownItems.Add(new ToolStripMenuItem("Repair All Slots", null, OnToolsRepairAllSlots) { Enabled = false });
+        toolsMenu.DropDownItems.Add(new ToolStripMenuItem("Repair All Technology", null, OnToolsRepairAllTech) { Enabled = false });
         _menuStrip.Items.Add(toolsMenu);
 
         // Language menu (between Tools and Help)
@@ -466,7 +471,7 @@ public partial class MainFormResources : Form
             && _tabControl.SelectedTab.Controls[0] == _rawJsonPanel)
         {
             SyncAllPanelData();
-            _rawJsonPanel.RefreshTree();
+            _rawJsonPanel.RefreshTree(_currentSaveData);
         }
     }
 
@@ -1924,6 +1929,76 @@ public partial class MainFormResources : Form
         }
     }
 
+    // Tools menu bulk inventory actions
+
+    private void OnToolsRechargeAllTech(object? sender, EventArgs e)
+    {
+        if (_currentSaveData == null) return;
+        SyncAllPanelData();
+        var playerState = _currentSaveData.GetObject("PlayerStateData");
+        if (playerState == null) return;
+
+        int count = InventoryBulkActions.RechargeAllTechnology(playerState, _database);
+        ReloadAllLoadedPanels();
+        _statusLabel.Text = UiStrings.Format("status.recharged_all_tech", count);
+    }
+
+    private void OnToolsRefillAllStacks(object? sender, EventArgs e)
+    {
+        if (_currentSaveData == null) return;
+        SyncAllPanelData();
+        var playerState = _currentSaveData.GetObject("PlayerStateData");
+        if (playerState == null) return;
+
+        int count = InventoryBulkActions.RefillAllStacks(playerState, _database);
+        ReloadAllLoadedPanels();
+        _statusLabel.Text = UiStrings.Format("status.refilled_all_stacks", count);
+    }
+
+    private void OnToolsRepairAllSlots(object? sender, EventArgs e)
+    {
+        if (_currentSaveData == null) return;
+        SyncAllPanelData();
+        var playerState = _currentSaveData.GetObject("PlayerStateData");
+        if (playerState == null) return;
+
+        int count = InventoryBulkActions.RepairAllSlots(playerState, _database);
+        ReloadAllLoadedPanels();
+        _statusLabel.Text = UiStrings.Format("status.repaired_all_slots", count);
+    }
+
+    private void OnToolsRepairAllTech(object? sender, EventArgs e)
+    {
+        if (_currentSaveData == null) return;
+        SyncAllPanelData();
+        var playerState = _currentSaveData.GetObject("PlayerStateData");
+        if (playerState == null) return;
+
+        int count = InventoryBulkActions.RepairAllTechnology(playerState, _database);
+        ReloadAllLoadedPanels();
+        _statusLabel.Text = UiStrings.Format("status.repaired_all_tech", count);
+    }
+
+    /// <summary>
+    /// Reloads all currently loaded inventory panels so they reflect bulk changes
+    /// made directly to the underlying JSON data by tools menu actions.
+    /// Only reloads panels that have already been loaded (deferred tabs are skipped).
+    /// </summary>
+    private void ReloadAllLoadedPanels()
+    {
+        if (_currentSaveData == null) return;
+
+        // Reload inventory panels that may display modified data.
+        // Panels that haven't been opened yet (not in _loadedTabIndices) will
+        // pick up the changes when first loaded from the (already modified) JSON.
+        if (_loadedTabIndices.Contains(1)) _exosuitPanel.LoadData(_currentSaveData);
+        if (_loadedTabIndices.Contains(2)) _multitoolPanel.LoadData(_currentSaveData);
+        if (_loadedTabIndices.Contains(3)) _shipPanel.LoadData(_currentSaveData);
+        if (_loadedTabIndices.Contains(4)) _fleetPanel.LoadData(_currentSaveData);
+        if (_loadedTabIndices.Contains(5)) _vehiclePanel.LoadData(_currentSaveData);
+        if (_loadedTabIndices.Contains(7)) _basePanel.LoadData(_currentSaveData);
+    }
+
     private void OnGitHub(object? sender, EventArgs e)
     {
         try
@@ -2169,10 +2244,15 @@ public partial class MainFormResources : Form
             if (_menuStrip.Items[2] is ToolStripMenuItem toolsMenu)
             {
                 toolsMenu.Text = UiStrings.Get("menu.tools");
-                if (toolsMenu.DropDownItems.Count >= 2)
+                if (toolsMenu.DropDownItems.Count >= 7)
                 {
                     toolsMenu.DropDownItems[0].Text = UiStrings.Get("menu.tools.export_json");
                     toolsMenu.DropDownItems[1].Text = UiStrings.Get("menu.tools.import_json");
+                    // Index 2 is separator
+                    toolsMenu.DropDownItems[3].Text = UiStrings.Get("menu.tools.recharge_all_tech");
+                    toolsMenu.DropDownItems[4].Text = UiStrings.Get("menu.tools.refill_all_stacks");
+                    toolsMenu.DropDownItems[5].Text = UiStrings.Get("menu.tools.repair_all_slots");
+                    toolsMenu.DropDownItems[6].Text = UiStrings.Get("menu.tools.repair_all_tech");
                 }
             }
             // Language (use stored field reference, BCP 47 tags stay as-is)
