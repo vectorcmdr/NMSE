@@ -9572,6 +9572,64 @@ public class LogicTests
         }
     }
 
+    [Theory]
+    [InlineData("45.803646087646487", 3, "48.803646087646487")]
+    [InlineData("75.96650695800781", 2, "77.96650695800781")]
+    [InlineData("27.38205337524414", 2, "29.38205337524414")]
+    [InlineData("9.999549865722657", 2, "11.999549865722657")]
+    [InlineData("45.803646087646487", -3, "42.803646087646487")]
+    [InlineData("100.0", 5, "105.0")]
+    public void SpinnerDecimalArithmetic_PreservesFractionalDigits(string startText, int steps, string expectedText)
+    {
+        // Simulates the decimal arithmetic used by InvariantNumericTextBox.Step()
+        // to verify that fractional digits are preserved when stepping by integer
+        // increments. Double arithmetic would corrupt trailing digits, e.g.
+        // 45.803646087646487 + 3 = 48.803646087646484 in double, but using
+        // decimal: 48.803646087646487 - which is what the user expects.
+        Assert.True(decimal.TryParse(startText,
+            System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+            System.Globalization.CultureInfo.InvariantCulture, out decimal decVal));
+
+        decVal += steps * 1.0m; // Increment is 1.0 for stat fields
+
+        string resultText = decVal.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(expectedText, resultText);
+    }
+
+    [Fact]
+    public void SaveShipData_SpinnerIncrement_PreservesStatText()
+    {
+        // Full end-to-end: a stat loaded from JSON with RawDouble text, then
+        // "incremented" by the user (simulating spinner steps via decimal arithmetic),
+        // should serialise back with the fractional digits intact.
+        var inv = new JsonObject();
+        var bsv = new JsonArray();
+        AddBaseStatEntryRaw(bsv, "^SHIP_DAMAGE", 45.803646087646484, "45.803646087646487");
+        AddBaseStatEntryRaw(bsv, "^SHIP_SHIELD", 27.38205337524414, "27.38205337524414");
+        inv.Add("BaseStatValues", bsv);
+
+        // Simulate spinner: user presses Up 3 times on damage (decimal arithmetic)
+        decimal decDamage = 45.803646087646487m + 3m;
+        double newDamage = (double)decDamage;
+        string newDamageText = decDamage.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // Write the incremented value with its display text
+        StatHelper.WriteBaseStatValue(inv, "^SHIP_DAMAGE", newDamage, newDamageText);
+
+        // Verify the stored RawDouble text is the expected spinner result
+        var savedBsv = inv.GetArray("BaseStatValues")!;
+        for (int i = 0; i < savedBsv.Length; i++)
+        {
+            var entry = savedBsv.GetObject(i);
+            if ((entry.GetString("BaseStatID") ?? "") == "^SHIP_DAMAGE")
+            {
+                var raw = entry.GetValue("Value");
+                Assert.IsType<RawDouble>(raw);
+                Assert.Equal("48.803646087646487", ((RawDouble)raw).Text);
+            }
+        }
+    }
+
     [Fact]
     public void MainStatsLogic_WriteIfChanged_PreservesRaw_WhenUiMatchesRaw()
     {

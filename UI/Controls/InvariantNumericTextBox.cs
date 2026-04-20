@@ -349,17 +349,52 @@ public class InvariantNumericTextBox : UserControl, ISupportInitialize
         // Commit any pending text first
         TryCommit();
 
+        // Use decimal arithmetic on the displayed text so that fractional digits
+        // are preserved exactly. Double arithmetic can drift trailing digits,
+        // e.g. 45.803646087646487 + 3 = 48.803646087646484 in double, but
+        // 48.803646087646487 in decimal - and the user expects the latter.
+        string currentText = _textBox.Text.Trim();
+        if (decimal.TryParse(currentText, NumberStyles.Float | NumberStyles.AllowThousands,
+                CultureInfo.InvariantCulture, out decimal decCurrent))
+        {
+            decimal decNext = decCurrent + direction * (decimal)Increment;
+            double nextDouble = (double)decNext;
+
+            if (Minimum.HasValue && nextDouble < Minimum.Value)
+            {
+                nextDouble = Minimum.Value;
+                decNext = (decimal)Minimum.Value;
+            }
+            if (Maximum.HasValue && nextDouble > Maximum.Value)
+            {
+                nextDouble = Maximum.Value;
+                decNext = (decimal)Maximum.Value;
+            }
+
+            double old = _value ?? double.NaN;
+            _value = nextDouble;
+            _textBox.Text = decNext.ToString(CultureInfo.InvariantCulture);
+
+            if (!old.Equals(nextDouble))
+            {
+                _userModified = true;
+                NumericValueChanged?.Invoke(this, EventArgs.Empty);
+            }
+            return;
+        }
+
+        // Fallback: decimal parse failed (e.g. locale-specific text, extreme values).
         double current = _value ?? 0.0;
         double next = current + direction * Increment;
 
         if (Minimum.HasValue && next < Minimum.Value) next = Minimum.Value;
         if (Maximum.HasValue && next > Maximum.Value) next = Maximum.Value;
 
-        double old = _value ?? double.NaN;
+        double oldFallback = _value ?? double.NaN;
         _value = next;
         _textBox.Text = NumericParseHelper.FormatDouble(next);
 
-        if (!old.Equals(next))
+        if (!oldFallback.Equals(next))
         {
             _userModified = true;
             NumericValueChanged?.Invoke(this, EventArgs.Empty);
