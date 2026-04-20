@@ -314,9 +314,38 @@ internal static class CatalogueLogic
             playerState.Set(arrayName, items);
         }
 
-        items.Clear();
+        // Normalise the incoming IDs so comparisons are consistent.
+        var desired = new List<string>(ids.Count);
         foreach (var id in ids)
-            items.Add(EnsureCaretPrefix(id));
+            desired.Add(EnsureCaretPrefix(id));
+
+        // Build a set of the desired IDs for fast lookup.
+        var desiredSet = new HashSet<string>(desired, StringComparer.OrdinalIgnoreCase);
+
+        // Remove entries from the existing array that are no longer desired,
+        // preserving the original order of entries that remain.
+        for (int i = items.Length - 1; i >= 0; i--)
+        {
+            var existing = items.GetString(i);
+            if (!desiredSet.Contains(existing))
+                items.RemoveAt(i);
+        }
+
+        // Build the current set (after removals) to know what's already present.
+        var currentSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < items.Length; i++)
+        {
+            var existing = items.GetString(i);
+            if (!string.IsNullOrEmpty(existing))
+                currentSet.Add(existing);
+        }
+
+        // Append any new entries that weren't in the original array.
+        foreach (var id in desired)
+        {
+            if (!currentSet.Contains(id))
+                items.Add(id);
+        }
     }
 
     /// <summary>

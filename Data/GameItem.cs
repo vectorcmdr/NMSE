@@ -92,6 +92,15 @@ public class GameItem
     /// </summary>
     public string TradeCategory { get; set; } = "";
     /// <summary>
+    /// Reward table ID triggered when this SpecialShop product is purchased
+    /// (e.g. "RS_S13_SHIP", "RS_S8_EGG"). Null/empty for items with no special
+    /// purchase reward. Used to determine whether the item should be added to
+    /// KnownTech when redeemed — ship, egg, frigate, firework, and weapon rewards
+    /// are non-technology and should NOT appear in KnownTech.
+    /// Populated from the MBIN field GiveRewardOnSpecialPurchase.
+    /// </summary>
+    public string GiveRewardOnSpecialPurchase { get; set; } = "";
+    /// <summary>
     /// Whether this base building product can be picked up after placement.
     /// From BaseBuildingData in the game's basebuildingobjectstable.
     /// (Filtering for inventory add dialogs).

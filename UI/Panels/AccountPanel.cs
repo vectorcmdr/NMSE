@@ -21,6 +21,15 @@ public partial class AccountPanel : UserControl
     private SaveFileManager.Platform _currentPlatform = SaveFileManager.Platform.Unknown;
     private JsonObject? _currentSaveData;
 
+    /// <summary>
+    /// Snapshot of the redeemed reward IDs at the time the save was loaded.
+    /// Used to compute the delta (items the user actually changed) so that
+    /// Known* array sync only touches items the user explicitly toggled,
+    /// rather than every redeemed reward in the save.
+    /// </summary>
+    private HashSet<string> _originalSeasonRedeemed = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _originalTwitchRedeemed = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>The loaded account data object, or null if not loaded.</summary>
     public JsonObject? AccountData => _accountData;
     /// <summary>The file path of the loaded account data.</summary>
@@ -357,6 +366,11 @@ public partial class AccountPanel : UserControl
         // Read redeemed sets from save
         var (seasonRedeemed, twitchRedeemed) = AccountLogic.GetRedeemedSets(saveData);
 
+        // Snapshot the original redeemed state so SaveData can compute the delta
+        // (only items the user actually toggled need Known* array sync).
+        _originalSeasonRedeemed = new HashSet<string>(seasonRedeemed, StringComparer.OrdinalIgnoreCase);
+        _originalTwitchRedeemed = new HashSet<string>(twitchRedeemed, StringComparer.OrdinalIgnoreCase);
+
         // Update the redeemed column in each grid
         UpdateRedeemedColumn(_seasonGrid, seasonRedeemed);
         UpdateRedeemedColumn(_twitchGrid, twitchRedeemed);
@@ -380,8 +394,10 @@ public partial class AccountPanel : UserControl
     /// <summary>
     /// Syncs the current grid state to the in-memory account data object.
     /// Saves redeemed rewards to the game save data independently of account unlock state.
-    /// Additionally synchronises Known* arrays for redeemed rewards and cleans stale
-    /// entries for rewards that are unlocked but not redeemed.
+    /// Known* array sync and stale-entry cleanup are performed ONLY for items
+    /// whose redeemed state was explicitly changed by the user (delta-only),
+    /// so pre-existing entries the player may have out of sync for their own
+    /// in-game reasons are not touched.
     /// Additionally writes platform rewards to the MXML file if configured.
     /// Does NOT write to disk for account data; that happens in MainForm.OnSave().
     /// </summary>
@@ -421,18 +437,27 @@ public partial class AccountPanel : UserControl
         AccountLogic.SyncAccountSeenArrays(userSettings,
             ResolveProductIdsForSeen(platformRows), _database);
 
-        // Save per-save redeemed state and synchronise Known* arrays.
-        // The database is passed so SaveRedeemedRewards can determine which
-        // Known* arrays each reward should appear in (KnownSpecials, KnownTech).
+        // Save per-save redeemed state (writes RedeemedSeasonRewards / RedeemedTwitchRewards).
+        // Known* sync is done ONLY for items the user actually changed (see below).
         AccountLogic.SaveRedeemedRewards(saveData,
             seasonRows.Select(r => (r.Id, r.Redeemed)).ToList(),
             twitchRows.Select(r => (r.Id, r.Redeemed)).ToList(),
             _database);
 
-        // Clean stale Known* entries for rewards that are unlocked on account
-        // but not redeemed in this save. Prevents the game from treating
-        // unlocked-only items as already claimed due to leftover Known* entries.
-        AccountLogic.CleanStaleKnownEntries(saveData, seasonRows, twitchRows, _database);
+        // Delta-only Known* sync: only touch KnownSpecials/KnownTech for items
+        // whose redeemed state was explicitly changed by the user. Items the user
+        // didn't touch are left as-is, preserving any out-of-sync state the player
+        // may have for their own in-game reasons.
+        var seasonChanged = GetChangedRewards(seasonRows, _originalSeasonRedeemed);
+        var twitchChanged = GetChangedRewards(twitchRows, _originalTwitchRedeemed);
+        AccountLogic.SyncKnownArraysForChangedRewards(saveData, seasonChanged, _database);
+        AccountLogic.SyncKnownArraysForChangedRewards(saveData, twitchChanged, _database);
+
+        // Delta-only stale cleanup: only clean Known* entries for items the user
+        // explicitly un-redeemed (was redeemed at load, now not redeemed).
+        var seasonStaleChanged = GetChangedStaleRows(seasonRows, _originalSeasonRedeemed);
+        var twitchStaleChanged = GetChangedStaleRows(twitchRows, _originalTwitchRedeemed);
+        AccountLogic.CleanStaleKnownEntries(saveData, seasonStaleChanged, twitchStaleChanged, _database);
 
         // Additionally write platform rewards to MXML file (PC platforms only).
         // Console platforms (Xbox, PS4, Switch) do not use MXML files.
@@ -455,6 +480,49 @@ public partial class AccountPanel : UserControl
             result.Add((rewardId, unlocked, redeemed));
         }
         return result;
+    }
+
+    /// <summary>
+    /// Returns only the rewards whose redeemed state was explicitly changed by the user.
+    /// Compares the current grid state against the snapshot taken at load time.
+    /// Items that haven't been toggled are excluded, so their Known* entries are untouched.
+    /// </summary>
+    private static List<(string Id, bool Redeemed)> GetChangedRewards(
+        List<(string Id, bool Unlocked, bool Redeemed)> rows,
+        HashSet<string> originalRedeemed)
+    {
+        var changed = new List<(string Id, bool Redeemed)>();
+        foreach (var (id, _, redeemed) in rows)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+            bool wasRedeemed = originalRedeemed.Contains(id);
+            if (redeemed != wasRedeemed)
+                changed.Add((id, redeemed));
+        }
+        return changed;
+    }
+
+    /// <summary>
+    /// Returns rows that need stale Known* cleanup — items the user explicitly
+    /// changed to be unlocked-but-not-redeemed (was redeemed at load, now not redeemed
+    /// but still unlocked). Items that were already unlocked-but-not-redeemed at
+    /// load time are excluded since their Known* state is the player's own choice.
+    /// </summary>
+    private static List<(string Id, bool Unlocked, bool Redeemed)> GetChangedStaleRows(
+        List<(string Id, bool Unlocked, bool Redeemed)> rows,
+        HashSet<string> originalRedeemed)
+    {
+        var changed = new List<(string Id, bool Unlocked, bool Redeemed)>();
+        foreach (var (id, unlocked, redeemed) in rows)
+        {
+            if (string.IsNullOrEmpty(id)) continue;
+            bool wasRedeemed = originalRedeemed.Contains(id);
+            // Only include if the user toggled redeemed OFF (was redeemed, now not).
+            // The CleanStaleKnownEntries logic will then check unlocked && !redeemed.
+            if (wasRedeemed && !redeemed)
+                changed.Add((id, unlocked, redeemed));
+        }
+        return changed;
     }
 
     /// <summary>

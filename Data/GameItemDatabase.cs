@@ -190,6 +190,9 @@ public class GameItemDatabase
                         if (element.TryGetProperty("TradeCategory", out var tradeCatProp))
                             item.TradeCategory = tradeCatProp.GetString() ?? "";
 
+                        if (element.TryGetProperty("GiveRewardOnSpecialPurchase", out var rewardProp))
+                            item.GiveRewardOnSpecialPurchase = rewardProp.GetString() ?? "";
+
                         if (element.TryGetProperty("CanPickUp", out var canPickUpProp) && canPickUpProp.ValueKind == JsonValueKind.True)
                             item.CanPickUp = true;
 
@@ -592,5 +595,13 @@ public class GameItemDatabase
         }
 
         _englishBackup.Clear();
+    }
+
+    /// <summary>
+    /// Adds a single item to the database dictionary. Intended for unit testing only.
+    /// </summary>
+    internal void InjectTestItem(GameItem item)
+    {
+        _items[item.Id] = item;
     }
 }

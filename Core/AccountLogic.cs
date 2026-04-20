@@ -10,13 +10,16 @@ namespace NMSE.Core;
 internal static class AccountLogic
 {
     /// <summary>
-    /// Reward IDs whose RewardOnSpecialPurchase value means they should NOT be added to 
-    /// KnownTech when redeemed.
-    /// These are non-technology rewards (ships, frigates, eggs, weapons, fireworks, etc.).
+    /// Keyword fragments that, when found in a <c>GiveRewardOnSpecialPurchase</c> reward
+    /// table ID (e.g. "RS_S13_SHIP", "R_TWIT_GUN01"), indicate the reward is
+    /// a non-technology item (ship, frigate, egg, weapon, firework, pet) that
+    /// should NOT be added to <c>KnownTech</c>.
+    ///
+    /// Our database stores the raw MBIN reward table IDs, so we use keyword matching on those IDs.
     /// </summary>
-    private static readonly HashSet<string> NonTechRewardPrefixes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly string[] NonTechRewardKeywords =
     {
-        "^FRIGATE", "^", "^WEAPON", "^SHIP", "^EGG", "^GUNUPGRADE", "^FIREWORK"
+        "SHIP", "EGG", "FRIG", "FIREW", "FIREWORK", "GUN", "PET"
     };
 
     /// <summary>
@@ -130,10 +133,35 @@ internal static class AccountLogic
             userSettings.Set(key, array);
         }
 
-        array.Clear();
+        // Build the desired set of unlocked IDs.
+        var desiredSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (id, unlocked) in rewards)
         {
             if (unlocked && !string.IsNullOrEmpty(id))
+                desiredSet.Add(id);
+        }
+
+        // Remove entries that should no longer be present, preserving order.
+        for (int i = array.Length - 1; i >= 0; i--)
+        {
+            var existing = array.GetString(i);
+            if (string.IsNullOrEmpty(existing) || !desiredSet.Contains(existing))
+                array.RemoveAt(i);
+        }
+
+        // Build current set after removals.
+        var currentSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < array.Length; i++)
+        {
+            var existing = array.GetString(i);
+            if (!string.IsNullOrEmpty(existing))
+                currentSet.Add(existing);
+        }
+
+        // Append any newly-unlocked entries.
+        foreach (var id in desiredSet)
+        {
+            if (!currentSet.Contains(id))
                 array.Add(id);
         }
     }
@@ -256,15 +284,16 @@ internal static class AccountLogic
     /// NOT mirror the account unlock state; it writes only rewards the user
     /// has explicitly ticked as "Redeemed in Save".
     ///
-    /// Additionally synchronises the Known* arrays (KnownSpecials, KnownTech,
-    /// KnownProducts) for redeemed items.
-    /// The game checks these arrays when determining whether a reward has been
-    /// claimed in a save slot.
+    /// Does NOT synchronise Known* arrays (KnownSpecials, KnownTech). The caller
+    /// is responsible for computing the delta of changed items and calling
+    /// <see cref="SyncKnownArraysForChangedRewards"/> with only those items.
+    /// This prevents spurious modifications to Known* arrays for items the user
+    /// didn't touch.
     /// </summary>
     /// <param name="saveData">The game save data object.</param>
     /// <param name="seasonRedeemed">Season reward entries with explicit redeem states.</param>
     /// <param name="twitchRedeemed">Twitch reward entries with explicit redeem states.</param>
-    /// <param name="database">Optional game item database for Known* array sync.</param>
+    /// <param name="database">Optional game item database (reserved for future use).</param>
     internal static void SaveRedeemedRewards(JsonObject saveData,
         List<(string Id, bool Redeemed)> seasonRedeemed,
         List<(string Id, bool Redeemed)> twitchRedeemed,
@@ -276,12 +305,30 @@ internal static class AccountLogic
         WriteRedeemedArray(playerState, "RedeemedSeasonRewards", seasonRedeemed);
         WriteRedeemedArray(playerState, "RedeemedTwitchRewards", twitchRedeemed);
 
-        // Synchronise Known* arrays for redeemed rewards.
-        // When a season/twitch reward is redeemed, the game expects corresponding
-        // entries in KnownSpecials and/or KnownTech. Without this, the game may
-        // treat a reward as unredeemed or behave inconsistently.
-        SyncKnownArraysForRewards(playerState, seasonRedeemed, database);
-        SyncKnownArraysForRewards(playerState, twitchRedeemed, database);
+        // NOTE: Known* array synchronisation (KnownSpecials, KnownTech) is NOT
+        // performed here for the full list. The caller is expected to compute the
+        // delta (items whose redeemed state actually changed) and call
+        // SyncKnownArraysForChangedRewards with only those items. This prevents
+        // massive spurious diffs when the save legitimately has redeemed rewards
+        // that are not in KnownTech.
+    }
+
+    /// <summary>
+    /// Synchronises Known* arrays (KnownSpecials, KnownTech) for a delta-only
+    /// list of rewards whose redeemed state was explicitly changed by the user.
+    /// Items the user did not touch are left as-is, preserving any out-of-sync
+    /// state the player may have for their own in-game reasons.
+    /// </summary>
+    /// <param name="saveData">The game save data object.</param>
+    /// <param name="changedRewards">Only the rewards whose redeemed state changed.</param>
+    /// <param name="database">Optional game item database for item lookups.</param>
+    internal static void SyncKnownArraysForChangedRewards(JsonObject saveData,
+        List<(string Id, bool Redeemed)> changedRewards, GameItemDatabase? database)
+    {
+        if (changedRewards.Count == 0) return;
+        var playerState = saveData.GetObject("PlayerStateData");
+        if (playerState == null) return;
+        SyncKnownArraysForRewards(playerState, changedRewards, database);
     }
 
     /// <summary>
@@ -305,10 +352,12 @@ internal static class AccountLogic
             bool isSpecial = item != null
                 && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
 
-            // Unless the item's reward is in the non-tech set (frigates, ships,
-            // eggs, weapons, fireworks), it also goes in KnownTech.
+            // Unless the item's GiveRewardOnSpecialPurchase contains a non-tech
+            // keyword (ships, eggs, frigates, weapons, fireworks, pets), it also
+            // goes in KnownTech. This matches NomNom's NON_TECH_REWARD check which
+            // uses the resolved reward type.
             // When we don't have database info, we conservatively skip KnownTech.
-            bool addToKnownTech = item != null && !NonTechRewardPrefixes.Contains(saveId);
+            bool addToKnownTech = item != null && !IsNonTechReward(item);
 
             if (isSpecial)
                 SyncJsonArrayEntry(playerState, "KnownSpecials", saveId, redeemed);
@@ -316,6 +365,30 @@ internal static class AccountLogic
             if (addToKnownTech)
                 SyncJsonArrayEntry(playerState, "KnownTech", saveId, redeemed);
         }
+    }
+
+    /// <summary>
+    /// Determines whether an item's <c>GiveRewardOnSpecialPurchase</c> value indicates
+    /// a non-technology reward (ship, egg, frigate, weapon, firework, pet) that should
+    /// NOT be added to KnownTech.
+    /// <para>
+    /// NomNom resolves reward table IDs to type codes ("^SHIP", "^EGG", etc.) and checks
+    /// against <c>NON_TECH_REWARD</c>. Our database stores the raw MBIN reward table IDs
+    /// (e.g. "RS_S13_SHIP", "R_TWIT_GUN01"), so we use keyword matching instead.
+    /// </para>
+    /// </summary>
+    internal static bool IsNonTechReward(GameItem item)
+    {
+        string reward = item.GiveRewardOnSpecialPurchase;
+        if (string.IsNullOrEmpty(reward))
+            return false; // No reward → not non-tech; item goes to KnownTech
+
+        foreach (string keyword in NonTechRewardKeywords)
+        {
+            if (reward.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -371,7 +444,15 @@ internal static class AccountLogic
             playerState.Set(key, array);
         }
 
-        // Build the set of IDs managed by the grid so we can preserve unknown entries.
+        // Build the desired set of redeemed IDs from the grid state.
+        var desiredSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (id, redeemed) in rewards)
+        {
+            if (redeemed && !string.IsNullOrEmpty(id))
+                desiredSet.Add(id);
+        }
+
+        // Build a set of all IDs managed by the grid (whether redeemed or not).
         var managedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (id, _) in rewards)
         {
@@ -379,26 +460,31 @@ internal static class AccountLogic
                 managedIds.Add(id);
         }
 
-        // Preserve any existing entries NOT managed by the grid (old/unknown reward IDs
-        // from previous game versions that our rewards database does not contain).
-        var preserved = new List<string>();
+        // Remove existing entries that should no longer be present, preserving order
+        // for all other entries (including unknown/unmanaged entries).
+        for (int i = array.Length - 1; i >= 0; i--)
+        {
+            var existing = array.GetString(i);
+            if (string.IsNullOrEmpty(existing)) continue;
+
+            // If managed by grid and NOT in the desired set, remove it.
+            if (managedIds.Contains(existing) && !desiredSet.Contains(existing))
+                array.RemoveAt(i);
+        }
+
+        // Build the current set (after removals) to know what's already present.
+        var currentSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < array.Length; i++)
         {
             var existing = array.GetString(i);
-            if (!string.IsNullOrEmpty(existing) && !managedIds.Contains(existing))
-                preserved.Add(existing);
+            if (!string.IsNullOrEmpty(existing))
+                currentSet.Add(existing);
         }
 
-        array.Clear();
-
-        // Re-add preserved (unknown) entries first.
-        foreach (var p in preserved)
-            array.Add(p);
-
-        // Then add managed entries that are marked as redeemed.
-        foreach (var (id, redeemed) in rewards)
+        // Append any newly-redeemed entries that aren't already in the array.
+        foreach (var id in desiredSet)
         {
-            if (redeemed && !string.IsNullOrEmpty(id))
+            if (!currentSet.Contains(id))
                 array.Add(id);
         }
     }
@@ -448,7 +534,7 @@ internal static class AccountLogic
                 SyncJsonArrayEntry(playerState, "KnownSpecials", saveId, false);
 
             // Remove from KnownTech if present (same logic as SyncKnownArraysForRewards).
-            if (item != null && !NonTechRewardPrefixes.Contains(saveId))
+            if (item != null && !IsNonTechReward(item))
                 SyncJsonArrayEntry(playerState, "KnownTech", saveId, false);
         }
     }
@@ -560,7 +646,7 @@ internal static class AccountLogic
                 });
             }
 
-            bool shouldBeInTech = item != null && !NonTechRewardPrefixes.Contains(id);
+            bool shouldBeInTech = item != null && !IsNonTechReward(item);
             if (shouldBeInTech && !knownTech.Contains(id))
             {
                 issues.Add(new ConsistencyIssue
