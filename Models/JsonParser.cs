@@ -116,13 +116,14 @@ public static class JsonParser
     }
 
     /// <summary>
-    /// Append a double value using round-trip format ("R") to preserve full precision.
+    /// Append a double value using "G17" format to preserve full precision (17 significant
+    /// digits, enough to uniquely identify every IEEE 754 double).
     /// NMS save files distinguish between integer (1) and float (1.0) types, so whole-number
     /// doubles must always include a decimal point (e.g., "1.0" not "1").
     /// </summary>
     private static void AppendDouble(StringBuilder sb, double d)
     {
-        string s = d.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        string s = d.ToString("G17", System.Globalization.CultureInfo.InvariantCulture);
         sb.Append(s);
         // Ensure whole-number doubles keep their decimal point (1 -> 1.0)
         if (s.IndexOfAny(_floatIndicators) < 0)
@@ -195,23 +196,30 @@ public static class JsonParser
                 case '\\': sb.Append("\\\\"); break;
                 default:
                     if (c >= ' ' && c <= '~')
-                        sb.Append(c);
-                    else if (c >= ' ')
                     {
-                        // Non-ASCII printable: write as \uXXXX to preserve
-                        // characters such as \u03BB (λ) or \u0166 (Ŧ) in their
-                        // escaped form for save-file round-trip safety.
-                        sb.Append("\\u");
-                        sb.Append(HexChars[(c >> 12) & 0xF]);
-                        sb.Append(HexChars[(c >> 8) & 0xF]);
-                        sb.Append(HexChars[(c >> 4) & 0xF]);
-                        sb.Append(HexChars[c & 0xF]);
+                        sb.Append(c);
+                    }
+                    else if (c > 0xFF)
+                    {
+                        // Characters above Latin-1 (U+0100+): encode as raw UTF-8
+                        // bytes written as Latin-1 characters.  The NMS game engine
+                        // stores CJK, Greek, Cyrillic, etc. as raw UTF-8 byte
+                        // sequences in its Latin-1-encoded JSON.  Writing \uXXXX
+                        // escapes here would break NMSSaveEditor.jar whose parser
+                        // only accepts \u values ≤ 255.
+                        AppendUtf8Bytes(sb, c);
+                    }
+                    else if (c >= 0x80)
+                    {
+                        // Latin-1 range (U+0080-U+00FF): emit as raw byte.
+                        // These are single-byte values in Latin-1 encoding.
+                        sb.Append(c);
                     }
                     else
                     {
-                        sb.Append("\\u");
-                        sb.Append(HexChars[(c >> 12) & 0xF]);
-                        sb.Append(HexChars[(c >> 8) & 0xF]);
+                        // Control characters (U+0000-U+001F) that lack a dedicated
+                        // escape are emitted as \u00XX.
+                        sb.Append("\\u00");
                         sb.Append(HexChars[(c >> 4) & 0xF]);
                         sb.Append(HexChars[c & 0xF]);
                     }
@@ -222,7 +230,36 @@ public static class JsonParser
     }
 
     /// <summary>
+    /// Encode a single Unicode character as UTF-8 and append each resulting byte
+    /// as a raw Latin-1 character to the StringBuilder.  This matches the NMS game
+    /// engine's convention of embedding multi-byte UTF-8 sequences directly in the
+    /// Latin-1-encoded JSON byte stream.
+    /// </summary>
+    private static void AppendUtf8Bytes(StringBuilder sb, char c)
+    {
+        int cp = c;
+        if (cp <= 0x7F)
+        {
+            sb.Append(c);
+        }
+        else if (cp <= 0x7FF)
+        {
+            sb.Append((char)(0xC0 | (cp >> 6)));
+            sb.Append((char)(0x80 | (cp & 0x3F)));
+        }
+        else
+        {
+            sb.Append((char)(0xE0 | (cp >> 12)));
+            sb.Append((char)(0x80 | ((cp >> 6) & 0x3F)));
+            sb.Append((char)(0x80 | (cp & 0x3F)));
+        }
+    }
+
+    /// <summary>
     /// Append escaped and quoted binary data directly to the StringBuilder.
+    /// Bytes 0x20-0x7E (printable ASCII) are emitted literally; all other byte
+    /// values use standard JSON escape sequences so that the output is valid
+    /// JSON regardless of file encoding and compatible with other NMS editors.
     /// </summary>
     private static void AppendQuotedBinaryData(StringBuilder sb, BinaryData data)
     {
@@ -240,16 +277,24 @@ public static class JsonParser
                 case 34: sb.Append("\\\""); break;
                 case 92: sb.Append("\\\\"); break;
                 default:
-                    if (v >= 32)
-                        // Printable ASCII (32-127) and Latin1 high bytes (128-255)
-                        // are emitted as raw characters. Since save files use Latin1
-                        // encoding, high bytes round-trip correctly and match the
-                        // original NMS format (1 byte instead of 4 for \xHH).
+                    if (v >= 32 && v <= 126)
+                    {
+                        // Printable ASCII (0x20-0x7E) are emitted as raw characters.
                         sb.Append((char)v);
+                    }
+                    else if (v >= 0x80)
+                    {
+                        // High bytes (0x80-0xFF) are emitted as raw Latin-1 characters.
+                        // The NMS save format uses Latin-1 encoding and the game writes
+                        // these bytes directly (not as \u00XX escapes).  Writing them raw
+                        // ensures the parser recognises them as BinaryData on re-read
+                        // (hasHighBytes flag) and preserves byte-perfect round-tripping.
+                        sb.Append((char)v);
+                    }
                     else
                     {
-                        // Control characters (0x00-0x1F) not covered above use
-                        // standard JSON \u00XX escapes for cross-editor compatibility.
+                        // Control characters (0x00-0x1F) that lack a dedicated escape
+                        // are emitted as \u00XX.
                         sb.Append("\\u00");
                         sb.Append(HexChars[(v >> 4) & 0xF]);
                         sb.Append(HexChars[v & 0xF]);

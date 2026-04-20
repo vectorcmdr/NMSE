@@ -117,19 +117,25 @@ public static class BaseStatLimits
     }
 
     /// <summary>
-    /// Returns the clamped UI value unless it matches the clamped raw value (meaning
+    /// Returns the clamped UI value unless it matches the original raw value (meaning
     /// the user didn't change it), in which case the original raw value is returned
     /// to preserve externally-edited data.
     /// When <paramref name="rawValues"/> is null or does not contain the stat, falls
     /// back to normal clamping.
     /// </summary>
+    /// <remarks>
+    /// Stat fields now use <see cref="NMSE.UI.Controls.InvariantNumericTextBox"/>
+    /// which stores values as <c>double</c> internally with "G17" format
+    /// and does <b>not</b> clamp values on display. The comparison is therefore
+    /// <c>uiValue == raw</c> (not <c>uiValue == clamped(raw)</c>) because the UI
+    /// always shows the unclamped original value when unchanged.
+    /// </remarks>
     public static double ConditionalClampStatValue(string entityType, string statId, double uiValue,
         StatCategory category, Dictionary<string, double>? rawValues)
     {
         if (rawValues != null && rawValues.TryGetValue(statId, out double raw))
         {
-            double clamped = ClampStatValue(entityType, statId, raw, category);
-            if (uiValue == clamped)
+            if (uiValue == raw)
                 return raw; // User didn't change it - preserve original value
         }
         return ClampStatValue(entityType, statId, uiValue, category);

@@ -308,7 +308,7 @@ public partial class JsonObject
     public int GetInt(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val, CultureInfo.InvariantCulture);
+        return val is RawDouble rd ? Convert.ToInt32(rd.Value) : Convert.ToInt32(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="long"/>.</summary>
@@ -317,7 +317,7 @@ public partial class JsonObject
     public long GetLong(string name)
     {
         var val = GetValue(name);
-        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val, CultureInfo.InvariantCulture);
+        return val is RawDouble rd ? Convert.ToInt64(rd.Value) : Convert.ToInt64(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the value at <paramref name="name"/> converted to a <see cref="double"/>.</summary>
@@ -332,17 +332,17 @@ public partial class JsonObject
     /// <summary>
     /// Returns the display-safe text representation of the double at <paramref name="name"/>.
     /// If the value is a <see cref="RawDouble"/>, returns its original JSON text to preserve
-    /// exact representations from the game save. Otherwise, formats the double using round-trip
-    /// ("R") format to avoid silent precision loss.
+    /// exact representations from the game save. Otherwise, formats the double using "G17"
+    /// format (17 significant digits) to avoid silent precision loss.
     /// </summary>
     /// <param name="name">The property name or dotted path.</param>
-    /// <returns>The text representation suitable for display and lossless round-tripping.</returns>
+    /// <returns>The text representation suitable for display and lossless serialisation.</returns>
     public string GetDoubleText(string name)
     {
         var val = GetValue(name);
         if (val is RawDouble rd) return rd.Text;
-        if (val is double d) return d.ToString("R", CultureInfo.InvariantCulture);
-        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture);
+        if (val is double d) return d.ToString("G17", CultureInfo.InvariantCulture);
+        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("G17", CultureInfo.InvariantCulture);
     }
 
     /// <summary>
@@ -475,7 +475,7 @@ public partial class JsonObject
     /// Handles both human-readable (deobfuscated) and obfuscated key formats:
     /// <list type="bullet">
     /// <item>Files exported by this application use human-readable keys and are parsed as-is.</item>
-    /// <item>Files from NMSSaveEditor.jar or NomNom use obfuscated keys; the parser auto-detects
+    /// <item>Files from other save editors may use obfuscated keys; the parser auto-detects
     ///        and deobfuscates them using the default name mapper.</item>
     /// </list>
     /// </summary>

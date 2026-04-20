@@ -172,7 +172,7 @@ public class JsonArray
     public int GetInt(int index)
     {
         var val = Get(index);
-        return val is RawDouble rd ? (int)rd.Value : Convert.ToInt32(val, CultureInfo.InvariantCulture);
+        return val is RawDouble rd ? Convert.ToInt32(rd.Value) : Convert.ToInt32(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="long"/>.</summary>
@@ -181,7 +181,7 @@ public class JsonArray
     public long GetLong(int index)
     {
         var val = Get(index);
-        return val is RawDouble rd ? (long)rd.Value : Convert.ToInt64(val, CultureInfo.InvariantCulture);
+        return val is RawDouble rd ? Convert.ToInt64(rd.Value) : Convert.ToInt64(val, CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="double"/>.</summary>
@@ -196,17 +196,17 @@ public class JsonArray
     /// <summary>
     /// Returns the display-safe text representation of the double at <paramref name="index"/>.
     /// If the value is a <see cref="RawDouble"/>, returns its original JSON text to preserve
-    /// exact representations from the game save. Otherwise, formats the double using round-trip
-    /// ("R") format to avoid silent precision loss.
+    /// exact representations from the game save. Otherwise, formats the double using "G17"
+    /// format (17 significant digits) to avoid silent precision loss.
     /// </summary>
     /// <param name="index">The zero-based element index.</param>
-    /// <returns>The text representation suitable for display and lossless round-tripping.</returns>
+    /// <returns>The text representation suitable for display and lossless serialisation.</returns>
     public string GetDoubleText(int index)
     {
         var val = Get(index);
         if (val is RawDouble rd) return rd.Text;
-        if (val is double d) return d.ToString("R", CultureInfo.InvariantCulture);
-        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("R", CultureInfo.InvariantCulture);
+        if (val is double d) return d.ToString("G17", CultureInfo.InvariantCulture);
+        return Convert.ToDouble(val, CultureInfo.InvariantCulture).ToString("G17", CultureInfo.InvariantCulture);
     }
 
     /// <summary>Returns the element at <paramref name="index"/> converted to a <see cref="bool"/>.</summary>

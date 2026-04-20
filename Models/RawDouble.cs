@@ -7,7 +7,7 @@ namespace NMSE.Models;
 /// <see cref="double.ToString(string)"/> which may produce a different (but numerically
 /// equivalent) representation.
 ///
-/// For example, the game may write <c>0.30000001192092898</c> but .NET's "R" format
+/// For example, the game may write <c>0.30000001192092898</c> but .NET's "G17" format
 /// for the same IEEE 754 double produces <c>0.30000001192092896</c>. Both parse to the
 /// same bits, but the text difference causes unnecessary diffs.
 /// </summary>
