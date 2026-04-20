@@ -161,13 +161,14 @@
 			<Output TaskParameter="Lines" ItemName="_VersionLines" />
 		</ReadLinesFromFile>
 
-		<!-- Join all lines and extract major/minor/patch via regex.
-		     version.json format: { "major": 1, "minor": 2, "patch": 3 } -->
+		<!-- Join all lines and extract major/minor/patch/suppGameRel via regex.
+		     version.json format: { "major": 1, "minor": 2, "patch": 3, "suppGameRel": "..." } -->
 		<PropertyGroup>
 			<_VersionText>@(_VersionLines, '')</_VersionText>
 			<_VerMajor>$([System.Text.RegularExpressions.Regex]::Match('$(_VersionText)', '"major"\s*:\s*(\d+)').Groups[1].Value)</_VerMajor>
 			<_VerMinor>$([System.Text.RegularExpressions.Regex]::Match('$(_VersionText)', '"minor"\s*:\s*(\d+)').Groups[1].Value)</_VerMinor>
 			<_VerPatch>$([System.Text.RegularExpressions.Regex]::Match('$(_VersionText)', '"patch"\s*:\s*(\d+)').Groups[1].Value)</_VerPatch>
+			<_SuppGameRel>$([System.Text.RegularExpressions.Regex]::Match('$(_VersionText)', '"suppGameRel"\s*:\s*"([^"]*)"').Groups[1].Value)</_SuppGameRel>
 			<!-- Fallback to 0.0.0 if parsing fails -->
 			<_VerMajor Condition="'$(_VerMajor)'==''">0</_VerMajor>
 			<_VerMinor Condition="'$(_VerMinor)'==''">0</_VerMinor>
