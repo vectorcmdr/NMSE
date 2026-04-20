@@ -914,8 +914,8 @@ public partial class InventoryGridPanel : UserControl
         int maxAmount = InventoryStackDatabase.GetMaxAmount(selectedItem, invTypeForDefaults, _inventoryGroup);
         if (invTypeForDefaults == "Substance")
         {
-            _pickerAmount.Value = maxAmount;
-            _pickerMaxAmount.Value = maxAmount;
+            _pickerAmount.NumericValue = maxAmount;
+            _pickerMaxAmount.NumericValue = maxAmount;
         }
         else if (invTypeForDefaults == "Technology")
         {
@@ -923,14 +923,14 @@ public partial class InventoryGridPanel : UserControl
             //   MaxAmount = ChargeAmount (always, for ALL tech: core, UT_, UP_, HDRIVEBOOST, etc.)
             //   Amount (fresh insert) = BuildFullyCharged ? ChargeAmount : 0
             // Examples: HYPERDRIVE -> 0/120 (BuildFC=false), UT_QUICKWARP -> 100/100 (BuildFC=true)
-            _pickerMaxAmount.Value = maxAmount;
-            _pickerAmount.Value = selectedItem.BuildFullyCharged ? maxAmount : 0;
+            _pickerMaxAmount.NumericValue = maxAmount;
+            _pickerAmount.NumericValue = selectedItem.BuildFullyCharged ? maxAmount : 0;
         }
         else
         {
             // Products: default to full stack
-            _pickerAmount.Value = maxAmount;
-            _pickerMaxAmount.Value = maxAmount;
+            _pickerAmount.NumericValue = maxAmount;
+            _pickerMaxAmount.NumericValue = maxAmount;
         }
         _pickerAmount.Enabled = true;
         _pickerMaxAmount.Enabled = true;
@@ -1063,8 +1063,8 @@ public partial class InventoryGridPanel : UserControl
                 }
             }
             // Set NUDs to current inventory dimensions
-            _resizeWidth.Value = Math.Clamp(width, _resizeWidth.Minimum, _resizeWidth.Maximum);
-            _resizeHeight.Value = Math.Clamp(height, _resizeHeight.Minimum, _resizeHeight.Maximum);
+            _resizeWidth.NumericValue = Math.Clamp(width, (int)(_resizeWidth.Minimum ?? 1), (int)(_resizeWidth.Maximum ?? 20));
+            _resizeHeight.NumericValue = Math.Clamp(height, (int)(_resizeHeight.Minimum ?? 1), (int)(_resizeHeight.Maximum ?? 20));
             bool hideResize = _isStorageInventory && !_isChestInventory;
             _resizeWidthLabel.Visible = !hideResize;
             _resizeHeightLabel.Visible = !hideResize;
@@ -1251,6 +1251,43 @@ public partial class InventoryGridPanel : UserControl
         if (rawId is BinaryData binData)
             return BinaryDataToItemId(binData);
         return rawId as string ?? "";
+    }
+
+    /// <summary>
+    /// Extract the binary body bytes (between '^' and '#') from a <see cref="BinaryData"/> item ID.
+    /// Returns <c>null</c> when the data does not start with '^'.
+    /// </summary>
+    private static byte[]? ExtractBinaryIdBody(BinaryData data)
+    {
+        var raw = data.ToByteArray();
+        if (raw.Length == 0 || raw[0] != 0x5E) return null; // '^'
+        int hashIndex = Array.IndexOf(raw, (byte)0x23, 1); // '#'
+        int bodyEnd = hashIndex >= 0 ? hashIndex : raw.Length;
+        var body = new byte[bodyEnd - 1];
+        Array.Copy(raw, 1, body, 0, body.Length);
+        return body;
+    }
+
+    /// <summary>
+    /// Reconstruct a <see cref="BinaryData"/> item ID from known binary body bytes
+    /// and a display ID that may contain a new seed suffix.
+    /// Returns the display string unchanged when <paramref name="binaryBody"/> is <c>null</c>.
+    /// </summary>
+    internal static object BuildBinaryIdValue(string displayId, byte[]? binaryBody)
+    {
+        if (binaryBody == null)
+            return displayId;
+
+        int hashPos = displayId.IndexOf('#', 1);
+        string suffix = hashPos >= 0 ? displayId.Substring(hashPos) : "";
+
+        var bytes = new byte[1 + binaryBody.Length + suffix.Length];
+        bytes[0] = 0x5E; // '^'
+        Array.Copy(binaryBody, 0, bytes, 1, binaryBody.Length);
+        for (int i = 0; i < suffix.Length; i++)
+            bytes[1 + binaryBody.Length + i] = (byte)suffix[i];
+
+        return new BinaryData(bytes);
     }
 
     /// <summary>
@@ -1500,17 +1537,27 @@ public partial class InventoryGridPanel : UserControl
         if (cell.SlotData == null) return;
 
         string itemId = "";
+        byte[]? binaryBody = null;
         try
         {
+            object? rawId;
             var idObj = cell.SlotData.GetObject("Id");
-            if (idObj != null)
-                itemId = ExtractItemId(idObj.Get("Id"));
+            rawId = idObj != null ? idObj.Get("Id") : cell.SlotData.Get("Id");
+
+            if (rawId is BinaryData binData)
+            {
+                itemId = BinaryDataToItemId(binData);
+                binaryBody = ExtractBinaryIdBody(binData);
+            }
             else
-                itemId = ExtractItemId(cell.SlotData.Get("Id"));
+            {
+                itemId = rawId as string ?? "";
+            }
         }
         catch { }
 
         cell.ItemId = itemId;
+        cell.OriginalBinaryIdBody = binaryBody;
 
         int amount = 0, maxAmount = 0;
         double damageFactor = 0;
@@ -1809,9 +1856,9 @@ public partial class InventoryGridPanel : UserControl
     }
 
     /// <summary>
-    /// Attach explicit MouseUp handlers to a cell and all its children so that
-    /// right-click reliably shows the context menu regardless of which child
-    /// control the cursor is over.
+    /// Attach explicit MouseUp handlers to a cell so that right-click reliably
+    /// shows the context menu.  Because SlotCell is now owner-drawn with no
+    /// child controls, we only need to attach to the cell itself.
     /// </summary>
     private void AttachRightClickHandler(SlotCell cell)
     {
@@ -1824,20 +1871,13 @@ public partial class InventoryGridPanel : UserControl
             _cellContextMenu.Show(screenPoint);
         }
 
-        // Attach to the cell and recursively to all descendants so inner elements (like marquee inner label) are covered
-        void Attach(Control ctrl)
-        {
-            ctrl.MouseUp += Handler;
-            foreach (Control child in ctrl.Controls)
-                Attach(child);
-        }
-
-        Attach(cell);
+        cell.MouseUp += Handler;
     }
 
     /// <summary>
-    /// Attach mouse handlers to a cell and all its children to support
-    /// drag-and-drop of items between inventory slots.
+    /// Attach mouse handlers to a cell to support drag-and-drop of items
+    /// between inventory slots.  Because SlotCell is now owner-drawn with no
+    /// child controls, we only need to attach to the cell itself.
     /// Left-click + drag moves/swaps items; Ctrl + drag duplicates to empty slots.
     /// </summary>
     private void AttachDragHandlers(SlotCell cell)
@@ -1906,16 +1946,9 @@ public partial class InventoryGridPanel : UserControl
             CancelDrag();
         }
 
-        void Attach(Control ctrl)
-        {
-            ctrl.MouseDown += OnMouseDown;
-            ctrl.MouseMove += OnMouseMove;
-            ctrl.MouseUp += OnMouseUp;
-            foreach (Control child in ctrl.Controls)
-                Attach(child);
-        }
-
-        Attach(cell);
+        cell.MouseDown += OnMouseDown;
+        cell.MouseMove += OnMouseMove;
+        cell.MouseUp += OnMouseUp;
     }
 
     /// <summary>
@@ -2279,9 +2312,9 @@ public partial class InventoryGridPanel : UserControl
             _detailItemType.Text = "";
             _detailItemCategory.Text = "";
             _detailItemId.Text = "";
-            _detailAmount.Value = 0;
-            _detailMaxAmount.Value = 0;
-            _detailDamageFactor.Value = 0;
+            _detailAmount.NumericValue = 0;
+            _detailMaxAmount.NumericValue = 0;
+            _detailDamageFactor.NumericValue = 0;
             _detailDescription.Text = "";
             _detailIcon.Image = null;
             _detailClassIcon.Image = null;
@@ -2317,12 +2350,12 @@ public partial class InventoryGridPanel : UserControl
         }
 
         // Always show actual values and keep controls enabled so the user can freely edit them.
-        _detailAmount.Value = Math.Clamp(cell.Amount, (int)_detailAmount.Minimum, (int)_detailAmount.Maximum);
-        _detailMaxAmount.Value = Math.Clamp(cell.MaxAmount, (int)_detailMaxAmount.Minimum, (int)_detailMaxAmount.Maximum);
+        _detailAmount.NumericValue = Math.Clamp(cell.Amount, (int)(_detailAmount.Minimum ?? int.MinValue), (int)(_detailAmount.Maximum ?? int.MaxValue));
+        _detailMaxAmount.NumericValue = Math.Clamp(cell.MaxAmount, (int)(_detailMaxAmount.Minimum ?? int.MinValue), (int)(_detailMaxAmount.Maximum ?? int.MaxValue));
         _detailAmount.Enabled = true;
         _detailMaxAmount.Enabled = true;
 
-        _detailDamageFactor.Value = (decimal)Math.Clamp(cell.DamageFactor, 0, 1);
+        _detailDamageFactor.NumericValue = cell.DamageFactor;
         _detailSlotPosition.Text = $"({cell.GridX}, {cell.GridY})";
         _applyButton.Enabled = true;
 
@@ -2370,8 +2403,8 @@ public partial class InventoryGridPanel : UserControl
         }
 
         // Read values from detail controls - respect user-specified values.
-        int amount = (int)_detailAmount.Value;
-        int maxAmount = (int)_detailMaxAmount.Value;
+        int amount = (int)(_detailAmount.NumericValue ?? 0);
+        int maxAmount = (int)(_detailMaxAmount.NumericValue ?? 0);
 
         // Strip any seed the user may have typed directly into the ID field
         var (cleanBaseId, _) = StripProceduralSeed(newItemId);
@@ -2386,6 +2419,10 @@ public partial class InventoryGridPanel : UserControl
             if (gameItem != null)
                 invType = ResolveInventoryTypeForItem(gameItem);
         }
+
+        // Tech pack hash IDs (^+12 hex chars) are always stored as Product.
+        if (IsTechPackHash(newItemId))
+            invType = "Product";
 
         // Figurines (BOBBLE_*) installed in tech slots need the T_ prefix.
         // The game stores them as ^T_BOBBLE_APOLLO (technology form) vs
@@ -2429,10 +2466,10 @@ public partial class InventoryGridPanel : UserControl
             typeObj.Add("InventoryType", invType);
             newSlot.Add("Type", typeObj);
 
-            newSlot.Add("Id", finalSaveId);
+            newSlot.Add("Id", BuildBinaryIdValue(finalSaveId, _selectedCell.OriginalBinaryIdBody));
             newSlot.Add("Amount", amount);
             newSlot.Add("MaxAmount", maxAmount);
-            newSlot.Add("DamageFactor", (double)_detailDamageFactor.Value);
+            newSlot.Add("DamageFactor", _detailDamageFactor.NumericValue ?? 0.0);
             newSlot.Add("FullyInstalled", true);
             newSlot.Add("AddedAutomatically", false);
             var indexObj = new JsonObject();
@@ -2448,17 +2485,17 @@ public partial class InventoryGridPanel : UserControl
         {
             var slot = _selectedCell.SlotData;
 
-            // Update Item ID
-            try { slot.Set("Id", finalSaveId); } catch { }
+            // Update Item ID (reconstruct BinaryData for tech pack hash IDs)
+            try { slot.Set("Id", BuildBinaryIdValue(finalSaveId, _selectedCell.OriginalBinaryIdBody)); } catch { }
 
             // Update Amount / MaxAmount
-            slot.Set("Amount", amount);
-            slot.Set("MaxAmount", maxAmount);
+            RawNumberGuard.SetInt(slot, "Amount", amount);
+            RawNumberGuard.SetInt(slot, "MaxAmount", maxAmount);
 
             // Update DamageFactor (preserve RawDouble if value unchanged)
             try
             {
-                double newDmg = (double)_detailDamageFactor.Value;
+                double newDmg = _detailDamageFactor.NumericValue ?? 0.0;
                 var existing = slot.Get("DamageFactor");
                 if (!(existing is RawDouble rd && rd.Value == newDmg))
                     slot.Set("DamageFactor", newDmg);
@@ -2479,7 +2516,7 @@ public partial class InventoryGridPanel : UserControl
         _selectedCell.ItemId = finalSaveId;
         _selectedCell.Amount = amount;
         _selectedCell.MaxAmount = maxAmount;
-        _selectedCell.DamageFactor = (double)_detailDamageFactor.Value;
+        _selectedCell.DamageFactor = _detailDamageFactor.NumericValue ?? 0.0;
         _selectedCell.IsValidEmpty = false;
         _selectedCell.IsEmpty = false;
 
@@ -2557,8 +2594,8 @@ public partial class InventoryGridPanel : UserControl
         }
 
         // Read values from picker controls
-        int amount = (int)_pickerAmount.Value;
-        int maxAmount = (int)_pickerMaxAmount.Value;
+        int amount = (int)(_pickerAmount.NumericValue ?? 0);
+        int maxAmount = (int)(_pickerMaxAmount.NumericValue ?? 0);
 
         // Strip any seed the user may have typed directly into the ID field
         var (cleanBaseId, _) = StripProceduralSeed(newItemId);
@@ -2573,6 +2610,10 @@ public partial class InventoryGridPanel : UserControl
             if (gameItem != null)
                 invType = ResolveInventoryTypeForItem(gameItem);
         }
+
+        // Tech pack hash IDs (^+12 hex chars) are always stored as Product.
+        if (IsTechPackHash(newItemId))
+            invType = "Product";
 
         // Figurines (BOBBLE_*) installed in tech slots need the T_ prefix.
         string saveItemId = newItemId;
@@ -2613,10 +2654,10 @@ public partial class InventoryGridPanel : UserControl
             typeObj.Add("InventoryType", invType);
             newSlot.Add("Type", typeObj);
 
-            newSlot.Add("Id", finalSaveId);
+            newSlot.Add("Id", BuildBinaryIdValue(finalSaveId, _selectedCell.OriginalBinaryIdBody));
             newSlot.Add("Amount", amount);
             newSlot.Add("MaxAmount", maxAmount);
-            newSlot.Add("DamageFactor", (double)_pickerDamageFactor.Value);
+            newSlot.Add("DamageFactor", _pickerDamageFactor.NumericValue ?? 0.0);
             newSlot.Add("FullyInstalled", true);
             newSlot.Add("AddedAutomatically", false);
             var indexObj = new JsonObject();
@@ -2632,17 +2673,17 @@ public partial class InventoryGridPanel : UserControl
         {
             var slot = _selectedCell.SlotData;
 
-            // Update Item ID
-            try { slot.Set("Id", finalSaveId); } catch { }
+            // Update Item ID (reconstruct BinaryData for tech pack hash IDs)
+            try { slot.Set("Id", BuildBinaryIdValue(finalSaveId, _selectedCell.OriginalBinaryIdBody)); } catch { }
 
             // Update Amount / MaxAmount
-            slot.Set("Amount", amount);
-            slot.Set("MaxAmount", maxAmount);
+            RawNumberGuard.SetInt(slot, "Amount", amount);
+            RawNumberGuard.SetInt(slot, "MaxAmount", maxAmount);
 
             // Update DamageFactor (preserve RawDouble if value unchanged)
             try
             {
-                double newDmg = (double)_pickerDamageFactor.Value;
+                double newDmg = _pickerDamageFactor.NumericValue ?? 0.0;
                 var existing = slot.Get("DamageFactor");
                 if (!(existing is RawDouble rd && rd.Value == newDmg))
                     slot.Set("DamageFactor", newDmg);
@@ -2663,7 +2704,7 @@ public partial class InventoryGridPanel : UserControl
         _selectedCell.ItemId = finalSaveId;
         _selectedCell.Amount = amount;
         _selectedCell.MaxAmount = maxAmount;
-        _selectedCell.DamageFactor = (double)_pickerDamageFactor.Value;
+        _selectedCell.DamageFactor = _pickerDamageFactor.NumericValue ?? 0.0;
         _selectedCell.IsValidEmpty = false;
         _selectedCell.IsEmpty = false;
 
@@ -2741,8 +2782,8 @@ public partial class InventoryGridPanel : UserControl
         itemId = cleanId;
 
         // Read the numeric values from detail controls - always use user-specified values.
-        int amount = (int)_detailAmount.Value;
-        int maxAmount = (int)_detailMaxAmount.Value;
+        int amount = (int)(_detailAmount.NumericValue ?? 0);
+        int maxAmount = (int)(_detailMaxAmount.NumericValue ?? 0);
 
         // Determine inventory type
         string invType = "Product";
@@ -3276,7 +3317,7 @@ public partial class InventoryGridPanel : UserControl
         _contextCell.Amount = max;
         _contextCell.UpdateDisplay();
         if (_selectedCell == _contextCell)
-            _detailAmount.Value = max;
+            _detailAmount.NumericValue = max;
         RaiseDataModified();
     }
 
@@ -3294,7 +3335,7 @@ public partial class InventoryGridPanel : UserControl
             recharged++;
         }
         if (_selectedCell != null && _selectedCell.IsTechChargeable)
-            _detailAmount.Value = Math.Clamp(_selectedCell.Amount, (int)_detailAmount.Minimum, (int)_detailAmount.Maximum);
+            _detailAmount.NumericValue = Math.Clamp(_selectedCell.Amount, (int)(_detailAmount.Minimum ?? int.MinValue), (int)(_detailAmount.Maximum ?? int.MaxValue));
         if (recharged > 0) RaiseDataModified();
     }
 
@@ -3311,7 +3352,7 @@ public partial class InventoryGridPanel : UserControl
             refilled++;
         }
         if (_selectedCell != null && _selectedCell.MaxAmount > 0)
-            _detailAmount.Value = Math.Clamp(_selectedCell.Amount, (int)_detailAmount.Minimum, (int)_detailAmount.Maximum);
+            _detailAmount.NumericValue = Math.Clamp(_selectedCell.Amount, (int)(_detailAmount.Minimum ?? int.MinValue), (int)(_detailAmount.Maximum ?? int.MaxValue));
         if (refilled > 0) RaiseDataModified();
     }
 
@@ -3621,8 +3662,8 @@ public partial class InventoryGridPanel : UserControl
     {
         if (_currentInventory == null) return;
 
-        int newWidth = (int)_resizeWidth.Value;
-        int newHeight = (int)_resizeHeight.Value;
+        int newWidth = (int)(_resizeWidth.NumericValue ?? 10);
+        int newHeight = (int)(_resizeHeight.NumericValue ?? 6);
 
         var validSlots = _currentInventory.GetArray("ValidSlotIndices");
         if (validSlots == null)
@@ -3789,9 +3830,9 @@ public partial class InventoryGridPanel : UserControl
         _detailItemType.Text = "";
         _detailItemCategory.Text = "";
         _detailItemId.Text = "";
-        _detailAmount.Value = 0;
-        _detailMaxAmount.Value = 0;
-        _detailDamageFactor.Value = 0;
+        _detailAmount.NumericValue = 0;
+        _detailMaxAmount.NumericValue = 0;
+        _detailDamageFactor.NumericValue = 0;
         _detailDescription.Text = "";
         _detailIcon.Image = null;
         _detailClassIcon.Image = null;
@@ -3805,9 +3846,9 @@ public partial class InventoryGridPanel : UserControl
     {
         _pickerItemName.Text = UiStrings.Get("inventory.picker_no_item");
         _pickerItemId.Text = "";
-        _pickerAmount.Value = 0;
-        _pickerMaxAmount.Value = 0;
-        _pickerDamageFactor.Value = 0;
+        _pickerAmount.NumericValue = 0;
+        _pickerMaxAmount.NumericValue = 0;
+        _pickerDamageFactor.NumericValue = 0;
         _pickerDescription.Text = "";
         _pickerIcon.Image = null;
         _pickerClassIcon.Image = null;
@@ -3921,110 +3962,6 @@ public partial class InventoryGridPanel : UserControl
     }
 
     /// <summary>
-    /// MarqueeLabel.
-    /// Provides a label that horizontally scrolls when the text width exceeds the control width.
-    /// </summary>
-    public class MarqueeLabel : Label
-    {
-        private System.Windows.Forms.Timer? _timer;
-        private int _offset;
-        private bool _shouldScroll;
-
-        [DefaultValue(90)]
-        public int ScrollSpeed { get; set; } = 90; // ms per tick
-
-        public MarqueeLabel()
-        {
-            DoubleBuffered = true;
-            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
-            _timer = new System.Windows.Forms.Timer();
-            _timer.Interval = ScrollSpeed;
-            _timer.Tick += (s, e) =>
-            {
-                if (IsDisposed || !IsHandleCreated || !Visible) { _timer?.Stop(); return; }
-                _offset += 2;
-                Invalidate();
-            };
-        }
-
-        protected override void OnTextChanged(EventArgs e)
-        {
-            base.OnTextChanged(e);
-            CheckScroll();
-        }
-
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-            CheckScroll();
-        }
-
-        private void CheckScroll()
-        {
-            if (IsDisposed || !IsHandleCreated) return;
-            using var g = CreateGraphics();
-            var textWidth = (int)g.MeasureString(Text, Font).Width;
-            _shouldScroll = textWidth > Width * 0.9;
-            if (_shouldScroll && Visible)
-            {
-                _offset = 0;
-                _timer?.Start();
-            }
-            else
-            {
-                _timer?.Stop();
-                _offset = 0;
-            }
-            Invalidate();
-        }
-
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            base.OnVisibleChanged(e);
-            if (!Visible) _timer?.Stop();
-            else if (IsHandleCreated) CheckScroll();
-        }
-
-        protected override void OnHandleDestroyed(EventArgs e)
-        {
-            _timer?.Stop();
-            base.OnHandleDestroyed(e);
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            e.Graphics.Clear(BackColor);
-            var textWidth = (int)e.Graphics.MeasureString(Text, Font).Width;
-            if (_shouldScroll)
-            {
-                using var brush = new SolidBrush(ForeColor);
-                int x = -_offset;
-                while (x < Width)
-                {
-                    e.Graphics.DrawString(Text, Font, brush, x, 0);
-                    x += textWidth + 40; // gap between repeats
-                }
-                if (_offset > textWidth + 40)
-                    _offset = 0;
-            }
-            else
-            {
-                // Use Graphics.DrawString (GDI+) for color emoji rendering via COLR table 0
-                using var brush = new SolidBrush(ForeColor);
-                using var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap, Trimming = StringTrimming.EllipsisCharacter };
-                e.Graphics.DrawString(Text, Font, brush, ClientRectangle, sf);
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-                _timer?.Dispose();
-            base.Dispose(disposing);
-        }
-    }
-
-    /// <summary>
     /// Tracks a base object in a corvette's PlayerShipBase for matching against CV_ tech items.
     /// </summary>
     private class CorvettePartEntry
@@ -4114,24 +4051,74 @@ public partial class InventoryGridPanel : UserControl
             : locValue;
     }
 
+    // =====================================================
+    // Handle exhaustion fix for large inventories:
+    // owner-draw each cell in a lightweight Panel subclass.
+    // This was necessary due to the 10,000 GDI USER handle
+    // limit in WinForms being exceeded:
+    // hitting ~1,200+ handles for a general grid size.
+    // This will not be relevant later in porting the UI.
+    // =====================================================
+
     /// <summary>
     /// Individual slot cell in the inventory grid.
+    /// <para>
+    /// Owner-drawn: all visual elements (icon, name bar, amount bar, pin indicator,
+    /// adjacency borders, element badges, class mini-icons) are rendered in
+    /// <see cref="OnPaint"/> and <see cref="OnPaintBackground"/>.  No child controls
+    /// are created, so each cell consumes exactly <b>1 window handle</b> instead of 6.
+    /// This allows the original per-tab grid architecture (each tab keeps its own
+    /// <see cref="InventoryGridPanel"/> with cells alive) without hitting the per-process
+    /// GDI handle limit.
+    /// </para>
+    /// <para>
+    /// Marquee scrolling for long item names is handled by a shared
+    /// <see cref="System.Windows.Forms.Timer"/> and an offset counter, drawn directly
+    /// in <see cref="OnPaint"/>.
+    /// </para>
+    /// <para>
+    /// Pin-toggle interaction is handled via hit-testing in <see cref="OnMouseClick"/>
+    /// and hover state in <see cref="OnMouseMove"/>/<see cref="OnMouseLeave"/>.
+    /// </para>
     /// </summary>
     private class SlotCell : Panel
     {
         // Shared fonts reduce GDI object allocation per cell.
         // These live for the application lifetime (3 GDI objects) and must NOT be disposed.
+        // If you are disposing of these, you are going to have a bad time.
         private static readonly Font SharedNameFont = new Font("Segoe UI", 9f, FontStyle.Regular);
         private static readonly Font SharedAmountFont = new Font("Segoe UI", 9f, FontStyle.Bold);
         private static readonly Font SharedElementBadgeFont = new Font("Segoe UI", 16f, FontStyle.Bold);
 
-        private readonly Panel _iconContainer;
-        private readonly PictureBox _iconBox; // inner PictureBox that we offset upward
-        private readonly MarqueeLabel _nameLabel;
-        private readonly Label _amountLabel;
-        private readonly Label _pinLabel;
+        // Layout constants matching the old child-control arrangement
+        private const int NameBarHeight = 18;
+        private const int AmountBarHeight = 16;
+        private const int PinSize = 16;
+        private const int MarqueeIntervalMs = 90; // milliseconds per marquee tick
+
         private readonly ToolTip _toolTip;
         private Image? _compositeImage; // tracks composite bitmaps we create so only they are disposed
+
+        // Cached display image (composited icon with class/badge overlays)
+        private Image? _displayImage;
+
+        // Cached display strings (computed once in UpdateDisplay, painted in OnPaint)
+        private string _nameText = "";
+        private bool _nameVisible;
+        private Color _nameForeColor = Color.White;
+        private string _amountText = "";
+        private bool _amountVisible;
+        private string _pinText = "";
+        private bool _pinVisible;
+        private Color _pinForeColor = Color.Gainsboro;
+
+        // Marquee scrolling state
+        private System.Windows.Forms.Timer? _marqueeTimer;
+        private int _marqueeOffset;
+        private bool _shouldScroll;
+
+        // Pin hover state for interactive feedback
+        private bool _pinHovered;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int GridX { get; }
@@ -4190,6 +4177,14 @@ public partial class InventoryGridPanel : UserControl
 
         public event EventHandler? PinToggleClicked;
 
+        /// <summary>
+        /// Binary body bytes (between '^' and '#') from the original <see cref="BinaryData"/>
+        /// item ID. <c>null</c> when the item ID was a plain ASCII string.
+        /// Used to reconstruct <see cref="BinaryData"/> when writing back a changed seed.
+        /// </summary>
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public byte[]? OriginalBinaryIdBody { get; set; }
+
         /// <summary>Cached corvette-resolved display name. Preserved across drag/drop so
         /// the greedy GuessCorvetteBasePart match is not lost when cells move.</summary>
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -4234,141 +4229,141 @@ public partial class InventoryGridPanel : UserControl
             BorderStyle = BorderStyle.FixedSingle;
             Cursor = Cursors.Hand;
             BackColor = Color.FromArgb(50, 50, 50);
-            DoubleBuffered = true;
 
-            // Suspend layout during child control setup to avoid per-add recalculations
-            SuspendLayout();
-
-            // Name label replaced with a MarqueeLabel that scrolls long text
-            _nameLabel = new MarqueeLabel
-            {
-                Dock = DockStyle.Top,
-                BackColor = Color.FromArgb(160, 0, 0, 0),
-                Font = SharedNameFont,
-                ForeColor = Color.White,
-                Height = 18,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Visible = false
-            };
-
-            // Container for icon (fills middle area)
-            _iconContainer = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.Transparent
-            };
-
-            // Inner PictureBox that we will size slightly taller and shift up
-            _iconBox = new PictureBox
-            {
-                SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Transparent,
-                Location = new Point(0, -16) // initial upward offset
-            };
-
-            // Ensure inner picturebox resizes when the container changes
-            _iconContainer.Resize += (s, e) => UpdateIconLayout();
-            _iconContainer.Controls.Add(_iconBox);
-
-            _amountLabel = new Label
-            {
-                Dock = DockStyle.Bottom,
-                ForeColor = Color.White,
-                BackColor = Color.FromArgb(128, 0, 0, 0),
-                Font = SharedAmountFont,
-                TextAlign = ContentAlignment.TopCenter,
-                Height = 16,
-                AutoEllipsis = true
-            };
-
-            _pinLabel = new Label
-            {
-                AutoSize = false,
-                Size = new Size(16, 16),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.FromArgb(128, 0, 0, 0),
-                ForeColor = Color.White,
-                Font = SharedNameFont,
-                Padding = new Padding(0, 0, 0, 0),
-                Cursor = Cursors.Hand,
-                Visible = false
-            };
-            _pinLabel.Location = new Point(Math.Max(0, Width - _pinLabel.Width), Math.Max(2, Height - _amountLabel.Height - _pinLabel.Height - 3));
-            _pinLabel.Click += (s, e) => PinToggleClicked?.Invoke(this, EventArgs.Empty);
-            _pinLabel.MouseEnter += (s, e) => _pinLabel.ForeColor = Color.White;
-            _pinLabel.MouseLeave += (s, e) => _pinLabel.ForeColor = IsPinnedForAutoStack ? Color.Gold : Color.Gainsboro;
-            Resize += (s, e) => _pinLabel.Location = new Point(Math.Max(0, Width - _pinLabel.Width), Math.Max(2, Height - _amountLabel.Height - _pinLabel.Height - 3));
+            // Owner-drawn: enable double-buffering and all-paint-in-WM_PAINT
+            SetStyle(
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.UserPaint |
+                ControlStyles.ResizeRedraw,
+                true);
 
             _toolTip = sharedToolTip;
-
-            // Add controls in z-order: amount (bottom), icon container (middle), name (top)
-            Controls.Add(_amountLabel);
-            Controls.Add(_iconContainer);
-            Controls.Add(_nameLabel);
-            Controls.Add(_pinLabel);
-            _pinLabel.BringToFront();
-
-            // Forward child clicks to this panel for cell selection
-            _iconBox.Click += (s, e) => OnClick(e);
-            _amountLabel.Click += (s, e) => OnClick(e);
-            _nameLabel.Click += (s, e) => OnClick(e);
-
-            // Draw adjacency border segments on top of each child control
-            _nameLabel.Paint += OnChildPaintBorder;
-            _iconContainer.Paint += OnChildPaintBorder;
-            _amountLabel.Paint += OnChildPaintBorder;
-            _iconBox.Paint += OnChildPaintBorder;
-
-            // Initial layout
-            UpdateIconLayout();
-
-            ResumeLayout(false);
-        }
-
-        private void UpdateIconLayout()
-        {
-            const int lift = 16; // how many pixels to lift icon up
-            if (_iconContainer == null || _iconBox == null) return;
-
-            // Make the inner picturebox slightly taller than the container and move it up
-            var w = Math.Max(1, _iconContainer.ClientSize.Width);
-            var h = Math.Max(1, _iconContainer.ClientSize.Height + lift);
-            _iconBox.Size = new Size(w, h);
-            _iconBox.Location = new Point(0, -lift);
         }
 
         /// <summary>
-        /// Draws the adjacency border segment on a child control, translated to
-        /// the child's coordinate system so the border appears on top of the child.
+        /// Returns the hit-test rectangle for the pin indicator, relative to
+        /// the cell's client area.
         /// </summary>
-        private void OnChildPaintBorder(object? sender, PaintEventArgs e)
+        private Rectangle GetPinRect()
         {
-            if (!ShowAdjacencyBorder || AdjacencyBorderColor == Color.Transparent) return;
-            if (sender is not Control child) return;
-
-            // Calculate the child's position relative to this SlotCell
-            Point offset = child.Parent == this
-                ? child.Location
-                : new Point(child.Location.X + child.Parent!.Location.X,
-                            child.Location.Y + child.Parent!.Location.Y);
-
-            // Border rectangle in child's coordinate space
-            var borderRect = new Rectangle(
-                -offset.X, -offset.Y,
-                ClientSize.Width, ClientSize.Height);
-
-            using var pen = new Pen(AdjacencyBorderColor, 2f);
-            pen.Alignment = System.Drawing.Drawing2D.PenAlignment.Inset;
-            e.Graphics.DrawRectangle(pen, borderRect);
+            int px = Math.Max(0, ClientSize.Width - PinSize);
+            int py = Math.Max(2, ClientSize.Height - AmountBarHeight - PinSize - 3);
+            return new Rectangle(px, py, PinSize, PinSize);
         }
 
-        /// <summary>
-        /// Draw adjacency border on the parent background (visible in any gaps
-        /// between child controls).
-        /// </summary>
+        // ---- Hit-test & mouse interaction for pin toggle ----
+
+        protected override void OnMouseClick(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && _pinVisible && GetPinRect().Contains(e.Location))
+            {
+                PinToggleClicked?.Invoke(this, EventArgs.Empty);
+                return; // Consume the click — don't propagate as cell selection
+            }
+            base.OnMouseClick(e);
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (_pinVisible)
+            {
+                bool over = GetPinRect().Contains(e.Location);
+                if (over != _pinHovered)
+                {
+                    _pinHovered = over;
+                    Invalidate(GetPinRect()); // repaint just the pin area
+                }
+            }
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (_pinHovered)
+            {
+                _pinHovered = false;
+                Invalidate(GetPinRect());
+            }
+        }
+
+        // ---- Marquee scrolling ----
+
+        private void CheckMarquee()
+        {
+            if (!_nameVisible || string.IsNullOrEmpty(_nameText))
+            {
+                StopMarquee();
+                return;
+            }
+            if (!IsHandleCreated) return;
+            using var g = CreateGraphics();
+            var tw = (int)g.MeasureString(_nameText, SharedNameFont).Width;
+            _shouldScroll = tw > ClientSize.Width * 0.9;
+            if (_shouldScroll)
+            {
+                _marqueeOffset = 0;
+                EnsureMarqueeTimer();
+                _marqueeTimer!.Start();
+            }
+            else
+            {
+                StopMarquee();
+            }
+        }
+
+        private void EnsureMarqueeTimer()
+        {
+            if (_marqueeTimer != null) return;
+            _marqueeTimer = new System.Windows.Forms.Timer { Interval = MarqueeIntervalMs };
+            _marqueeTimer.Tick += (s, e) =>
+            {
+                if (IsDisposed || !IsHandleCreated || !Visible) { _marqueeTimer?.Stop(); return; }
+                _marqueeOffset += 2;
+                // Only invalidate the name bar area
+                Invalidate(new Rectangle(0, 0, ClientSize.Width, NameBarHeight));
+            };
+        }
+
+        private void StopMarquee()
+        {
+            _marqueeTimer?.Stop();
+            _marqueeOffset = 0;
+            _shouldScroll = false;
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (!Visible) _marqueeTimer?.Stop();
+            else if (IsHandleCreated && _shouldScroll) { EnsureMarqueeTimer(); _marqueeTimer!.Start(); }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // CheckMarquee() uses CreateGraphics() which requires IsHandleCreated.
+            // When UpdateDisplay() runs during LoadInventory (before the cell is
+            // parented to the form), the handle doesn't exist yet and CheckMarquee
+            // bails out.  Re-evaluate here so scrolling starts as soon as the
+            // control is live.
+            CheckMarquee();
+        }
+
+        protected override void OnHandleDestroyed(EventArgs e)
+        {
+            _marqueeTimer?.Stop();
+            base.OnHandleDestroyed(e);
+        }
+
+        // ---- Owner-drawn rendering ----
+
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             base.OnPaintBackground(e);
+
+            // Adjacency border on the panel background
             if (ShowAdjacencyBorder && AdjacencyBorderColor != Color.Transparent)
             {
                 var r = ClientRectangle;
@@ -4378,32 +4373,142 @@ public partial class InventoryGridPanel : UserControl
             }
         }
 
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            var cs = ClientSize;
+            int w = cs.Width;
+            int h = cs.Height;
+
+            // ---- Icon area (between name bar and amount bar) ----
+            // Draws the icon scaled to fit (Zoom) within the visible area between
+            // the name bar and amount bar.  No lift or clipping needed - the icon
+            // sits entirely within the container region so the class mini-icon and
+            // element badge at the top-left corner remain fully visible.
+            if (_displayImage != null)
+            {
+                int iconTop = NameBarHeight;
+                int iconHeight = h - NameBarHeight - AmountBarHeight;
+                if (iconHeight > 0)
+                {
+                    float scale = Math.Min((float)w / _displayImage.Width,
+                                           (float)iconHeight / _displayImage.Height);
+                    int iw = (int)(_displayImage.Width * scale);
+                    int ih = (int)(_displayImage.Height * scale);
+                    int ix = (w - iw) / 2;
+                    int iy = iconTop + (iconHeight - ih) / 2;
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(_displayImage, ix, iy, iw, ih);
+                }
+            }
+
+            // ---- Name bar (top) ----
+            if (_nameVisible && !string.IsNullOrEmpty(_nameText))
+            {
+                var nameRect = new Rectangle(0, 0, w, NameBarHeight);
+                using (var barBrush = new SolidBrush(Color.FromArgb(160, 0, 0, 0)))
+                    g.FillRectangle(barBrush, nameRect);
+
+                using var textBrush = new SolidBrush(_nameForeColor);
+                if (_shouldScroll)
+                {
+                    // Marquee: scroll text left, wrapping
+                    var textWidth = (int)g.MeasureString(_nameText, SharedNameFont).Width;
+                    int x = -_marqueeOffset;
+                    while (x < w)
+                    {
+                        g.DrawString(_nameText, SharedNameFont, textBrush, x, 0);
+                        x += textWidth + 40;
+                    }
+                    if (_marqueeOffset > textWidth + 40) _marqueeOffset = 0;
+                }
+                else
+                {
+                    // Centred, ellipsis-trimmed
+                    using var sf = new StringFormat
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center,
+                        FormatFlags = StringFormatFlags.NoWrap,
+                        Trimming = StringTrimming.EllipsisCharacter
+                    };
+                    g.DrawString(_nameText, SharedNameFont, textBrush, nameRect, sf);
+                }
+            }
+
+            // ---- Amount bar (bottom) ----
+            if (_amountVisible && !string.IsNullOrEmpty(_amountText))
+            {
+                var amountRect = new Rectangle(0, h - AmountBarHeight, w, AmountBarHeight);
+                using (var barBrush = new SolidBrush(Color.FromArgb(128, 0, 0, 0)))
+                    g.FillRectangle(barBrush, amountRect);
+
+                using var amtBrush = new SolidBrush(Color.White);
+                using var sf = new StringFormat
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Near,
+                    FormatFlags = StringFormatFlags.NoWrap,
+                    Trimming = StringTrimming.EllipsisCharacter
+                };
+                g.DrawString(_amountText, SharedAmountFont, amtBrush, amountRect, sf);
+            }
+
+            // ---- Pin indicator (bottom-right, above amount bar) ----
+            // Use TextRenderer (GDI) instead of Graphics.DrawString (GDI+)
+            // because GDI+ cannot render color emoji (🔒/🔓) — they show as
+            // empty boxes.  TextRenderer correctly falls back to Segoe UI Emoji.
+            // These should change to a bitmap / SVG later like a lot of the other glyphs.
+            if (_pinVisible)
+            {
+                var pinRect = GetPinRect();
+                using (var pinBg = new SolidBrush(Color.FromArgb(128, 0, 0, 0)))
+                    g.FillRectangle(pinBg, pinRect);
+
+                Color pinColor = _pinHovered ? Color.White : _pinForeColor;
+                TextRenderer.DrawText(g, _pinText, SharedNameFont, pinRect, pinColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                    TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+            }
+
+            // ---- Adjacency border (on top of everything) ----
+            if (ShowAdjacencyBorder && AdjacencyBorderColor != Color.Transparent)
+            {
+                using var pen = new Pen(AdjacencyBorderColor, 2f);
+                pen.Alignment = System.Drawing.Drawing2D.PenAlignment.Inset;
+                g.DrawRectangle(pen, ClientRectangle);
+            }
+
+            base.OnPaint(e);
+        }
+
+        // ---- UpdateDisplay: compute all cached values, then Invalidate once ----
+
         public void UpdateDisplay()
         {
             if (IsEmpty)
             {
                 // Disabled slot - not in ValidSlotIndices and no data
                 Color bg = _isSelected ? Color.FromArgb(70, 80, 100) : Color.FromArgb(25, 25, 25);
-                if (!IsActivated) bg = Color.FromArgb(80, 20, 20); // Red tint for disabled
+                if (!IsActivated) bg = Color.FromArgb(80, 20, 20);
                 BackColor = bg;
-                BorderStyle = BorderStyle.FixedSingle;
-                _iconBox.Image = null;
+                _displayImage = null;
                 ClassMiniIcon = null;
-                _nameLabel.Text = "";
-                _nameLabel.Visible = false;
-                _amountLabel.Text = "";
-                _amountLabel.Visible = false;
-                Cursor = Cursors.Hand; // Allow right-click to enable
+                _nameText = "";
+                _nameVisible = false;
+                _amountText = "";
+                _amountVisible = false;
+                Cursor = Cursors.Hand;
                 string tip = IsActivated ? UiStrings.Format("inventory.tooltip_empty", GridX, GridY) : UiStrings.Format("inventory.tooltip_disabled", GridX, GridY);
                 _toolTip.SetToolTip(this, tip);
-                _toolTip.SetToolTip(_iconBox, tip);
-                UpdatePinIndicator();
+                UpdatePinCachedState();
+                StopMarquee();
+                Invalidate();
                 return;
             }
 
             if (IsValidEmpty && string.IsNullOrEmpty(ItemId))
             {
-                // Valid empty slot - available for adding items
                 Color bg;
                 if (IsSupercharged)
                     bg = _isSelected ? Color.FromArgb(180, 160, 60) : Color.Gold;
@@ -4411,29 +4516,28 @@ public partial class InventoryGridPanel : UserControl
                     bg = Color.FromArgb(70, 100, 160);
                 else
                     bg = Color.FromArgb(45, 45, 50);
-                if (!IsActivated) bg = Color.FromArgb(80, 30, 30); // Inactive = transparent red tint
+                if (!IsActivated) bg = Color.FromArgb(80, 30, 30);
                 BackColor = bg;
-                //BorderStyle = IsSupercharged ? BorderStyle.Fixed3D : BorderStyle.FixedSingle;
-                _iconBox.Image = null;
+                _displayImage = null;
                 ClassMiniIcon = null;
-                _nameLabel.Text = IsSupercharged ? SuperchargeIndicator : "";
-                _nameLabel.ForeColor = IsSupercharged ? Color.Gold : Color.White;
-                _nameLabel.Visible = IsSupercharged;
-                _amountLabel.Text = "";
-                _amountLabel.Visible = false;
+                _nameText = IsSupercharged ? SuperchargeIndicator : "";
+                _nameForeColor = IsSupercharged ? Color.Gold : Color.White;
+                _nameVisible = IsSupercharged;
+                _amountText = "";
+                _amountVisible = false;
                 Cursor = Cursors.Hand;
                 string tip = UiStrings.Format("inventory.tooltip_empty_slot", GridX, GridY);
                 _toolTip.SetToolTip(this, tip);
-                _toolTip.SetToolTip(_iconBox, tip);
-                _toolTip.SetToolTip(_nameLabel, tip);
-                UpdatePinIndicator();
+                UpdatePinCachedState();
+                CheckMarquee();
+                Invalidate();
                 return;
             }
 
             // Set background color by item type
             Color baseColor;
             if (IsSupercharged)
-                baseColor = Color.Gold; // Match the supercharged text color
+                baseColor = Color.Gold;
             else if (_isSelected)
                 baseColor = Color.FromArgb(80, 120, 200);
             else if (ItemType.Contains("technology", StringComparison.OrdinalIgnoreCase))
@@ -4447,137 +4551,44 @@ public partial class InventoryGridPanel : UserControl
             else
                 baseColor = Color.FromArgb(50, 50, 50);
 
-            // Non-activated slots get a red tint overlay for clear visual distinction
             if (!IsActivated && !_isSelected)
                 baseColor = Color.FromArgb(
                     Math.Min(255, baseColor.R / 2 + 60),
                     baseColor.G / 4,
                     baseColor.B / 4);
 
-            // Adjacency border: drawn on top of children via Paint event handlers
-            if (ShowAdjacencyBorder && AdjacencyBorderColor != Color.Transparent)
-            {
-                BackColor = baseColor;
-                _iconContainer.BackColor = baseColor;
-                BorderStyle = BorderStyle.None;
-            }
-            else
-            {
-                BackColor = baseColor;
-                _iconContainer.BackColor = Color.Transparent;
-                //BorderStyle = IsSupercharged ? BorderStyle.Fixed3D : BorderStyle.FixedSingle;
-            }
+            // Background colour - adjacency border is drawn in OnPaint, no
+            // BorderStyle changes needed (changing BorderStyle shifts ClientSize
+            // by the border width, causing a visible "pop" on selection).
+            BackColor = baseColor;
 
-            // Composite class mini icon directly onto item icon bitmap (avoids
-            // WinForms transparency issues with overlapping PictureBox controls)
-            // Also renders element symbol badge if applicable
-            string? elementSymbol = !string.IsNullOrEmpty(DisplayName) ? ElementDatabase.GetSymbol(DisplayName) : null;
-            bool needsComposite = (IconImage != null && ClassMiniIcon != null) || elementSymbol != null;
+            // Composite icon + class mini-icon + element badge into _displayImage
+            BuildDisplayImage();
 
-            // Dispose previous composite bitmap (if any) to avoid memory leaks.
-            // Only dispose composites we created - never shared cached icons from IconManager.
-            var oldComposite = _compositeImage;
-
-            if (needsComposite && IconImage != null)
-            {
-                var composite = new Bitmap(IconImage.Width, IconImage.Height,
-                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                using (var g = Graphics.FromImage(composite))
-                {
-                    g.DrawImage(IconImage, 0, 0, IconImage.Width, IconImage.Height);
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                    g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
-                    if (ClassMiniIcon != null)
-                        g.DrawImage(ClassMiniIcon, -IconImage.Width*0.05f, 0, IconImage.Width*0.5f, IconImage.Height*0.5f);
-
-                    // Draw element symbol badge (capsule: rectangle with rounded left/right sides)
-                    if (elementSymbol != null)
-                    {
-                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        var font = SharedElementBadgeFont;
-                        var textSize = g.MeasureString(elementSymbol, font);
-                        float pad = 2f;
-                        float buffer = 10f; // Adjustable buffer for capsule length
-                        float bh = textSize.Height + pad;
-                        float bw = textSize.Width + pad * 2 + buffer;
-                        float bx = IconImage.Width * 0.04f;
-                        float by = IconImage.Height * 0.04f;
-                        float radius = bh / 2f; // Capsule: radius = half height
-
-                        // Ensure capsule is always at least a bit longer than tall
-                        if (bw < bh * 1.5f)
-                            bw = bh * 1.5f;
-
-                        using var badgePath = new System.Drawing.Drawing2D.GraphicsPath();
-                        // Left end
-                        badgePath.AddArc(bx, by, bh, bh, 90, 180);
-                        // Top edge
-                        badgePath.AddLine(bx + radius, by, bx + bw - radius, by);
-                        // Right end
-                        badgePath.AddArc(bx + bw - bh, by, bh, bh, 270, 180);
-                        // Bottom edge
-                        badgePath.AddLine(bx + bw - radius, by + bh, bx + radius, by + bh);
-                        badgePath.CloseFigure();
-
-                        using var bgBrush = new SolidBrush(Color.FromArgb(209, 227, 226, 200));
-                        g.FillPath(bgBrush, badgePath);
-                        using var textBrush = new SolidBrush(Color.FromArgb(53, 57, 57));
-                        // Center text horizontally in the capsule
-                        float textX = bx + (bw - textSize.Width) / 2f;
-                        float textY = by + pad * 0.5f;
-                        g.DrawString(elementSymbol, font, textBrush, textX, textY);
-                    }
-                }
-                _iconBox.Image = composite;
-                _compositeImage = composite;
-            }
-            else
-            {
-                _iconBox.Image = IconImage;
-                _compositeImage = null;
-            }
-
-            // Dispose old composite only - never dispose shared cached icons
-            if (oldComposite != null)
-                oldComposite.Dispose();
-
-            // Display item name at top (with supercharge indicator)
+            // Name text
             string nameText = !string.IsNullOrEmpty(DisplayName) ? DisplayName : ItemId;
             if (IsSupercharged && !string.IsNullOrEmpty(nameText))
                 nameText = SuperchargeIndicator + nameText;
-            if (!string.IsNullOrEmpty(nameText))
-            {
-                _nameLabel.Text = nameText;
-                _nameLabel.ForeColor = IsSupercharged ? Color.Gold : Color.White;
-                _nameLabel.Visible = true;
-            }
-            else
-            {
-                _nameLabel.Text = "";
-                _nameLabel.Visible = false;
-            }
+            _nameText = nameText ?? "";
+            _nameForeColor = IsSupercharged ? Color.Gold : Color.White;
+            _nameVisible = !string.IsNullOrEmpty(_nameText);
 
-            // Display amount overlay at bottom
-            // Chargeable tech items show charge as a percentage.
-            // Non-chargeable tech items in tech inventories have fixed
-            // Amount/MaxAmount values that are meaningless - hide them.
-            // Products and substances show "Amount/MaxAmount".
+            // Amount text
             if (IsTechChargeable && MaxAmount > 0)
             {
                 int pct = (int)Math.Ceiling((double)Amount / MaxAmount * 100);
-                _amountLabel.Text = $"{pct}%";
-                _amountLabel.Visible = true;
+                _amountText = $"{pct}%";
+                _amountVisible = true;
             }
             else if (IsInTechInventory && !IsChargeable)
             {
-                // Non-chargeable installed technology: hide amount label
-                _amountLabel.Text = "";
-                _amountLabel.Visible = false;
+                _amountText = "";
+                _amountVisible = false;
             }
             else
             {
-                _amountLabel.Text = $"{Amount}/{MaxAmount}";
-                _amountLabel.Visible = true;
+                _amountText = $"{Amount}/{MaxAmount}";
+                _amountVisible = true;
             }
 
             // Tooltip
@@ -4596,37 +4607,99 @@ public partial class InventoryGridPanel : UserControl
             else
                 tip2 += $" ({Amount}/{MaxAmount})";
             _toolTip.SetToolTip(this, tip2);
-            _toolTip.SetToolTip(_iconBox, tip2);
-            _toolTip.SetToolTip(_amountLabel, tip2);
-            _toolTip.SetToolTip(_nameLabel, tip2);
-            UpdatePinIndicator();
+
+            UpdatePinCachedState();
+            CheckMarquee();
+            Invalidate();
         }
 
-        private void UpdatePinIndicator()
+        /// <summary>
+        /// Builds the composited display image (icon + class mini-icon + element badge).
+        /// </summary>
+        private void BuildDisplayImage()
+        {
+            var oldComposite = _compositeImage;
+
+            string? elementSymbol = !string.IsNullOrEmpty(DisplayName) ? ElementDatabase.GetSymbol(DisplayName) : null;
+            bool needsComposite = (IconImage != null && ClassMiniIcon != null) || elementSymbol != null;
+
+            if (needsComposite && IconImage != null)
+            {
+                var composite = new Bitmap(IconImage.Width, IconImage.Height,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(composite))
+                {
+                    g.DrawImage(IconImage, 0, 0, IconImage.Width, IconImage.Height);
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                    if (ClassMiniIcon != null)
+                        g.DrawImage(ClassMiniIcon, -IconImage.Width*0.05f, 0, IconImage.Width*0.5f, IconImage.Height*0.5f);
+
+                    if (elementSymbol != null)
+                    {
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        var font = SharedElementBadgeFont;
+                        var textSize = g.MeasureString(elementSymbol, font);
+                        float pad = 2f;
+                        float buffer = 10f;
+                        float bh = textSize.Height + pad;
+                        float bw = textSize.Width + pad * 2 + buffer;
+                        float bx = IconImage.Width * 0.04f;
+                        float by = IconImage.Height * 0.04f;
+                        float radius = bh / 2f;
+
+                        if (bw < bh * 1.5f)
+                            bw = bh * 1.5f;
+
+                        using var badgePath = new System.Drawing.Drawing2D.GraphicsPath();
+                        badgePath.AddArc(bx, by, bh, bh, 90, 180);
+                        badgePath.AddLine(bx + radius, by, bx + bw - radius, by);
+                        badgePath.AddArc(bx + bw - bh, by, bh, bh, 270, 180);
+                        badgePath.AddLine(bx + bw - radius, by + bh, bx + radius, by + bh);
+                        badgePath.CloseFigure();
+
+                        using var bgBrush = new SolidBrush(Color.FromArgb(209, 227, 226, 200));
+                        g.FillPath(bgBrush, badgePath);
+                        using var textBrush = new SolidBrush(Color.FromArgb(53, 57, 57));
+                        float textX = bx + (bw - textSize.Width) / 2f;
+                        float textY = by + pad * 0.5f;
+                        g.DrawString(elementSymbol, font, textBrush, textX, textY);
+                    }
+                }
+                _displayImage = composite;
+                _compositeImage = composite;
+            }
+            else
+            {
+                _displayImage = IconImage;
+                _compositeImage = null;
+            }
+
+            if (oldComposite != null)
+                oldComposite.Dispose();
+        }
+
+        private void UpdatePinCachedState()
         {
             bool show = ShowPinToggle && IsActivated;
-            _pinLabel.Visible = show;
-            if (!show)
-                return;
+            _pinVisible = show;
+            if (!show) return;
 
-            _pinLabel.Text = IsPinnedForAutoStack ? "🔒" : "🔓";
-            _pinLabel.ForeColor = IsPinnedForAutoStack ? Color.Gold : Color.Gainsboro;
-            _toolTip.SetToolTip(_pinLabel,
-                IsPinnedForAutoStack
-                    ? UiStrings.Get("inventory.tooltip_pinned_slot")
-                    : UiStrings.Get("inventory.tooltip_unpinned_slot"));
+            _pinText = IsPinnedForAutoStack ? "🔒" : "🔓";
+            _pinForeColor = IsPinnedForAutoStack ? Color.Gold : Color.Gainsboro;
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
+                _marqueeTimer?.Dispose();
+                _marqueeTimer = null;
                 // Do NOT dispose _toolTip - it is shared across all cells and
-                // owned by the parent InventoryGridPanel.
+                // owned by the parent InventoryGridPanel!
                 // Only dispose our composite bitmap, never shared cached icons.
                 if (_compositeImage != null)
                 {
-                    _iconBox!.Image = null;
                     _compositeImage.Dispose();
                     _compositeImage = null;
                 }

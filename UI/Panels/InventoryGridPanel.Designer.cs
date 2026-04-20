@@ -1,5 +1,6 @@
 #nullable enable
 using NMSE.Config;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -75,9 +76,9 @@ partial class InventoryGridPanel
             WrapContents = false
         };
         _resizeWidthLabel = new Label { Text = "Width:", AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(0, 4, 2, 0) };
-        _resizeWidth = new NumericUpDown { Minimum = 1, Maximum = 20, Value = 10, Width = 50, Dock = DockStyle.Left };
+        _resizeWidth = new InvariantNumericTextBox { Minimum = 1, Maximum = 20, NumericValue = 10, Width = 50, Dock = DockStyle.Left };
         _resizeHeightLabel = new Label { Text = "Height:", AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(8, 4, 2, 0) };
-        _resizeHeight = new NumericUpDown { Minimum = 1, Maximum = 20, Value = 6, Width = 50, Dock = DockStyle.Left };
+        _resizeHeight = new InvariantNumericTextBox { Minimum = 1, Maximum = 20, NumericValue = 6, Width = 50, Dock = DockStyle.Left };
         _resizeButton = new Button { Text = "Resize", AutoSize = true, Size = new Size(75, 28), MinimumSize = new Size(75, 28), Margin = new Padding(8, 0, 0, 0) };
         _resizeButton.Click += OnResizeInventory;
         _sortModeLabel = new Label { Text = "Sort:", AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(12, 4, 2, 0), Margin = new Padding(0, 2, 0, 0) };
@@ -347,7 +348,7 @@ partial class InventoryGridPanel
         row++;
 
         // Amount
-        _detailAmount = new NumericUpDown { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
+        _detailAmount = new InvariantNumericTextBox { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
         _detailAmountLabel = CreateLabel("Amount:");
         detailLayout.Controls.Add(_detailAmountLabel, 0, row);
         detailLayout.Controls.Add(_detailAmount, 1, row);
@@ -355,7 +356,7 @@ partial class InventoryGridPanel
         row++;
 
         // Max Amount
-        _detailMaxAmount = new NumericUpDown { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
+        _detailMaxAmount = new InvariantNumericTextBox { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
         _detailMaxLabel = CreateLabel("Max:");
         detailLayout.Controls.Add(_detailMaxLabel, 0, row);
         detailLayout.Controls.Add(_detailMaxAmount, 1, row);
@@ -363,13 +364,9 @@ partial class InventoryGridPanel
         row++;
 
         // Damage Factor
-        _detailDamageFactor = new NumericUpDown
+        _detailDamageFactor = new InvariantNumericTextBox
         {
-            Dock = DockStyle.Fill,
-            Minimum = 0,
-            Maximum = 1,
-            DecimalPlaces = 4,
-            Increment = 0.01m
+            Dock = DockStyle.Fill
         };
         _detailDamageLabel = CreateLabel("Damage:");
         detailLayout.Controls.Add(_detailDamageLabel, 0, row);
@@ -572,7 +569,7 @@ partial class InventoryGridPanel
         row++;
 
         // Picker Amount
-        _pickerAmount = new NumericUpDown { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
+        _pickerAmount = new InvariantNumericTextBox { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
         _pickerAmountLabel = CreateLabel("Amount:");
         detailLayout.Controls.Add(_pickerAmountLabel, 0, row);
         detailLayout.Controls.Add(_pickerAmount, 1, row);
@@ -580,7 +577,7 @@ partial class InventoryGridPanel
         row++;
 
         // Picker Max Amount
-        _pickerMaxAmount = new NumericUpDown { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
+        _pickerMaxAmount = new InvariantNumericTextBox { Dock = DockStyle.Fill, Minimum = int.MinValue, Maximum = int.MaxValue };
         _pickerMaxLabel = CreateLabel("Max:");
         detailLayout.Controls.Add(_pickerMaxLabel, 0, row);
         detailLayout.Controls.Add(_pickerMaxAmount, 1, row);
@@ -588,13 +585,9 @@ partial class InventoryGridPanel
         row++;
 
         // Picker Damage Factor
-        _pickerDamageFactor = new NumericUpDown
+        _pickerDamageFactor = new InvariantNumericTextBox
         {
-            Dock = DockStyle.Fill,
-            Minimum = 0,
-            Maximum = 1,
-            DecimalPlaces = 4,
-            Increment = 0.01m
+            Dock = DockStyle.Fill
         };
         _pickerDamageLabel = CreateLabel("Damage:");
         detailLayout.Controls.Add(_pickerDamageLabel, 0, row);
@@ -791,9 +784,9 @@ partial class InventoryGridPanel
     private Label _detailInfoHintLabel = null!;
     private Label _detailDescription = null!;
     private PictureBox _detailClassIcon = null!;
-    private NumericUpDown _detailAmount = null!;
-    private NumericUpDown _detailMaxAmount = null!;
-    private NumericUpDown _detailDamageFactor = null!;
+    private InvariantNumericTextBox _detailAmount = null!;
+    private InvariantNumericTextBox _detailMaxAmount = null!;
+    private InvariantNumericTextBox _detailDamageFactor = null!;
     private Button _applyButton = null!;
     private Label _detailAmountLabel = null!;
     private Label _detailMaxLabel = null!;
@@ -818,9 +811,9 @@ partial class InventoryGridPanel
     private Label _pickerInfoHintLabel = null!;
     private Label _pickerDescription = null!;
     private PictureBox _pickerClassIcon = null!;
-    private NumericUpDown _pickerAmount = null!;
-    private NumericUpDown _pickerMaxAmount = null!;
-    private NumericUpDown _pickerDamageFactor = null!;
+    private InvariantNumericTextBox _pickerAmount = null!;
+    private InvariantNumericTextBox _pickerMaxAmount = null!;
+    private InvariantNumericTextBox _pickerDamageFactor = null!;
     private Button _pickerApplyButton = null!;
     private Label _pickerAmountLabel = null!;
     private Label _pickerMaxLabel = null!;
@@ -840,8 +833,8 @@ partial class InventoryGridPanel
     private Label _itemFilterLabel = null!;
 
     // Resize controls
-    private NumericUpDown _resizeWidth = null!;
-    private NumericUpDown _resizeHeight = null!;
+    private InvariantNumericTextBox _resizeWidth = null!;
+    private InvariantNumericTextBox _resizeHeight = null!;
     private Label _resizeWidthLabel = null!;
     private Label _resizeHeightLabel = null!;
     private Button _resizeButton = null!;
