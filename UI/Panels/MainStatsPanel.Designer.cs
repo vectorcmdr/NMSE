@@ -3,6 +3,7 @@ using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.IO;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -37,12 +38,12 @@ partial class MainStatsPanel
     {
         SuspendLayout();
 
-        _healthField = new NumericUpDown { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-        _shieldField = new NumericUpDown { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-        _energyField = new NumericUpDown { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-        _unitsField = new NumericUpDown { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-        _nanitesField = new NumericUpDown { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-        _quicksilverField = new NumericUpDown { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _healthField = new InvariantNumericTextBox { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _shieldField = new InvariantNumericTextBox { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _energyField = new InvariantNumericTextBox { Maximum = 999999, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _unitsField = new InvariantNumericTextBox { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _nanitesField = new InvariantNumericTextBox { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+        _quicksilverField = new InvariantNumericTextBox { Maximum = uint.MaxValue, Width = 150, Anchor = AnchorStyles.Left | AnchorStyles.Top };
         _saveNameField = new TextBox { Width = 250 };
         _saveSummaryField = new TextBox { Width = 250 };
         _playTimeField = new TextBox { Width = 150, ReadOnly = true };
@@ -125,12 +126,12 @@ partial class MainStatsPanel
             Padding = new Padding(0),
         };
 
-        _galaxyNud = new NumericUpDown { Width = 150, Minimum = 1, Maximum = 257 };
-        _voxelXNud = new NumericUpDown { Width = 150, Minimum = -2048, Maximum = 2047 };
-        _voxelYNud = new NumericUpDown { Width = 150, Minimum = -128, Maximum = 127 };
-        _voxelZNud = new NumericUpDown { Width = 150, Minimum = -2048, Maximum = 2047 };
-        _solarSystemNud = new NumericUpDown { Width = 150, Minimum = 0, Maximum = 600 };
-        _planetNud = new NumericUpDown { Width = 150, Minimum = 0, Maximum = 15 };
+        _galaxyNud = new InvariantNumericTextBox { Width = 150, Minimum = 1, Maximum = 257 };
+        _voxelXNud = new InvariantNumericTextBox { Width = 150, Minimum = -2048, Maximum = 2047 };
+        _voxelYNud = new InvariantNumericTextBox { Width = 150, Minimum = -128, Maximum = 127 };
+        _voxelZNud = new InvariantNumericTextBox { Width = 150, Minimum = -2048, Maximum = 2047 };
+        _solarSystemNud = new InvariantNumericTextBox { Width = 150, Minimum = 0, Maximum = 600 };
+        _planetNud = new InvariantNumericTextBox { Width = 150, Minimum = 0, Maximum = 15 };
         _applyCoordinatesBtn = new Button { Text = "Apply Coordinates", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         _applyCoordinatesBtn.Click += OnApplyCoordinates;
 
@@ -141,7 +142,7 @@ partial class MainStatsPanel
         _coordinateRouletteBtn = new Button { Text = "Coordinate Roulette!", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         _coordinateRouletteBtn.Click += OnCoordinateRoulette;
 
-        _warpsToNextBattleField = new NumericUpDown { Width = 100, Minimum = 0, Maximum = 999, ReadOnly = true };
+        _warpsToNextBattleField = new InvariantNumericTextBox { Width = 100, Minimum = 0, Maximum = 999, ReadOnly = true };
         _timeToNextBattleField = new TextBox { Width = 150, ReadOnly = true };
         _triggerBattleBtn = new Button { Text = "Trigger Space Battle", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         _triggerBattleBtn.Click += OnTriggerSpaceBattle;
@@ -552,12 +553,12 @@ partial class MainStatsPanel
     }
 
     // General tab fields
-    private NumericUpDown _healthField = null!;
-    private NumericUpDown _shieldField = null!;
-    private NumericUpDown _energyField = null!;
-    private NumericUpDown _unitsField = null!;
-    private NumericUpDown _nanitesField = null!;
-    private NumericUpDown _quicksilverField = null!;
+    private InvariantNumericTextBox _healthField = null!;
+    private InvariantNumericTextBox _shieldField = null!;
+    private InvariantNumericTextBox _energyField = null!;
+    private InvariantNumericTextBox _unitsField = null!;
+    private InvariantNumericTextBox _nanitesField = null!;
+    private InvariantNumericTextBox _quicksilverField = null!;
     private TextBox _saveNameField = null!;
     private TextBox _saveSummaryField = null!;
     private TextBox _playTimeField = null!;
@@ -585,12 +586,12 @@ partial class MainStatsPanel
     private CheckBox _portalInterference = null!;
 
     // Editable coordinate NUDs
-    private NumericUpDown _galaxyNud = null!;
-    private NumericUpDown _voxelXNud = null!;
-    private NumericUpDown _voxelYNud = null!;
-    private NumericUpDown _voxelZNud = null!;
-    private NumericUpDown _solarSystemNud = null!;
-    private NumericUpDown _planetNud = null!;
+    private InvariantNumericTextBox _galaxyNud = null!;
+    private InvariantNumericTextBox _voxelXNud = null!;
+    private InvariantNumericTextBox _voxelYNud = null!;
+    private InvariantNumericTextBox _voxelZNud = null!;
+    private InvariantNumericTextBox _solarSystemNud = null!;
+    private InvariantNumericTextBox _planetNud = null!;
     private Button _applyCoordinatesBtn = null!;
 
     // Portal code -> coordinates converter
@@ -609,7 +610,7 @@ partial class MainStatsPanel
     private Button _transferBtn = null!;
 
     // Space battle
-    private NumericUpDown _warpsToNextBattleField = null!;
+    private InvariantNumericTextBox _warpsToNextBattleField = null!;
     private TextBox _timeToNextBattleField = null!;
     private Button _triggerBattleBtn = null!;
 

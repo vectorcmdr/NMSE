@@ -79,7 +79,7 @@ public partial class ExosuitPanel : UserControl
 
         var pinned = new HashSet<(int x, int y)>(_generalGrid.GetPinnedSlots());
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(cargoInventory, _playerState, out _, out _, pinned);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(cargoInventory, _playerState, out _, out _, pinned);
         if (!changed) return;
 
         _generalGrid.LoadInventory(cargoInventory);
@@ -96,7 +96,7 @@ public partial class ExosuitPanel : UserControl
 
         var pinned = new HashSet<(int x, int y)>(_generalGrid.GetPinnedSlots());
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToStarship(cargoInventory, _playerState, out _, out _, pinned);
+        bool changed = InventoryBulkActions.AutoStackCargoToStarship(cargoInventory, _playerState, out _, out _, pinned);
         if (!changed) return;
 
         _generalGrid.LoadInventory(cargoInventory);
@@ -113,7 +113,7 @@ public partial class ExosuitPanel : UserControl
 
         var pinned = new HashSet<(int x, int y)>(_generalGrid.GetPinnedSlots());
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToFreighter(cargoInventory, _playerState, out _, out _, pinned);
+        bool changed = InventoryBulkActions.AutoStackCargoToFreighter(cargoInventory, _playerState, out _, out _, pinned);
         if (!changed) return;
 
         _generalGrid.LoadInventory(cargoInventory);
@@ -126,7 +126,7 @@ public partial class ExosuitPanel : UserControl
         if (!TryGetContextAutoStackCargo(out var cargoInventory, out var pinned, e, out var sourceSlotFilter, out var sourceItemIdFilter))
             return;
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(
             cargoInventory,
             _playerState!,
             out _,
@@ -147,7 +147,7 @@ public partial class ExosuitPanel : UserControl
         if (!TryGetContextAutoStackCargo(out var cargoInventory, out var pinned, e, out var sourceSlotFilter, out var sourceItemIdFilter))
             return;
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToStarship(
+        bool changed = InventoryBulkActions.AutoStackCargoToStarship(
             cargoInventory,
             _playerState!,
             out _,
@@ -168,7 +168,7 @@ public partial class ExosuitPanel : UserControl
         if (!TryGetContextAutoStackCargo(out var cargoInventory, out var pinned, e, out var sourceSlotFilter, out var sourceItemIdFilter))
             return;
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToFreighter(
+        bool changed = InventoryBulkActions.AutoStackCargoToFreighter(
             cargoInventory,
             _playerState!,
             out _,

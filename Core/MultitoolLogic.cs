@@ -146,9 +146,10 @@ internal static class MultitoolLogic
 
         var toolStore = tool.GetObject("Store");
         double damage = 0, mining = 0, scan = 0;
-        try { damage = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_DAMAGE"); } catch { }
-        try { mining = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_MINING"); } catch { }
-        try { scan = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_SCAN"); } catch { }
+        string damageText = "0", miningText = "0", scanText = "0";
+        try { damage = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_DAMAGE"); damageText = StatHelper.ReadBaseStatText(toolStore, "^WEAPON_DAMAGE"); } catch { }
+        try { mining = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_MINING"); miningText = StatHelper.ReadBaseStatText(toolStore, "^WEAPON_MINING"); } catch { }
+        try { scan = StatHelper.ReadBaseStatValue(toolStore, "^WEAPON_SCAN"); scanText = StatHelper.ReadBaseStatText(toolStore, "^WEAPON_SCAN"); } catch { }
 
         string safeName = StringHelper.SanitizeFileName(name);
         string cls2 = classIndex >= 0 ? ToolClasses[classIndex] : "C";
@@ -162,6 +163,9 @@ internal static class MultitoolLogic
             Damage = damage,
             Mining = mining,
             Scan = scan,
+            DamageText = damageText,
+            MiningText = miningText,
+            ScanText = scanText,
             Store = toolStore,
             ExportFileName = ExportConfig.BuildFileName(
                 ExportConfig.Instance.MultitoolTemplate,
@@ -187,7 +191,7 @@ internal static class MultitoolLogic
         // Always write name (allow empty string to clear name)
         tool.Set("Name", values.Name ?? "");
 
-        if (values.ClassIndex >= 0)
+        if (values.ClassIndex >= 0 && values.ClassIndex != values.OriginalClassIndex)
         {
             string cls = ToolClasses[values.ClassIndex];
             // Set class on all multitool inventories (Store, Store_TechOnly)
@@ -231,9 +235,18 @@ internal static class MultitoolLogic
         catch { }
 
         var toolStore = tool.GetObject("Store");
-        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_DAMAGE", Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_DAMAGE", values.Damage, Data.StatCategory.Weapon, values.RawStatValues));
-        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_MINING", Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_MINING", values.Mining, Data.StatCategory.Weapon, values.RawStatValues));
-        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_SCAN", Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_SCAN", values.Scan, Data.StatCategory.Weapon, values.RawStatValues));
+        double writeDamage = Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_DAMAGE", values.Damage, Data.StatCategory.Weapon, values.RawStatValues);
+        double writeMining = Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_MINING", values.Mining, Data.StatCategory.Weapon, values.RawStatValues);
+        double writeScan = Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^WEAPON_SCAN", values.Scan, Data.StatCategory.Weapon, values.RawStatValues);
+
+        // Only preserve display text when clamping did not alter the value.
+        string? damageText = values.Damage == writeDamage ? values.DamageText : null;
+        string? miningText = values.Mining == writeMining ? values.MiningText : null;
+        string? scanText = values.Scan == writeScan ? values.ScanText : null;
+
+        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_DAMAGE", writeDamage, damageText);
+        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_MINING", writeMining, miningText);
+        StatHelper.WriteBaseStatValue(toolStore, "^WEAPON_SCAN", writeScan, scanText);
 
         // If primary tool, sync Store to WeaponInventory in PlayerStateData
         // This keeps the game's live inventory copy in sync with the tool data
@@ -436,6 +449,12 @@ internal static class MultitoolLogic
         public double Mining { get; set; }
         /// <summary>The multitool's base scan stat.</summary>
         public double Scan { get; set; }
+        /// <summary>The original text representation of the damage stat from the save file.</summary>
+        public string DamageText { get; set; } = "0";
+        /// <summary>The original text representation of the mining stat from the save file.</summary>
+        public string MiningText { get; set; } = "0";
+        /// <summary>The original text representation of the scan stat from the save file.</summary>
+        public string ScanText { get; set; } = "0";
         /// <summary>The multitool's store (inventory) JSON object.</summary>
         public JsonObject? Store { get; set; }
         /// <summary>Suggested filename for exporting the inventory.</summary>
@@ -453,6 +472,8 @@ internal static class MultitoolLogic
         public int TypeIndex { get; set; } = -1;
         /// <summary>Index into <see cref="ToolClasses"/> for the desired class grade.</summary>
         public int ClassIndex { get; set; } = -1;
+        /// <summary>Original class index loaded from save; used to skip class writes when unchanged.</summary>
+        public int OriginalClassIndex { get; set; } = -1;
         /// <summary>The seed hex string to set.</summary>
         public string Seed { get; set; } = "";
         /// <summary>The damage stat value to write.</summary>
@@ -461,6 +482,12 @@ internal static class MultitoolLogic
         public double Mining { get; set; }
         /// <summary>The scan stat value to write.</summary>
         public double Scan { get; set; }
+        /// <summary>Display text for the damage stat, used to create a RawDouble on save.</summary>
+        public string? DamageText { get; set; }
+        /// <summary>Display text for the mining stat, used to create a RawDouble on save.</summary>
+        public string? MiningText { get; set; }
+        /// <summary>Display text for the scan stat, used to create a RawDouble on save.</summary>
+        public string? ScanText { get; set; }
 
         /// <summary>Raw (unclamped) stat values read from JSON at load time.
         /// When set, each stat is only written if the UI value differs from

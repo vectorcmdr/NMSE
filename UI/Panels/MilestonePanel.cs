@@ -1,13 +1,14 @@
 using NMSE.Core;
 using NMSE.Data;
 using NMSE.Models;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
 
 public partial class MilestonePanel : UserControl
 {
-    private readonly Dictionary<string, NumericUpDown> _fields = new();
+    private readonly Dictionary<string, InvariantNumericTextBox> _fields = new();
     private readonly List<(Label label, string locKey)> _localisedLabels = new();
     private IconManager? _iconManager;
 
@@ -159,7 +160,7 @@ public partial class MilestonePanel : UserControl
         _localisedLabels.Add((label, locKey));
         panel.Controls.Add(label, 0, row);
 
-        var nud = new NumericUpDown
+        var nud = new InvariantNumericTextBox
         {
             Minimum = int.MinValue,
             Maximum = int.MaxValue,
@@ -180,7 +181,7 @@ public partial class MilestonePanel : UserControl
         try
         {
         foreach (var nud in _fields.Values)
-            nud.Value = 0;
+            nud.NumericValue = 0;
 
         _rawMilestoneValues.Clear();
 
@@ -196,7 +197,7 @@ public partial class MilestonePanel : UserControl
 
             int val = MilestoneLogic.ReadStatEntryValue(entry);
             _rawMilestoneValues[id] = val;
-            nud.Value = Math.Max(nud.Minimum, Math.Min(nud.Maximum, val));
+            nud.NumericValue = Math.Max((int)(nud.Minimum ?? int.MinValue), Math.Min((int)(nud.Maximum ?? int.MaxValue), val));
         }
         }
         finally
@@ -220,12 +221,12 @@ public partial class MilestonePanel : UserControl
             var valueObj = entry.GetObject("Value");
             if (valueObj != null)
             {
-                int value = (int)nud.Value;
+                int value = (int)(nud.NumericValue ?? 0);
 
                 // Skip write if user didn't change the value from its clamped display
                 if (_rawMilestoneValues.TryGetValue(id, out int raw))
                 {
-                    int clamped = (int)Math.Max(nud.Minimum, Math.Min(nud.Maximum, raw));
+                    int clamped = (int)Math.Max((int)(nud.Minimum ?? int.MinValue), Math.Min((int)(nud.Maximum ?? int.MaxValue), raw));
                     if (value == clamped)
                         continue; // Preserve original JSON value
                 }

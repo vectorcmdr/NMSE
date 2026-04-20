@@ -118,13 +118,20 @@ internal static class FreighterLogic
         StatHelper.ReadBaseStatValue(inventory, statId);
 
     /// <summary>
+    /// Reads the text representation of a stat bonus value from a freighter inventory.
+    /// </summary>
+    internal static string ReadStatBonusText(JsonObject? inventory, string statId) =>
+        StatHelper.ReadBaseStatText(inventory, statId);
+
+    /// <summary>
     /// Writes a stat bonus value to a freighter inventory.
     /// </summary>
     /// <param name="inventory">The inventory JSON object to write to.</param>
     /// <param name="statId">The stat identifier (e.g. "^FREI_HYPERDRIVE").</param>
     /// <param name="value">The value to write.</param>
-    internal static void WriteStatBonus(JsonObject? inventory, string statId, double value) =>
-        StatHelper.WriteBaseStatValue(inventory, statId, value);
+    /// <param name="displayText">Optional display text to preserve as RawDouble.</param>
+    internal static void WriteStatBonus(JsonObject? inventory, string statId, double value, string? displayText = null) =>
+        StatHelper.WriteBaseStatValue(inventory, statId, value, displayText);
 
     /// <summary>
     /// Finds the freighter base object in the player's persistent bases (version 3+).
@@ -220,6 +227,8 @@ internal static class FreighterLogic
 
         data.Hyperdrive = ReadStatBonus(playerState.GetObject("FreighterInventory"), "^FREI_HYPERDRIVE");
         data.FleetCoordination = ReadStatBonus(playerState.GetObject("FreighterInventory"), "^FREI_FLEET");
+        data.HyperdriveText = ReadStatBonusText(playerState.GetObject("FreighterInventory"), "^FREI_HYPERDRIVE");
+        data.FleetCoordinationText = ReadStatBonusText(playerState.GetObject("FreighterInventory"), "^FREI_FLEET");
 
         data.FreighterBase = FindFreighterBase(playerState);
         if (data.FreighterBase != null)
@@ -278,7 +287,7 @@ internal static class FreighterLogic
                 currentFreighter.Set("Filename", filename);
         }
 
-        if (values.ClassIndex >= 0)
+        if (values.ClassIndex >= 0 && values.ClassIndex != values.OriginalClassIndex)
         {
             string cls = FreighterClasses[values.ClassIndex];
             SetInventoryClass(playerState.GetObject("FreighterInventory"), cls);
@@ -306,15 +315,19 @@ internal static class FreighterLogic
         }
         catch { }
 
-        // Write base stats to ALL freighter inventories
-        foreach (string invKey in new[] { "FreighterInventory", "FreighterInventory_TechOnly", "FreighterInventory_Cargo" })
+        // Write base stats to FreighterInventory and FreighterInventory_TechOnly.
+        // For freighters on v400+ Waypoint the game uses these two inventories;
+        // FreighterInventory_Cargo is NOT included for modern saves.
+        foreach (string invKey in new[] { "FreighterInventory", "FreighterInventory_TechOnly" })
         {
             var inv = playerState.GetObject(invKey);
-            if (inv != null)
-            {
-                WriteStatBonus(inv, "^FREI_HYPERDRIVE", Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^FREI_HYPERDRIVE", values.Hyperdrive, Data.StatCategory.Freighter, values.RawStatValues));
-                WriteStatBonus(inv, "^FREI_FLEET", Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^FREI_FLEET", values.FleetCoordination, Data.StatCategory.Freighter, values.RawStatValues));
-            }
+            if (inv == null) continue;
+            double writeHyperdrive = Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^FREI_HYPERDRIVE", values.Hyperdrive, Data.StatCategory.Freighter, values.RawStatValues);
+            double writeFleet = Data.BaseStatLimits.ConditionalClampStatValue("Normal", "^FREI_FLEET", values.FleetCoordination, Data.StatCategory.Freighter, values.RawStatValues);
+            string? hyperdriveText = values.Hyperdrive == writeHyperdrive ? values.HyperdriveText : null;
+            string? fleetText = values.FleetCoordination == writeFleet ? values.FleetCoordinationText : null;
+            WriteStatBonus(inv, "^FREI_HYPERDRIVE", writeHyperdrive, hyperdriveText);
+            WriteStatBonus(inv, "^FREI_FLEET", writeFleet, fleetText);
         }
     }
 
@@ -516,6 +529,10 @@ internal static class FreighterLogic
         public double Hyperdrive { get; set; }
         /// <summary>The freighter's fleet coordination stat.</summary>
         public double FleetCoordination { get; set; }
+        /// <summary>The original text representation of the hyperdrive stat from the save file.</summary>
+        public string HyperdriveText { get; set; } = "0";
+        /// <summary>The original text representation of the fleet coordination stat from the save file.</summary>
+        public string FleetCoordinationText { get; set; } = "0";
         /// <summary>The freighter base JSON object, if found.</summary>
         public JsonObject? FreighterBase { get; set; }
         /// <summary>Number of items placed in the freighter base, or -1 if unknown.</summary>
@@ -537,6 +554,8 @@ internal static class FreighterLogic
         public string? SelectedTypeName { get; set; }
         /// <summary>Index into <see cref="FreighterClasses"/> for the desired class grade.</summary>
         public int ClassIndex { get; set; } = -1;
+        /// <summary>Original class index loaded from save; used to skip class writes when unchanged.</summary>
+        public int OriginalClassIndex { get; set; } = -1;
         /// <summary>The home system seed hex string to set.</summary>
         public string HomeSeed { get; set; } = "";
         /// <summary>The model seed hex string to set.</summary>
@@ -545,6 +564,10 @@ internal static class FreighterLogic
         public double Hyperdrive { get; set; }
         /// <summary>The fleet coordination stat value to write.</summary>
         public double FleetCoordination { get; set; }
+        /// <summary>Display text for the hyperdrive stat, used to create a RawDouble on save.</summary>
+        public string? HyperdriveText { get; set; }
+        /// <summary>Display text for the fleet coordination stat, used to create a RawDouble on save.</summary>
+        public string? FleetCoordinationText { get; set; }
 
         /// <summary>Raw (unclamped) stat values read from JSON at load time.
         /// When set, each stat is only written if the UI value differs from

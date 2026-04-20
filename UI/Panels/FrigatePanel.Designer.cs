@@ -1,6 +1,8 @@
 using NMSE.Core;
+using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.UI.Util;
+using NMSE.UI.Controls;
 
 namespace NMSE.UI.Panels;
 
@@ -49,21 +51,21 @@ partial class FrigatePanel
         this._repairBtn = new System.Windows.Forms.Button();
         this._statsPanel = new System.Windows.Forms.Panel();
         this._statsLayout = new System.Windows.Forms.TableLayoutPanel();
-        this._statField0 = new System.Windows.Forms.NumericUpDown();
-        this._statField1 = new System.Windows.Forms.NumericUpDown();
-        this._statField2 = new System.Windows.Forms.NumericUpDown();
-        this._statField3 = new System.Windows.Forms.NumericUpDown();
-        this._statField4 = new System.Windows.Forms.NumericUpDown();
-        this._statField5 = new System.Windows.Forms.NumericUpDown();
-        this._statField6 = new System.Windows.Forms.NumericUpDown();
-        this._statField7 = new System.Windows.Forms.NumericUpDown();
-        this._statField8 = new System.Windows.Forms.NumericUpDown();
-        this._statField9 = new System.Windows.Forms.NumericUpDown();
-        this._statField10 = new System.Windows.Forms.NumericUpDown();
-        this._expeditionsField = new System.Windows.Forms.NumericUpDown();
-        this._successfulField = new System.Windows.Forms.NumericUpDown();
-        this._failedField = new System.Windows.Forms.NumericUpDown();
-        this._damagedField = new System.Windows.Forms.NumericUpDown();
+        this._statField0 = new InvariantNumericTextBox();
+        this._statField1 = new InvariantNumericTextBox();
+        this._statField2 = new InvariantNumericTextBox();
+        this._statField3 = new InvariantNumericTextBox();
+        this._statField4 = new InvariantNumericTextBox();
+        this._statField5 = new InvariantNumericTextBox();
+        this._statField6 = new InvariantNumericTextBox();
+        this._statField7 = new InvariantNumericTextBox();
+        this._statField8 = new InvariantNumericTextBox();
+        this._statField9 = new InvariantNumericTextBox();
+        this._statField10 = new InvariantNumericTextBox();
+        this._expeditionsField = new InvariantNumericTextBox();
+        this._successfulField = new InvariantNumericTextBox();
+        this._failedField = new InvariantNumericTextBox();
+        this._damagedField = new InvariantNumericTextBox();
         this._stateField = new System.Windows.Forms.TextBox();
         this._levelUpInField = new System.Windows.Forms.TextBox();
         this._levelUpsRemainingField = new System.Windows.Forms.TextBox();
@@ -71,21 +73,6 @@ partial class FrigatePanel
         this._fastForwardBtn = new System.Windows.Forms.Button();
         this._finishExpeditionBtn = new System.Windows.Forms.Button();
         this._expeditionStartTimeField = new System.Windows.Forms.DateTimePicker();
-        ((System.ComponentModel.ISupportInitialize)(this._statField0)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField1)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField2)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField3)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField4)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField5)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField6)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField7)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField8)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField9)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField10)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._expeditionsField)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._successfulField)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._failedField)).BeginInit();
-        ((System.ComponentModel.ISupportInitialize)(this._damagedField)).BeginInit();
         this._mainLayout.SuspendLayout();
         this._leftLayout.SuspendLayout();
         this._btnPanel.SuspendLayout();
@@ -412,21 +399,6 @@ partial class FrigatePanel
         //
         this.DoubleBuffered = true;
         this.Controls.Add(this._mainLayout);
-        ((System.ComponentModel.ISupportInitialize)(this._statField0)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField1)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField2)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField3)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField4)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField5)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField6)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField7)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField8)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField9)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._statField10)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._expeditionsField)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._successfulField)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._failedField)).EndInit();
-        ((System.ComponentModel.ISupportInitialize)(this._damagedField)).EndInit();
         this._mainLayout.ResumeLayout(false);
         this._leftLayout.ResumeLayout(false);
         this._btnPanel.ResumeLayout(false);
@@ -445,7 +417,7 @@ partial class FrigatePanel
     {
         // Pack individual fields into arrays
         _traitFields = new ComboBox[] { _traitField0, _traitField1, _traitField2, _traitField3, _traitField4 };
-        _statFields = new NumericUpDown[] { _statField0, _statField1, _statField2, _statField3, _statField4,
+        _statFields = new InvariantNumericTextBox[] { _statField0, _statField1, _statField2, _statField3, _statField4,
             _statField5, _statField6, _statField7, _statField8, _statField9, _statField10 };
 
         // Populate combo items
@@ -553,7 +525,7 @@ partial class FrigatePanel
         {
             int statIdx = i;
             var nud = _statFields[i];
-            nud.ValueChanged += (s, e) =>
+            nud.NumericValueChanged += (s, e) =>
             {
                 if (_loading) return;
                 var frigate = SelectedFrigate();
@@ -564,7 +536,7 @@ partial class FrigatePanel
                 if (_rawStatValues.TryGetValue(statIdx, out int raw))
                 {
                     int clamped = Math.Min(999, Math.Max(0, raw));
-                    if ((int)nud.Value == clamped)
+                    if ((int)(nud.NumericValue ?? 0) == clamped)
                         return;
                 }
 
@@ -572,16 +544,16 @@ partial class FrigatePanel
                 {
                     var stats = frigate.GetArray("Stats");
                     if (stats != null && statIdx < stats.Length)
-                        stats.Set(statIdx, (int)nud.Value);
+                        RawNumberGuard.SetInt(stats, statIdx, (int)(nud.NumericValue ?? 0));
                 }
                 catch { }
             };
         }
 
-        _expeditionsField.ValueChanged += (s, e) => SaveIntField("TotalNumberOfExpeditions", (int)_expeditionsField.Value);
-        _successfulField.ValueChanged += (s, e) => SaveIntField("TotalNumberOfSuccessfulEvents", (int)_successfulField.Value);
-        _failedField.ValueChanged += (s, e) => SaveIntField("TotalNumberOfFailedEvents", (int)_failedField.Value);
-        _damagedField.ValueChanged += (s, e) => SaveIntField("NumberOfTimesDamaged", (int)_damagedField.Value);
+        _expeditionsField.NumericValueChanged += (s, e) => SaveIntField("TotalNumberOfExpeditions", (int)(_expeditionsField.NumericValue ?? 0));
+        _successfulField.NumericValueChanged += (s, e) => SaveIntField("TotalNumberOfSuccessfulEvents", (int)(_successfulField.NumericValue ?? 0));
+        _failedField.NumericValueChanged += (s, e) => SaveIntField("TotalNumberOfFailedEvents", (int)(_failedField.NumericValue ?? 0));
+        _damagedField.NumericValueChanged += (s, e) => SaveIntField("NumberOfTimesDamaged", (int)(_damagedField.NumericValue ?? 0));
 
         // Arrange detail layout rows
         int row = 0;
@@ -662,22 +634,22 @@ partial class FrigatePanel
     private System.Windows.Forms.Button _repairBtn;
     private System.Windows.Forms.Panel _statsPanel;
     private System.Windows.Forms.TableLayoutPanel _statsLayout;
-    private System.Windows.Forms.NumericUpDown _statField0;
-    private System.Windows.Forms.NumericUpDown _statField1;
-    private System.Windows.Forms.NumericUpDown _statField2;
-    private System.Windows.Forms.NumericUpDown _statField3;
-    private System.Windows.Forms.NumericUpDown _statField4;
-    private System.Windows.Forms.NumericUpDown _statField5;
-    private System.Windows.Forms.NumericUpDown _statField6;
-    private System.Windows.Forms.NumericUpDown _statField7;
-    private System.Windows.Forms.NumericUpDown _statField8;
-    private System.Windows.Forms.NumericUpDown _statField9;
-    private System.Windows.Forms.NumericUpDown _statField10;
-    private System.Windows.Forms.NumericUpDown[] _statFields;
-    private System.Windows.Forms.NumericUpDown _expeditionsField;
-    private System.Windows.Forms.NumericUpDown _successfulField;
-    private System.Windows.Forms.NumericUpDown _failedField;
-    private System.Windows.Forms.NumericUpDown _damagedField;
+    private InvariantNumericTextBox _statField0;
+    private InvariantNumericTextBox _statField1;
+    private InvariantNumericTextBox _statField2;
+    private InvariantNumericTextBox _statField3;
+    private InvariantNumericTextBox _statField4;
+    private InvariantNumericTextBox _statField5;
+    private InvariantNumericTextBox _statField6;
+    private InvariantNumericTextBox _statField7;
+    private InvariantNumericTextBox _statField8;
+    private InvariantNumericTextBox _statField9;
+    private InvariantNumericTextBox _statField10;
+    private InvariantNumericTextBox[] _statFields;
+    private InvariantNumericTextBox _expeditionsField;
+    private InvariantNumericTextBox _successfulField;
+    private InvariantNumericTextBox _failedField;
+    private InvariantNumericTextBox _damagedField;
     private System.Windows.Forms.TextBox _stateField;
     private System.Windows.Forms.TextBox _levelUpInField;
     private System.Windows.Forms.TextBox _levelUpsRemainingField;

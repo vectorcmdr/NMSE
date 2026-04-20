@@ -20,6 +20,9 @@ public partial class MultitoolPanel : UserControl
     /// <summary>Raw (unclamped) tool stat values read from JSON for the currently selected tool.</summary>
     private Dictionary<string, double>? _rawToolStatValues;
 
+    /// <summary>Class index loaded from the save for the current tool, used to detect user changes.</summary>
+    private int _originalClassIndex = -1;
+
     public MultitoolPanel()
     {
         InitializeComponent();
@@ -170,7 +173,7 @@ public partial class MultitoolPanel : UserControl
                 if (idx >= multitools.Length) return;
 
                 // Save active multitool index (use tracked value, not current selection)
-                try { playerState.Set("ActiveMultioolIndex", _activeToolIndex); } catch { }
+                try { RawNumberGuard.SetInt(playerState, "ActiveMultioolIndex", _activeToolIndex); } catch { }
 
                 var tool = multitools.GetObject(idx);
 
@@ -178,11 +181,23 @@ public partial class MultitoolPanel : UserControl
                 {
                     Name = _toolName.Text,
                     ClassIndex = _toolClass.SelectedIndex,
+                    OriginalClassIndex = _originalClassIndex,
                     TypeIndex = GetSelectedToolTypeIndex(),
                     Seed = _toolSeed.Text,
-                    Damage = (double)_damageField.Value,
-                    Mining = (double)_miningField.Value,
-                    Scan = (double)_scanField.Value,
+                    // Use raw values for unmodified fields to prevent any
+                    // precision loss from the UI control text round-trip.
+                    Damage = _damageField.UserModified
+                        ? (_damageField.NumericValue ?? 0.0)
+                        : (_rawToolStatValues?.GetValueOrDefault("^WEAPON_DAMAGE") ?? _damageField.NumericValue ?? 0.0),
+                    Mining = _miningField.UserModified
+                        ? (_miningField.NumericValue ?? 0.0)
+                        : (_rawToolStatValues?.GetValueOrDefault("^WEAPON_MINING") ?? _miningField.NumericValue ?? 0.0),
+                    Scan = _scanField.UserModified
+                        ? (_scanField.NumericValue ?? 0.0)
+                        : (_rawToolStatValues?.GetValueOrDefault("^WEAPON_SCAN") ?? _scanField.NumericValue ?? 0.0),
+                    DamageText = _damageField.UserModified ? _damageField.DisplayText : null,
+                    MiningText = _miningField.UserModified ? _miningField.DisplayText : null,
+                    ScanText = _scanField.UserModified ? _scanField.DisplayText : null,
                     RawStatValues = _rawToolStatValues
                 };
 
@@ -223,6 +238,7 @@ public partial class MultitoolPanel : UserControl
                 _toolName.Text = data.Name;
                 SelectToolTypeByIndex(data.TypeIndex);
                 _toolClass.SelectedIndex = data.ClassIndex;
+                _originalClassIndex = data.ClassIndex;
                 _toolSeed.Text = data.Seed;
 
                 _storeGrid.LoadInventory(data.Store);
@@ -233,9 +249,9 @@ public partial class MultitoolPanel : UserControl
                 string importFilter = ExportConfig.BuildImportFilter(cfg.MultitoolExt, "Multitool inventory", ".wp0", ".mlt");
                 _storeGrid.SetExportFileFilter(exportFilter, importFilter, cfg.MultitoolExt.TrimStart('.'));
 
-                try { _damageField.Value = (decimal)data.Damage; } catch { _damageField.Value = 0; }
-                try { _miningField.Value = (decimal)data.Mining; } catch { _miningField.Value = 0; }
-                try { _scanField.Value = (decimal)data.Scan; } catch { _scanField.Value = 0; }
+                try { _damageField.SetValueWithText(data.Damage, data.DamageText); } catch { _damageField.NumericValue = 0; }
+                try { _miningField.SetValueWithText(data.Mining, data.MiningText); } catch { _miningField.NumericValue = 0; }
+                try { _scanField.SetValueWithText(data.Scan, data.ScanText); } catch { _scanField.NumericValue = 0; }
 
                 // Store raw stat values for preservation before limits clamp the NUDs
                 _rawToolStatValues = new Dictionary<string, double>
@@ -245,10 +261,6 @@ public partial class MultitoolPanel : UserControl
                     ["^WEAPON_SCAN"] = data.Scan,
                 };
 
-                // Apply BaseStatLimits to the NumericUpDown controls
-                ApplyStatLimits(_damageField, "Normal", "^WEAPON_DAMAGE", StatCategory.Weapon);
-                ApplyStatLimits(_miningField, "Normal", "^WEAPON_MINING", StatCategory.Weapon);
-                ApplyStatLimits(_scanField, "Normal", "^WEAPON_SCAN", StatCategory.Weapon);
             }
         }
         catch { }
@@ -271,17 +283,6 @@ public partial class MultitoolPanel : UserControl
         _toolSelector.Items.Insert(idx, item);
         _toolSelector.SelectedIndex = idx;
         _toolSelector.SelectedIndexChanged += OnToolSelected;
-    }
-
-    /// <summary>Applies BaseStatLimits min/max to a NumericUpDown control.</summary>
-    private static void ApplyStatLimits(NumericUpDown nud, string entityType, string statId, StatCategory category)
-    {
-        var range = BaseStatLimits.GetRange(entityType, statId, category);
-        if (range != null)
-        {
-            nud.Minimum = range.MinValue;
-            nud.Maximum = range.MaxValue;
-        }
     }
 
     private void OnDeleteTool(object? sender, EventArgs e)
@@ -320,7 +321,7 @@ public partial class MultitoolPanel : UserControl
             {
                 _activeToolIndex = MultitoolLogic.FindFirstValidToolIndex(_multitools);
                 if (_activeToolIndex < 0) _activeToolIndex = 0;
-                try { _playerState.Set("ActiveMultioolIndex", _activeToolIndex); } catch { }
+                try { RawNumberGuard.SetInt(_playerState, "ActiveMultioolIndex", _activeToolIndex); } catch { }
             }
             _primaryToolLabel.Text = UiStrings.Format("multitool.primary_label", MultitoolLogic.GetPrimaryToolName(_multitools, _activeToolIndex));
 
@@ -349,7 +350,7 @@ public partial class MultitoolPanel : UserControl
             if (idx >= _multitools.Length) return;
 
             _activeToolIndex = idx;
-            try { _playerState.Set("ActiveMultioolIndex", _activeToolIndex); } catch { }
+            try { RawNumberGuard.SetInt(_playerState, "ActiveMultioolIndex", _activeToolIndex); } catch { }
             _primaryToolLabel.Text = UiStrings.Format("multitool.primary_label", MultitoolLogic.GetPrimaryToolName(_multitools, _activeToolIndex));
         }
         catch { }
@@ -411,7 +412,7 @@ public partial class MultitoolPanel : UserControl
 
             var imported = JsonObject.ImportFromFile(dialog.FileName);
 
-            // Unwrap NomNom wrapper if present (Data -> Multitool)
+            // Unwrap Data envelope if present (Data -> Multitool)
             imported = InventoryImportHelper.UnwrapNomNom(imported, "Multitool");
 
             int emptyIdx = MultitoolLogic.FindEmptySlot(_multitools);

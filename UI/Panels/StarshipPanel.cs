@@ -30,6 +30,9 @@ public partial class StarshipPanel : UserControl
     /// <summary>Raw (unclamped) ship stat values read from JSON for the currently selected ship.</summary>
     private Dictionary<string, double>? _rawShipStatValues;
 
+    /// <summary>Class index loaded from the save for the current ship, used to detect user changes.</summary>
+    private int _originalClassIndex = -1;
+
     private void SetStarshipMaxSupportedLabels(string filename)
     {
         var (_, cargoLabel, techLabel) = StarshipLogic.GetShipInfo(filename);
@@ -266,11 +269,28 @@ public partial class StarshipPanel : UserControl
                 SelectedTypeName = selectedTypeItem?.InternalName,
                 CustomFilename = selectedTypeItem?.CustomFilename,
                 ClassIndex = _shipClass.SelectedIndex,
+                OriginalClassIndex = _originalClassIndex,
                 Seed = _shipSeed.Text,
-                Damage = (double)_damageField.Value,
-                Shield = (double)_shieldField.Value,
-                Hyperdrive = (double)_hyperdriveField.Value,
-                Maneuver = (double)_maneuverField.Value,
+                // Use raw values for unmodified fields to prevent any
+                // precision loss from the UI control text round-trip.
+                Damage = _damageField.UserModified
+                    ? (_damageField.NumericValue ?? 0.0)
+                    : (_rawShipStatValues?.GetValueOrDefault("^SHIP_DAMAGE") ?? _damageField.NumericValue ?? 0.0),
+                Shield = _shieldField.UserModified
+                    ? (_shieldField.NumericValue ?? 0.0)
+                    : (_rawShipStatValues?.GetValueOrDefault("^SHIP_SHIELD") ?? _shieldField.NumericValue ?? 0.0),
+                Hyperdrive = _hyperdriveField.UserModified
+                    ? (_hyperdriveField.NumericValue ?? 0.0)
+                    : (_rawShipStatValues?.GetValueOrDefault("^SHIP_HYPERDRIVE") ?? _hyperdriveField.NumericValue ?? 0.0),
+                Maneuver = _maneuverField.UserModified
+                    ? (_maneuverField.NumericValue ?? 0.0)
+                    : (_rawShipStatValues?.GetValueOrDefault("^SHIP_AGILE") ?? _maneuverField.NumericValue ?? 0.0),
+                // Pass display text so the saved JSON reproduces the exact text
+                // the user sees (or the original save file text if unmodified).
+                DamageText = _damageField.UserModified ? _damageField.DisplayText : null,
+                ShieldText = _shieldField.UserModified ? _shieldField.DisplayText : null,
+                HyperdriveText = _hyperdriveField.UserModified ? _hyperdriveField.DisplayText : null,
+                ManeuverText = _maneuverField.UserModified ? _maneuverField.DisplayText : null,
                 UseOldColours = _useOldColours.Checked,
                 ShipIndex = idx,
                 PrimaryShipIndex = _primaryShipIndex,
@@ -308,6 +328,7 @@ public partial class StarshipPanel : UserControl
             SetStarshipMaxSupportedLabels(data.Filename);
             _shipSeed.Text = data.Seed;
             _shipClass.SelectedIndex = data.ClassIndex;
+            _originalClassIndex = data.ClassIndex;
             _useOldColours.Checked = data.UseOldColours;
 
             // Set owner type BEFORE loading inventories so the item picker
@@ -354,10 +375,10 @@ public partial class StarshipPanel : UserControl
             string techImportFilter = ExportConfig.BuildImportFilter(cfg.StarshipTechExt, "Ship tech inventory");
             _techGrid.SetExportFileFilter(techExportFilter, techImportFilter, cfg.StarshipTechExt.TrimStart('.'));
 
-            try { _damageField.Value = (decimal)data.Damage; } catch { _damageField.Value = 0; }
-            try { _shieldField.Value = (decimal)data.Shield; } catch { _shieldField.Value = 0; }
-            try { _hyperdriveField.Value = (decimal)data.Hyperdrive; } catch { _hyperdriveField.Value = 0; }
-            try { _maneuverField.Value = (decimal)data.Maneuver; } catch { _maneuverField.Value = 0; }
+            try { _damageField.SetValueWithText(data.Damage, data.DamageText); } catch { _damageField.NumericValue = 0; }
+            try { _shieldField.SetValueWithText(data.Shield, data.ShieldText); } catch { _shieldField.NumericValue = 0; }
+            try { _hyperdriveField.SetValueWithText(data.Hyperdrive, data.HyperdriveText); } catch { _hyperdriveField.NumericValue = 0; }
+            try { _maneuverField.SetValueWithText(data.Maneuver, data.ManeuverText); } catch { _maneuverField.NumericValue = 0; }
 
             // Store raw stat values for preservation before limits clamp the NUDs
             _rawShipStatValues = new Dictionary<string, double>
@@ -367,14 +388,6 @@ public partial class StarshipPanel : UserControl
                 ["^SHIP_HYPERDRIVE"] = data.Hyperdrive,
                 ["^SHIP_AGILE"] = data.Maneuver,
             };
-
-            // Apply BaseStatLimits to the NumericUpDown controls.
-            // Use "Alien" limits when the ship type contains "Alien", otherwise "Normal".
-            string shipCategory = (data.ShipTypeName ?? "").Contains("Alien", StringComparison.OrdinalIgnoreCase) ? "Alien" : "Normal";
-            ApplyStatLimits(_damageField, shipCategory, "^SHIP_DAMAGE", StatCategory.Ship);
-            ApplyStatLimits(_shieldField, shipCategory, "^SHIP_SHIELD", StatCategory.Ship);
-            ApplyStatLimits(_hyperdriveField, shipCategory, "^SHIP_HYPERDRIVE", StatCategory.Ship);
-            ApplyStatLimits(_maneuverField, shipCategory, "^SHIP_AGILE", StatCategory.Ship);
 
             // Toggle corvette extras panel and warning
             _corvetteExtrasPanel.Visible = isCorvette;
@@ -457,7 +470,7 @@ public partial class StarshipPanel : UserControl
             return;
 
         var pinned = new HashSet<(int x, int y)>(_inventoryGrid.GetPinnedSlots());
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(cargoInventory, _playerState!, out _, out _, pinned);
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(cargoInventory, _playerState!, out _, out _, pinned);
         if (!changed)
             return;
 
@@ -475,7 +488,7 @@ public partial class StarshipPanel : UserControl
             return;
 
         var pinned = new HashSet<(int x, int y)>(_inventoryGrid.GetPinnedSlots());
-        bool changed = ExosuitAutoStackLogic.AutoStackFromInventoryToInventory(
+        bool changed = InventoryBulkActions.AutoStackFromInventoryToInventory(
             cargoInventory,
             freighterInventory,
             out _,
@@ -495,7 +508,7 @@ public partial class StarshipPanel : UserControl
         if (!TryGetContextAutoStackCargo(e, out var cargoInventory, out var pinned, out var sourceSlotFilter, out var sourceItemIdFilter))
             return;
 
-        bool changed = ExosuitAutoStackLogic.AutoStackCargoToChests(
+        bool changed = InventoryBulkActions.AutoStackCargoToChests(
             cargoInventory,
             _playerState!,
             out _,
@@ -520,7 +533,7 @@ public partial class StarshipPanel : UserControl
         if (_playerState?.GetObject("FreighterInventory") is not JsonObject freighterInventory)
             return;
 
-        bool changed = ExosuitAutoStackLogic.AutoStackFromInventoryToInventory(
+        bool changed = InventoryBulkActions.AutoStackFromInventoryToInventory(
             cargoInventory,
             freighterInventory,
             out _,
@@ -586,17 +599,6 @@ public partial class StarshipPanel : UserControl
         return true;
     }
 
-    /// <summary>Applies BaseStatLimits min/max to a NumericUpDown control.</summary>
-    private static void ApplyStatLimits(NumericUpDown nud, string entityType, string statId, StatCategory category)
-    {
-        var range = BaseStatLimits.GetRange(entityType, statId, category);
-        if (range != null)
-        {
-            nud.Minimum = range.MinValue;
-            nud.Maximum = range.MaxValue;
-        }
-    }
-
     private void OnDeleteShip(object? sender, EventArgs e)
     {
         try
@@ -649,7 +651,7 @@ public partial class StarshipPanel : UserControl
             {
                 _primaryShipIndex = StarshipLogic.FindFirstValidShipIndex(_shipOwnership);
                 if (_primaryShipIndex < 0) _primaryShipIndex = 0;
-                _playerState.Set("PrimaryShip", _primaryShipIndex);
+                RawNumberGuard.SetInt(_playerState, "PrimaryShip", _primaryShipIndex);
             }
             _primaryShipLabel.Text = UiStrings.Format("starship.primary_label", StarshipLogic.GetPrimaryShipName(_shipOwnership, _primaryShipIndex));
 
@@ -796,7 +798,7 @@ public partial class StarshipPanel : UserControl
                 }
                 else
                 {
-                    // Plain ship file or NomNom wrapper
+                    // Plain ship file or Data envelope wrapper
                     if (InventoryImportHelper.IsNomNomWrapper(imported))
                     {
                         var data = imported.GetObject("Data");

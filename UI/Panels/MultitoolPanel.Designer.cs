@@ -1,5 +1,6 @@
 using NMSE.Core;
 using NMSE.Data;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -165,13 +166,13 @@ partial class MultitoolPanel
         rightPanel.SetColumnSpan(_statsLabel, 2);
         rightRow++;
 
-        _damageField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _damageField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _damageLabel = AddRow(rightPanel, "Damage:", _damageField, rightRow++);
 
-        _miningField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _miningField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _miningLabel = AddRow(rightPanel, "Mining:", _miningField, rightRow++);
 
-        _scanField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _scanField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _scanLabel = AddRow(rightPanel, "Scan:", _scanField, rightRow++);
 
         mainPanel.Controls.Add(leftPanel, 0, 0);
@@ -239,9 +240,9 @@ partial class MultitoolPanel
     private Label _damageLabel;
     private Label _miningLabel;
     private Label _scanLabel;
-    private NumericUpDown _damageField;
-    private NumericUpDown _miningField;
-    private NumericUpDown _scanField;
+    private InvariantNumericTextBox _damageField;
+    private InvariantNumericTextBox _miningField;
+    private InvariantNumericTextBox _scanField;
     private InventoryGridPanel _storeGrid;
     private ComboBox _toolType;
 }

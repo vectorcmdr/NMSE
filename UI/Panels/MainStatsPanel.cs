@@ -4,6 +4,7 @@ using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.IO;
 using NMSE.Models;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 using System.Xml.Linq;
 
@@ -132,12 +133,12 @@ public partial class MainStatsPanel : UserControl
                 ["Nanites"] = MainStatsLogic.ReadRawStatValue(playerState, "Nanites"),
                 ["Specials"] = MainStatsLogic.ReadRawStatValue(playerState, "Specials"),
             };
-            _healthField.Value = MainStatsLogic.ReadStatValue(playerState, "Health", _healthField.Minimum, _healthField.Maximum);
-            _shieldField.Value = MainStatsLogic.ReadStatValue(playerState, "Shield", _shieldField.Minimum, _shieldField.Maximum);
-            _energyField.Value = MainStatsLogic.ReadStatValue(playerState, "Energy", _energyField.Minimum, _energyField.Maximum);
-            _unitsField.Value = MainStatsLogic.ReadStatValue(playerState, "Units", _unitsField.Minimum, _unitsField.Maximum);
-            _nanitesField.Value = MainStatsLogic.ReadStatValue(playerState, "Nanites", _nanitesField.Minimum, _nanitesField.Maximum);
-            _quicksilverField.Value = MainStatsLogic.ReadStatValue(playerState, "Specials", _quicksilverField.Minimum, _quicksilverField.Maximum);
+            _healthField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Health", (decimal)(_healthField.Minimum ?? 0), (decimal)(_healthField.Maximum ?? 999999));
+            _shieldField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Shield", (decimal)(_shieldField.Minimum ?? 0), (decimal)(_shieldField.Maximum ?? 999999));
+            _energyField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Energy", (decimal)(_energyField.Minimum ?? 0), (decimal)(_energyField.Maximum ?? 999999));
+            _unitsField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Units", (decimal)(_unitsField.Minimum ?? 0), (decimal)(_unitsField.Maximum ?? uint.MaxValue));
+            _nanitesField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Nanites", (decimal)(_nanitesField.Minimum ?? 0), (decimal)(_nanitesField.Maximum ?? uint.MaxValue));
+            _quicksilverField.NumericValue = (double)MainStatsLogic.ReadStatValue(playerState, "Specials", (decimal)(_quicksilverField.Minimum ?? 0), (decimal)(_quicksilverField.Maximum ?? uint.MaxValue));
 
             // Save info
             try { _saveNameField.Text = saveData.GetObject("CommonStateData")?.GetString("SaveName") ?? ""; } catch { }
@@ -248,12 +249,12 @@ public partial class MainStatsPanel : UserControl
             // Populate editable coordinate NUDs.
             // The NUD is presented to the user as a 1-based galaxy selector (1..257),
             // while the underlying RealityIndex remains 0-based (0..256).
-            _galaxyNud.Value = Math.Clamp(realityIndex + 1, (int)_galaxyNud.Minimum, (int)_galaxyNud.Maximum);
-            _voxelXNud.Value = Math.Clamp(voxelX, (int)_voxelXNud.Minimum, (int)_voxelXNud.Maximum);
-            _voxelYNud.Value = Math.Clamp(voxelY, (int)_voxelYNud.Minimum, (int)_voxelYNud.Maximum);
-            _voxelZNud.Value = Math.Clamp(voxelZ, (int)_voxelZNud.Minimum, (int)_voxelZNud.Maximum);
-            _solarSystemNud.Value = Math.Clamp(solarIdx, (int)_solarSystemNud.Minimum, (int)_solarSystemNud.Maximum);
-            _planetNud.Value = Math.Clamp(planetIdx, (int)_planetNud.Minimum, (int)_planetNud.Maximum);
+            _galaxyNud.NumericValue = Math.Clamp(realityIndex + 1, (int)(_galaxyNud.Minimum ?? 1), (int)(_galaxyNud.Maximum ?? 257));
+            _voxelXNud.NumericValue = Math.Clamp(voxelX, (int)(_voxelXNud.Minimum ?? -2048), (int)(_voxelXNud.Maximum ?? 2047));
+            _voxelYNud.NumericValue = Math.Clamp(voxelY, (int)(_voxelYNud.Minimum ?? -128), (int)(_voxelYNud.Maximum ?? 127));
+            _voxelZNud.NumericValue = Math.Clamp(voxelZ, (int)(_voxelZNud.Minimum ?? -2048), (int)(_voxelZNud.Maximum ?? 2047));
+            _solarSystemNud.NumericValue = Math.Clamp(solarIdx, (int)(_solarSystemNud.Minimum ?? 0), (int)(_solarSystemNud.Maximum ?? 600));
+            _planetNud.NumericValue = Math.Clamp(planetIdx, (int)(_planetNud.Minimum ?? 0), (int)(_planetNud.Maximum ?? 15));
 
             // Player state
             try
@@ -382,7 +383,7 @@ public partial class MainStatsPanel : UserControl
             catch { }
 
             int warpsRemaining = Math.Max(0, CoordinateHelper.SpaceBattleIntervalWarps - (totalWarps - warpsLastBattle));
-            _warpsToNextBattleField.Value = Math.Min(_warpsToNextBattleField.Maximum, warpsRemaining);
+            _warpsToNextBattleField.NumericValue = Math.Min((int)(_warpsToNextBattleField.Maximum ?? 999), warpsRemaining);
         }
         catch { }
     }
@@ -511,8 +512,8 @@ public partial class MainStatsPanel : UserControl
         if (playerState == null) return;
 
         MainStatsLogic.WriteStatValues(playerState,
-            _healthField.Value, _shieldField.Value, _energyField.Value,
-            _unitsField.Value, _nanitesField.Value, _quicksilverField.Value,
+            (decimal)(_healthField.NumericValue ?? 0), (decimal)(_shieldField.NumericValue ?? 0), (decimal)(_energyField.NumericValue ?? 0),
+            (decimal)(_unitsField.NumericValue ?? 0), (decimal)(_nanitesField.NumericValue ?? 0), (decimal)(_quicksilverField.NumericValue ?? 0),
             _rawStatValues);
 
         // Save name / summary
@@ -568,7 +569,7 @@ public partial class MainStatsPanel : UserControl
             var addr = playerState.GetObject("UniverseAddress");
             if (addr == null) return;
 
-            int desiredRealityIndex = (int)_galaxyNud.Value - 1;
+            int desiredRealityIndex = (int)(_galaxyNud.NumericValue ?? 1) - 1;
             if (_rawCoordValues == null || !_rawCoordValues.TryGetValue("RealityIndex", out int rawRealityIndex)
                 || desiredRealityIndex != rawRealityIndex)
             {
@@ -578,11 +579,11 @@ public partial class MainStatsPanel : UserControl
             var galactic = addr.GetObject("GalacticAddress");
             if (galactic == null) return;
 
-            WriteCoordIfChanged(galactic, "VoxelX", (int)_voxelXNud.Value, _voxelXNud);
-            WriteCoordIfChanged(galactic, "VoxelY", (int)_voxelYNud.Value, _voxelYNud);
-            WriteCoordIfChanged(galactic, "VoxelZ", (int)_voxelZNud.Value, _voxelZNud);
-            WriteCoordIfChanged(galactic, "SolarSystemIndex", (int)_solarSystemNud.Value, _solarSystemNud);
-            WriteCoordIfChanged(galactic, "PlanetIndex", (int)_planetNud.Value, _planetNud);
+            WriteCoordIfChanged(galactic, "VoxelX", (int)(_voxelXNud.NumericValue ?? 0), _voxelXNud);
+            WriteCoordIfChanged(galactic, "VoxelY", (int)(_voxelYNud.NumericValue ?? 0), _voxelYNud);
+            WriteCoordIfChanged(galactic, "VoxelZ", (int)(_voxelZNud.NumericValue ?? 0), _voxelZNud);
+            WriteCoordIfChanged(galactic, "SolarSystemIndex", (int)(_solarSystemNud.NumericValue ?? 0), _solarSystemNud);
+            WriteCoordIfChanged(galactic, "PlanetIndex", (int)(_planetNud.NumericValue ?? 0), _planetNud);
         }
         catch { }
     }
@@ -590,15 +591,18 @@ public partial class MainStatsPanel : UserControl
     /// <summary>
     /// Writes a coordinate value only if the user changed it from the clamped display value.
     /// </summary>
-    private void WriteCoordIfChanged(JsonObject target, string key, int uiValue, NumericUpDown nud)
+    private void WriteCoordIfChanged(JsonObject target, string key, int uiValue, InvariantNumericTextBox nud)
     {
         if (_rawCoordValues != null && _rawCoordValues.TryGetValue(key, out int raw))
         {
-            int clamped = Math.Clamp(raw, (int)nud.Minimum, (int)nud.Maximum);
+            // Coordinates are clamped on display (Math.Clamp in LoadData), so the
+            // comparison is against the clamped raw value. If the user didn't change
+            // it, we preserve the original JSON value (which may exceed the UI range).
+            int clamped = Math.Clamp(raw, (int)(nud.Minimum ?? int.MinValue), (int)(nud.Maximum ?? int.MaxValue));
             if (uiValue == clamped)
                 return; // User didn't change it - preserve original JSON value
         }
-        target.Set(key, uiValue);
+        RawNumberGuard.SetInt(target, key, uiValue);
     }
 
     private void OnApplyCoordinates(object? sender, EventArgs e)
@@ -618,12 +622,12 @@ public partial class MainStatsPanel : UserControl
 
     private void RefreshCoordinateDisplay()
     {
-        int realityIndex = (int)_galaxyNud.Value - 1;
-        int voxelX = (int)_voxelXNud.Value;
-        int voxelY = (int)_voxelYNud.Value;
-        int voxelZ = (int)_voxelZNud.Value;
-        int solarIdx = (int)_solarSystemNud.Value;
-        int planetIdx = (int)_planetNud.Value;
+        int realityIndex = (int)(_galaxyNud.NumericValue ?? 1) - 1;
+        int voxelX = (int)(_voxelXNud.NumericValue ?? 0);
+        int voxelY = (int)(_voxelYNud.NumericValue ?? 0);
+        int voxelZ = (int)(_voxelZNud.NumericValue ?? 0);
+        int solarIdx = (int)(_solarSystemNud.NumericValue ?? 0);
+        int planetIdx = (int)(_planetNud.NumericValue ?? 0);
 
         string galaxyType = GalaxyDatabase.GetGalaxyType(realityIndex);
         _galaxyField.Text = $"{GalaxyDatabase.GetGalaxyDisplayName(realityIndex)} ({galaxyType})";
@@ -656,11 +660,11 @@ public partial class MainStatsPanel : UserControl
             return;
         }
 
-        _voxelXNud.Value = Math.Clamp(voxelX, (int)_voxelXNud.Minimum, (int)_voxelXNud.Maximum);
-        _voxelYNud.Value = Math.Clamp(voxelY, (int)_voxelYNud.Minimum, (int)_voxelYNud.Maximum);
-        _voxelZNud.Value = Math.Clamp(voxelZ, (int)_voxelZNud.Minimum, (int)_voxelZNud.Maximum);
-        _solarSystemNud.Value = Math.Clamp(systemIndex, (int)_solarSystemNud.Minimum, (int)_solarSystemNud.Maximum);
-        _planetNud.Value = Math.Clamp(planetIndex, (int)_planetNud.Minimum, (int)_planetNud.Maximum);
+        _voxelXNud.NumericValue = Math.Clamp(voxelX, (int)(_voxelXNud.Minimum ?? -2048), (int)(_voxelXNud.Maximum ?? 2047));
+        _voxelYNud.NumericValue = Math.Clamp(voxelY, (int)(_voxelYNud.Minimum ?? -128), (int)(_voxelYNud.Maximum ?? 127));
+        _voxelZNud.NumericValue = Math.Clamp(voxelZ, (int)(_voxelZNud.Minimum ?? -2048), (int)(_voxelZNud.Maximum ?? 2047));
+        _solarSystemNud.NumericValue = Math.Clamp(systemIndex, (int)(_solarSystemNud.Minimum ?? 0), (int)(_solarSystemNud.Maximum ?? 600));
+        _planetNud.NumericValue = Math.Clamp(planetIndex, (int)(_planetNud.Minimum ?? 0), (int)(_planetNud.Maximum ?? 15));
     }
 
     private void OnCoordinateRoulette(object? sender, EventArgs e)
@@ -694,12 +698,12 @@ public partial class MainStatsPanel : UserControl
         if (result != DialogResult.OK) return;
 
         // Apply the random coordinates to the NUDs
-        _galaxyNud.Value = galaxy + 1;
-        _voxelXNud.Value = Math.Clamp(voxelX, (int)_voxelXNud.Minimum, (int)_voxelXNud.Maximum);
-        _voxelYNud.Value = Math.Clamp(voxelY, (int)_voxelYNud.Minimum, (int)_voxelYNud.Maximum);
-        _voxelZNud.Value = Math.Clamp(voxelZ, (int)_voxelZNud.Minimum, (int)_voxelZNud.Maximum);
-        _solarSystemNud.Value = Math.Clamp(systemIndex, (int)_solarSystemNud.Minimum, (int)_solarSystemNud.Maximum);
-        _planetNud.Value = Math.Clamp(planetIndex, (int)_planetNud.Minimum, (int)_planetNud.Maximum);
+        _galaxyNud.NumericValue = galaxy + 1;
+        _voxelXNud.NumericValue = Math.Clamp(voxelX, (int)(_voxelXNud.Minimum ?? -2048), (int)(_voxelXNud.Maximum ?? 2047));
+        _voxelYNud.NumericValue = Math.Clamp(voxelY, (int)(_voxelYNud.Minimum ?? -128), (int)(_voxelYNud.Maximum ?? 127));
+        _voxelZNud.NumericValue = Math.Clamp(voxelZ, (int)(_voxelZNud.Minimum ?? -2048), (int)(_voxelZNud.Maximum ?? 2047));
+        _solarSystemNud.NumericValue = Math.Clamp(systemIndex, (int)(_solarSystemNud.Minimum ?? 0), (int)(_solarSystemNud.Maximum ?? 600));
+        _planetNud.NumericValue = Math.Clamp(planetIndex, (int)(_planetNud.Minimum ?? 0), (int)(_planetNud.Maximum ?? 15));
 
         // Apply to save data and refresh display (same as "Apply Coordinates")
         OnApplyCoordinates(sender, e);
@@ -717,7 +721,7 @@ public partial class MainStatsPanel : UserControl
             playerState.Set("TimeLastSpaceBattle", 0);
             playerState.Set("WarpsLastSpaceBattle", 0);
 
-            _warpsToNextBattleField.Value = 0;
+            _warpsToNextBattleField.NumericValue = 0;
             _timeToNextBattleField.Text = UiStrings.Format("player.time_format", 0, 0, 0);
 
             MessageBox.Show(this, UiStrings.Get("player.space_battle_triggered"), UiStrings.Get("player.space_battle_title"),

@@ -4,6 +4,7 @@ using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
 using NMSE.UI.Util;
+using NMSE.UI.Controls;
 
 namespace NMSE.UI.Panels;
 
@@ -189,17 +190,17 @@ public partial class FrigatePanel : UserControl
                 int val = 0;
                 try { if (stats != null && i < stats.Length) val = stats.GetInt(i); } catch { }
                 _rawStatValues[i] = val;
-                _statFields[i].Value = Math.Min(999, Math.Max(0, val));
+                _statFields[i].NumericValue = Math.Min(999, Math.Max(0, val));
             }
 
             // Totals
-            try { _expeditionsField.Value = frigate.GetInt("TotalNumberOfExpeditions"); } catch { _expeditionsField.Value = 0; }
-            try { _successfulField.Value = frigate.GetInt("TotalNumberOfSuccessfulEvents"); } catch { _successfulField.Value = 0; }
-            try { _failedField.Value = frigate.GetInt("TotalNumberOfFailedEvents"); } catch { _failedField.Value = 0; }
-            try { _damagedField.Value = frigate.GetInt("NumberOfTimesDamaged"); } catch { _damagedField.Value = 0; }
+            try { _expeditionsField.NumericValue = frigate.GetInt("TotalNumberOfExpeditions"); } catch { _expeditionsField.NumericValue = 0; }
+            try { _successfulField.NumericValue = frigate.GetInt("TotalNumberOfSuccessfulEvents"); } catch { _successfulField.NumericValue = 0; }
+            try { _failedField.NumericValue = frigate.GetInt("TotalNumberOfFailedEvents"); } catch { _failedField.NumericValue = 0; }
+            try { _damagedField.NumericValue = frigate.GetInt("NumberOfTimesDamaged"); } catch { _damagedField.NumericValue = 0; }
 
             // Level-up progress
-            int numExp = (int)_expeditionsField.Value;
+            int numExp = (int)(_expeditionsField.NumericValue ?? 0);
             int levelUpIn = FrigateLogic.GetLevelUpIn(numExp);
             _levelUpInField.Text = levelUpIn >= 0 ? levelUpIn.ToString(CultureInfo.CurrentCulture) : UiStrings.Get("frigate.level_max");
             int levelsLeft = FrigateLogic.GetLevelUpsRemaining(numExp);
@@ -361,7 +362,14 @@ public partial class FrigatePanel : UserControl
         if (_loading) return;
         var frigate = SelectedFrigate();
         if (frigate == null) return;
-        try { frigate.Set(key, value); } catch { }
+        try
+        {
+            var existing = frigate.Get(key);
+            if (RawNumberGuard.IsClampedIntValueUnchanged(existing, value, 0, int.MaxValue))
+                return;
+            RawNumberGuard.SetInt(frigate, key, value);
+        }
+        catch { }
     }
 
     private void SaveSeedField(string key, string value)
@@ -500,7 +508,7 @@ public partial class FrigatePanel : UserControl
                 {
                     frigate.Set("TotalNumberOfExpeditions", threshold - 1);
                     _loading = true;
-                    _expeditionsField.Value = threshold - 1;
+                    _expeditionsField.NumericValue = threshold - 1;
                     _levelUpInField.Text = "1";
                     _levelUpsRemainingField.Text = FrigateLogic.GetLevelUpsRemaining(threshold - 1).ToString(CultureInfo.CurrentCulture);
                     _loading = false;
@@ -596,7 +604,7 @@ public partial class FrigatePanel : UserControl
             var exp = _expeditions.GetObject(expIdx);
             var dt = DateTime.SpecifyKind(_expeditionStartTimeField.Value, DateTimeKind.Local);
             long unix = new DateTimeOffset(dt).ToUnixTimeSeconds();
-            exp.Set("StartTime", unix);
+            RawNumberGuard.SetLong(exp, "StartTime", unix);
         }
         catch { }
     }
@@ -652,7 +660,7 @@ public partial class FrigatePanel : UserControl
         {
             var imported = JsonObject.ImportFromFile(dialog.FileName);
 
-            // Unwrap NomNom wrapper if present (Data -> Frigate)
+            // Unwrap Data envelope if present (Data -> Frigate)
             imported = InventoryImportHelper.UnwrapNomNomFrigate(imported);
 
             _frigates.Add(imported);

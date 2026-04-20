@@ -1,3 +1,4 @@
+using NMSE.Core.Utilities;
 using NMSE.Models;
 
 namespace NMSE.Core;
@@ -119,6 +120,12 @@ internal static class MainStatsLogic
     /// Writes a stat value only if the user actually changed it from its clamped display value.
     /// When <paramref name="rawValues"/> is null or does not contain the key, the value is always written.
     /// </summary>
+    /// <remarks>
+    /// MainStats values (Health, Shield, Energy, Units, etc.) are INTEGER values that
+    /// <b>are</b> clamped on display via <see cref="ReadStatValue"/>. The comparison is
+    /// therefore <c>uiValue == clamped(raw)</c> — the user sees the clamped value, and
+    /// if they don't change it, the original raw is preserved.
+    /// </remarks>
     private static void WriteIfChanged(JsonObject playerState, string key, decimal uiValue,
         decimal minimum, decimal maximum, Dictionary<string, decimal>? rawValues,
         Func<decimal, int> convert)
@@ -129,6 +136,6 @@ internal static class MainStatsLogic
             if (uiValue == clamped)
                 return; // User didn't change it - preserve original JSON value
         }
-        playerState.Set(key, convert(uiValue));
+        RawNumberGuard.SetInt(playerState, key, convert(uiValue));
     }
 }

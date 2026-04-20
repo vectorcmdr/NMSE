@@ -1,6 +1,7 @@
 #nullable enable
 using NMSE.Core;
 using NMSE.Data;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -194,27 +195,27 @@ partial class SettlementPanel
         _raceLabel = AddRow(leftPanel, "NPC Race:", _raceField, leftRow++);
 
         // Stat & timestamp fields - initialise arrays
-        _statFields = new NumericUpDown[StatCount];
+        _statFields = new InvariantNumericTextBox[StatCount];
         _statRowLabels = new Label[StatCount];
 
         // 4. Max Population (Stats[0])
-        _statFields[0] = new NumericUpDown
+        _statFields[0] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[0].ValueChanged += (s, e) => ApplyStatColor(0);
+        _statFields[0].NumericValueChanged += (s, e) => ApplyStatColor(0);
         _statRowLabels[0] = AddRow(leftPanel, StatLabels[0] + ":", _statFields[0], leftRow++);
 
         // 5. Population
-        _populationField = new NumericUpDown
+        _populationField = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = SettlementLogic.PopulationMax,
             Minimum = 0,
         };
-        _populationField.ValueChanged += (s, e) => ApplyPopulationColor();
+        _populationField.NumericValueChanged += (s, e) => ApplyPopulationColor();
         _populationLabel = AddRow(leftPanel, "Population:", _populationField, leftRow++);
 
         // 6. Last Population Change Time
@@ -222,33 +223,33 @@ partial class SettlementPanel
         _lastPopulationTimeLabel = AddRow(leftPanel, "Last Population Change Time:", _lastPopulationTimeField, leftRow++);
 
         // 7. Happiness (Stats[1])
-        _statFields[1] = new NumericUpDown
+        _statFields[1] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[1].ValueChanged += (s, e) => ApplyStatColor(1);
+        _statFields[1].NumericValueChanged += (s, e) => ApplyStatColor(1);
         _statRowLabels[1] = AddRow(leftPanel, StatLabels[1] + ":", _statFields[1], leftRow++);
 
         // 8. Production (Stats[2])
-        _statFields[2] = new NumericUpDown
+        _statFields[2] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[2].ValueChanged += (s, e) => ApplyStatColor(2);
+        _statFields[2].NumericValueChanged += (s, e) => ApplyStatColor(2);
         _statRowLabels[2] = AddRow(leftPanel, StatLabels[2] + ":", _statFields[2], leftRow++);
 
         // 9. Upkeep (Stats[3])
-        _statFields[3] = new NumericUpDown
+        _statFields[3] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[3].ValueChanged += (s, e) => ApplyStatColor(3);
+        _statFields[3].NumericValueChanged += (s, e) => ApplyStatColor(3);
         _statRowLabels[3] = AddRow(leftPanel, StatLabels[3] + ":", _statFields[3], leftRow++);
 
         // 10. Last Upkeep Debt Check Time
@@ -256,23 +257,23 @@ partial class SettlementPanel
         _lastUpkeepTimeLabel = AddRow(leftPanel, "Last Upkeep Debt Check Time:", _lastUpkeepTimeField, leftRow++);
 
         // 11. Sentinels (Stats[4])
-        _statFields[4] = new NumericUpDown
+        _statFields[4] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[4].ValueChanged += (s, e) => ApplyStatColor(4);
+        _statFields[4].NumericValueChanged += (s, e) => ApplyStatColor(4);
         _statRowLabels[4] = AddRow(leftPanel, StatLabels[4] + ":", _statFields[4], leftRow++);
 
         // 12. Debt (Stats[5])
-        _statFields[5] = new NumericUpDown
+        _statFields[5] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[5].ValueChanged += (s, e) => ApplyStatColor(5);
+        _statFields[5].NumericValueChanged += (s, e) => ApplyStatColor(5);
         _statRowLabels[5] = AddRow(leftPanel, StatLabels[5] + ":", _statFields[5], leftRow++);
 
         // 13. Last Debt Change Time
@@ -280,13 +281,13 @@ partial class SettlementPanel
         _lastDebtTimeLabel = AddRow(leftPanel, "Last Debt Change Time:", _lastDebtTimeField, leftRow++);
 
         // 14. Alert (Stats[6])
-        _statFields[6] = new NumericUpDown
+        _statFields[6] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[6].ValueChanged += (s, e) => ApplyStatColor(6);
+        _statFields[6].NumericValueChanged += (s, e) => ApplyStatColor(6);
         _statRowLabels[6] = AddRow(leftPanel, StatLabels[6] + ":", _statFields[6], leftRow++);
 
         // 15. Last Alert Change Time
@@ -294,13 +295,13 @@ partial class SettlementPanel
         _lastAlertTimeLabel = AddRow(leftPanel, "Last Alert Change Time:", _lastAlertTimeField, leftRow++);
 
         // 16. Bug Attack (Stats[7])
-        _statFields[7] = new NumericUpDown
+        _statFields[7] = new InvariantNumericTextBox
         {
             Dock = DockStyle.Fill,
             Maximum = int.MaxValue,
             Minimum = int.MinValue,
         };
-        _statFields[7].ValueChanged += (s, e) => ApplyStatColor(7);
+        _statFields[7].NumericValueChanged += (s, e) => ApplyStatColor(7);
         _statRowLabels[7] = AddRow(leftPanel, StatLabels[7] + ":", _statFields[7], leftRow++);
 
         // 17. Last Bug Attack Change Time
@@ -532,7 +533,7 @@ partial class SettlementPanel
         const int bCols = 6;
         const int bRows = 8;
         _buildingStateFields = new ComboBox[SettlementLogic.BuildingStateSlotCount];
-        _buildingStateNuds = new NumericUpDown[SettlementLogic.BuildingStateSlotCount];
+        _buildingStateNuds = new InvariantNumericTextBox[SettlementLogic.BuildingStateSlotCount];
         _buildingStateLabels = new Label[SettlementLogic.BuildingStateSlotCount];
         _buildingStateInfoLabels = new Label[SettlementLogic.BuildingStateSlotCount];
 
@@ -594,14 +595,14 @@ partial class SettlementPanel
                 comboField.SelectedIndexChanged += (s, e) => OnBuildingStateComboChanged(capturedSlot);
                 _buildingStateFields[slotIdx] = comboField;
 
-                var nudField = new NumericUpDown
+                var nudField = new InvariantNumericTextBox
                 {
                     Dock = DockStyle.Top,
                     Minimum = int.MinValue,
                     Maximum = int.MaxValue,
                     TextAlign = HorizontalAlignment.Right,
                 };
-                nudField.ValueChanged += (s, e) => OnBuildingStateNudChanged(capturedSlot);
+                nudField.NumericValueChanged += (s, e) => OnBuildingStateNudChanged(capturedSlot);
                 _buildingStateNuds[slotIdx] = nudField;
 
                 cellPanel.Controls.Add(slotLabel, 0, 0);
@@ -681,13 +682,13 @@ partial class SettlementPanel
         };
         _editorSlotLabel = new Label { Text = "Slot:", AutoSize = true, Padding = new Padding(0, 5, 4, 0) };
         editorTopPanel.Controls.Add(_editorSlotLabel);
-        _editorSlotSelector = new NumericUpDown { Minimum = 1, Maximum = SettlementLogic.BuildingStateSlotCount, Value = 1, Width = 60 };
+        _editorSlotSelector = new InvariantNumericTextBox { Minimum = 1, Maximum = SettlementLogic.BuildingStateSlotCount, NumericValue = 1, Width = 60 };
         editorTopPanel.Controls.Add(_editorSlotSelector);
 
         _editorRawValueLabel = new Label { Text = "Raw Value:", AutoSize = true, Padding = new Padding(12, 5, 4, 0) };
         editorTopPanel.Controls.Add(_editorRawValueLabel);
-        _editorRawValueField = new NumericUpDown { Width = 120, Minimum = int.MinValue, Maximum = int.MaxValue, TextAlign = HorizontalAlignment.Right };
-        _editorRawValueField.ValueChanged += OnEditorRawValueChanged;
+        _editorRawValueField = new InvariantNumericTextBox { Width = 120, Minimum = int.MinValue, Maximum = int.MaxValue, TextAlign = HorizontalAlignment.Right };
+        _editorRawValueField.NumericValueChanged += OnEditorRawValueChanged;
         editorTopPanel.Controls.Add(_editorRawValueField);
 
         _editorApplyBtn = new Button { Text = "Apply", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
@@ -830,7 +831,7 @@ partial class SettlementPanel
         editorLayout.Controls.Add(flagsPanel, 0, eRow++);
 
         // Wire up slot selector event after all editor controls are created
-        _editorSlotSelector.ValueChanged += OnEditorSlotChanged;
+        _editorSlotSelector.NumericValueChanged += OnEditorSlotChanged;
 
         editorLayout.RowCount = eRow;
         buildingEditorTab.Controls.Add(editorLayout);
@@ -875,8 +876,8 @@ partial class SettlementPanel
     private TextBox _settlementName = null!;
     private TextBox _seedField = null!;
     private Button _generateSeedBtn = null!;
-    private NumericUpDown[] _statFields = null!;
-    private NumericUpDown _populationField = null!;
+    private InvariantNumericTextBox[] _statFields = null!;
+    private InvariantNumericTextBox _populationField = null!;
     private ComboBox _decisionTypeField = null!;
     private DateTimePicker _lastDecisionTimeField = null!;
     private ComboBox[] _perkCombos = null!;
@@ -927,7 +928,7 @@ partial class SettlementPanel
 
     // Building States tab
     private ComboBox[] _buildingStateFields = null!;
-    private NumericUpDown[] _buildingStateNuds = null!;
+    private InvariantNumericTextBox[] _buildingStateNuds = null!;
     private Label[] _buildingStateLabels = null!;
     private Label[] _buildingStateInfoLabels = null!;
     private Label _buildingStatesHeaderLabel = null!;
@@ -937,9 +938,9 @@ partial class SettlementPanel
     private Label _editorHeaderLabel = null!;
     private Label _editorExperimentalWarningLabel = null!;
     private Label _editorSlotLabel = null!;
-    private NumericUpDown _editorSlotSelector = null!;
+    private InvariantNumericTextBox _editorSlotSelector = null!;
     private Label _editorRawValueLabel = null!;
-    private NumericUpDown _editorRawValueField = null!;
+    private InvariantNumericTextBox _editorRawValueField = null!;
     private Button _editorApplyBtn = null!;
     private Label _editorClassDisplayLabel = null!;
     private Label _editorClassValueLabel = null!;

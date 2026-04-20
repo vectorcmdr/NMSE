@@ -806,8 +806,8 @@ partial class CompanionPanel
         // Holo-Arena Victories (moved to bottom of Stat Class Overrides)
         statClassPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleVictoriesLabel = new Label { Text = "Holo-Arena Victories:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleVictories = new NumericUpDown { Minimum = 0, Maximum = 999999, Width = 70 };
-        _battleVictories.ValueChanged += (s, e) => { if (!_loading) WriteBattleVictories(); };
+        _battleVictories = new InvariantNumericTextBox { Minimum = 0, Maximum = 999999, Width = 70 };
+        _battleVictories.NumericValueChanged += (s, e) => { if (!_loading) WriteBattleVictories(); };
         statClassPanel.Controls.Add(_battleVictoriesLabel, 0, scRow);
         statClassPanel.Controls.Add(_battleVictories, 1, scRow);
 
@@ -837,16 +837,11 @@ partial class CompanionPanel
         // Mutation Progress
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleMutationProgressLabel = new Label { Text = "Mutation Progress:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleMutationProgress = new NumericUpDown
+        _battleMutationProgress = new InvariantNumericTextBox
         {
-            Minimum = 0,
-            Maximum = 1.0m,
-            DecimalPlaces = 16,
-            Increment = 0.1m,
             Width = 170,
-            Value = 0,
         };
-        _battleMutationProgress.ValueChanged += (s, e) => OnMutationProgressChanged();
+        _battleMutationProgress.NumericValueChanged += (s, e) => OnMutationProgressChanged();
         mutationPanel.Controls.Add(_battleMutationProgressLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleMutationProgress, 1, mpRow);
         mpRow++;
@@ -854,8 +849,8 @@ partial class CompanionPanel
         // Gene Edits Available
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleGenesAvailableLabel = new Label { Text = "Gene Edits Available:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleGenesAvailable = new NumericUpDown { Minimum = 0, Maximum = 1000, Width = 55 };
-        _battleGenesAvailable.ValueChanged += (s, e) => { if (!_loading) WriteBattleTreatsAvailable(); };
+        _battleGenesAvailable = new InvariantNumericTextBox { Minimum = 0, Maximum = 1000, Width = 55 };
+        _battleGenesAvailable.NumericValueChanged += (s, e) => { if (!_loading) WriteBattleTreatsAvailable(); };
         mutationPanel.Controls.Add(_battleGenesAvailableLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleGenesAvailable, 1, mpRow);
         mpRow++;
@@ -865,24 +860,24 @@ partial class CompanionPanel
 
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleTreatHealthLabel = new Label { Text = "Health:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleTreatHealth = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
-        _battleTreatHealth.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        _battleTreatHealth = new InvariantNumericTextBox { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatHealth.NumericValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
         mutationPanel.Controls.Add(_battleTreatHealthLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleTreatHealth, 1, mpRow);
         mpRow++;
 
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleTreatAgilityLabel = new Label { Text = "Agility:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleTreatAgility = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
-        _battleTreatAgility.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        _battleTreatAgility = new InvariantNumericTextBox { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatAgility.NumericValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
         mutationPanel.Controls.Add(_battleTreatAgilityLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleTreatAgility, 1, mpRow);
         mpRow++;
 
         mutationPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _battleTreatCombatLabel = new Label { Text = "Combat:", AutoSize = true, Padding = new Padding(0, 5, 5, 0) };
-        _battleTreatCombat = new NumericUpDown { Minimum = 0, Maximum = 10, Width = 55 };
-        _battleTreatCombat.ValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
+        _battleTreatCombat = new InvariantNumericTextBox { Minimum = 0, Maximum = 10, Width = 55 };
+        _battleTreatCombat.NumericValueChanged += (s, e) => { if (!_loading) OnBattleTreatChanged(); };
         mutationPanel.Controls.Add(_battleTreatCombatLabel, 0, mpRow);
         mutationPanel.Controls.Add(_battleTreatCombat, 1, mpRow);
 
@@ -924,9 +919,9 @@ partial class CompanionPanel
         _moveSlotLabels = new Label[5];
         _moveSlotCombos = new ComboBox[5];
         _moveSlotMovesetLabels = new Label[5];
-        _moveSlotCooldowns = new NumericUpDown[5];
+        _moveSlotCooldowns = new InvariantNumericTextBox[5];
         _moveSlotCooldownLabels = new Label[5];
-        _moveSlotScoreBoosts = new NumericUpDown[5];
+        _moveSlotScoreBoosts = new InvariantNumericTextBox[5];
         _moveSlotScoreBoostLabels = new Label[5];
         _moveSlotDetailPanels = new TableLayoutPanel[5];
 
@@ -963,16 +958,11 @@ partial class CompanionPanel
             // Cooldown and ScoreBoost controls are retained but not shown.
             // The game no longer exposes these values in PetBattlerMoves.
             _moveSlotCooldownLabels[i] = new Label { Text = "Cooldown:", AutoSize = true, Visible = false };
-            _moveSlotCooldowns[i] = new NumericUpDown { Minimum = 0, Maximum = 20, Width = 50, Visible = false };
+            _moveSlotCooldowns[i] = new InvariantNumericTextBox { Minimum = 0, Maximum = 20, Width = 50, Visible = false };
             _moveSlotScoreBoostLabels[i] = new Label { Text = "Score Boost:", AutoSize = true, Visible = false };
-            _moveSlotScoreBoosts[i] = new NumericUpDown
+            _moveSlotScoreBoosts[i] = new InvariantNumericTextBox
             {
-                Minimum = 0,
-                Maximum = 10,
-                DecimalPlaces = 6,
-                Increment = 0.1m,
                 Width = 90,
-                Value = 0,
                 Visible = false,
             };
 
@@ -1177,20 +1167,20 @@ partial class CompanionPanel
     private Label _battleAverageClassValue = null!;
     private Label _battleTreatsHeadingLabel = null!;
     private Label _battleTreatHealthLabel = null!;
-    private NumericUpDown _battleTreatHealth = null!;
+    private InvariantNumericTextBox _battleTreatHealth = null!;
     private Label _battleTreatAgilityLabel = null!;
-    private NumericUpDown _battleTreatAgility = null!;
+    private InvariantNumericTextBox _battleTreatAgility = null!;
     private Label _battleTreatCombatLabel = null!;
-    private NumericUpDown _battleTreatCombat = null!;
+    private InvariantNumericTextBox _battleTreatCombat = null!;
     private Label _battleGenesLevelLabel = null!;
     private Label _battleGenesLevelValue = null!;
     private Label _battleGenesAvailableLabel = null!;
-    private NumericUpDown _battleGenesAvailable = null!;
+    private InvariantNumericTextBox _battleGenesAvailable = null!;
     private Label _battleMutationHeadingLabel = null!;
     private Label _battleMutationProgressLabel = null!;
-    private NumericUpDown _battleMutationProgress = null!;
+    private InvariantNumericTextBox _battleMutationProgress = null!;
     private Label _battleVictoriesLabel = null!;
-    private NumericUpDown _battleVictories = null!;
+    private InvariantNumericTextBox _battleVictories = null!;
     private Label _battleMoveListLabel = null!;
 
     // Per-move-slot controls (5 slots)
@@ -1198,9 +1188,9 @@ partial class CompanionPanel
     private Label[] _moveSlotLabels = null!;
     private ComboBox[] _moveSlotCombos = null!;
     private Label[] _moveSlotMovesetLabels = null!;
-    private NumericUpDown[] _moveSlotCooldowns = null!;
+    private InvariantNumericTextBox[] _moveSlotCooldowns = null!;
     private Label[] _moveSlotCooldownLabels = null!;
-    private NumericUpDown[] _moveSlotScoreBoosts = null!;
+    private InvariantNumericTextBox[] _moveSlotScoreBoosts = null!;
     private Label[] _moveSlotScoreBoostLabels = null!;
     private TableLayoutPanel[] _moveSlotDetailPanels = null!;
 

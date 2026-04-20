@@ -2,6 +2,7 @@ using NMSE.Core;
 using NMSE.Core.Utilities;
 using NMSE.Data;
 using NMSE.Models;
+using NMSE.UI.Controls;
 
 namespace NMSE.UI.Panels;
 
@@ -325,11 +326,11 @@ public partial class SettlementPanel : UserControl
             };
             if (_hasPopulationKey)
             {
-                saveValues.Population = (int)_populationField.Value;
+                saveValues.Population = (int)(_populationField.NumericValue ?? 0);
                 saveValues.RawPopulation = _rawPopulation;
             }
             for (int i = 0; i < StatCount; i++)
-                saveValues.Stats[i] = (int)_statFields[i].Value;
+                saveValues.Stats[i] = (int)(_statFields[i].NumericValue ?? 0);
 
             // Mission seed
             if (int.TryParse(_missionSeedField.Text.Trim(), System.Globalization.NumberStyles.Integer,
@@ -339,7 +340,7 @@ public partial class SettlementPanel : UserControl
             // Building states
             for (int i = 0; i < SettlementLogic.BuildingStateSlotCount; i++)
             {
-                saveValues.BuildingStates[i] = (int)_buildingStateNuds[i].Value;
+                saveValues.BuildingStates[i] = (int)(_buildingStateNuds[i].NumericValue ?? 0);
             }
 
             SettlementLogic.SaveSettlementData(settlement, saveValues);
@@ -406,11 +407,11 @@ public partial class SettlementPanel : UserControl
                         // preserve the original raw value (which may be outside 0..ProductionMaxAmount)
                         if (_rawProductionAmounts.TryGetValue(i, out int raw) && amount == raw)
                         {
-                            prodObj.Set("Amount", raw);
+                            RawNumberGuard.SetInt(prodObj, "Amount", raw);
                             continue;
                         }
                         amount = Math.Clamp(amount, 0, ProductionMaxAmount);
-                        prodObj.Set("Amount", amount);
+                        RawNumberGuard.SetInt(prodObj, "Amount", amount);
                     }
                 }
             }
@@ -435,7 +436,7 @@ public partial class SettlementPanel : UserControl
 
             for (int i = 0; i < StatCount; i++)
             {
-                _statFields[i].Value = sdata.Stats[i];
+                _statFields[i].NumericValue = sdata.Stats[i];
                 ApplyStatColor(i);
             }
 
@@ -444,13 +445,13 @@ public partial class SettlementPanel : UserControl
             _populationField.Enabled = sdata.HasPopulationKey;
             if (sdata.HasPopulationKey)
             {
-                _populationField.Value = sdata.Population;
+                _populationField.NumericValue = sdata.Population;
                 _rawPopulation = sdata.RawPopulation;
                 ApplyPopulationColor();
             }
             else
             {
-                _populationField.Value = 0;
+                _populationField.NumericValue = 0;
                 _rawPopulation = null;
             }
 
@@ -565,10 +566,10 @@ public partial class SettlementPanel : UserControl
         _seedField.Text = "";
         for (int i = 0; i < StatCount; i++)
         {
-            _statFields[i].Value = 0;
+            _statFields[i].NumericValue = 0;
             _statFields[i].ForeColor = SystemColors.WindowText;
         }
-        _populationField.Value = 0;
+        _populationField.NumericValue = 0;
         _populationField.Enabled = false;
         _hasPopulationKey = false;
         _rawPopulation = null;
@@ -609,7 +610,7 @@ public partial class SettlementPanel : UserControl
         _editorUpdating = true;
         try
         {
-            _editorRawValueField.Value = 0;
+            _editorRawValueField.NumericValue = 0;
             _editorClassValueLabel.Text = "-";
             _editorStateValueLabel.Text = "-";
             for (int i = 0; i < InitPhaseCount; i++) _editorInitCheckboxes[i].Checked = false;
@@ -738,7 +739,7 @@ public partial class SettlementPanel : UserControl
 
             var imported = JsonObject.ImportFromFile(dialog.FileName);
 
-            // Unwrap NomNom wrapper if present (Data -> Settlement)
+            // Unwrap Data envelope if present (Data -> Settlement)
             imported = InventoryImportHelper.UnwrapNomNom(imported, "Settlement");
 
             int selectedDataIdx = (_settlementSelector.SelectedIndex >= 0 && _filteredIndices.Count > 0)
@@ -928,15 +929,15 @@ public partial class SettlementPanel : UserControl
     private void OnBuildingStateChanged(int slot)
     {
         if (slot < 0 || slot >= SettlementLogic.BuildingStateSlotCount) return;
-        int value = (int)_buildingStateNuds[slot].Value;
+        int value = (int)(_buildingStateNuds[slot].NumericValue ?? 0);
         _buildingStateInfoLabels[slot].Text = SettlementLogic.SettlementBuildingState.GetBuildingSlotDescription(value);
         // Sync editor if showing the same slot
-        if (_editorSlotSelector != null && (int)_editorSlotSelector.Value - 1 == slot && !_editorUpdating)
+        if (_editorSlotSelector != null && (int)(_editorSlotSelector.NumericValue ?? 1) - 1 == slot && !_editorUpdating)
         {
             _editorUpdating = true;
             try
             {
-                _editorRawValueField.Value = value;
+                _editorRawValueField.NumericValue = value;
                 UpdateEditorCheckboxesFromValue(value);
                 UpdateEditorClassState(value);
             }
@@ -947,7 +948,7 @@ public partial class SettlementPanel : UserControl
     private void OnBuildingStateNudChanged(int slot)
     {
         if (_editorUpdating) return;
-        int value = (int)_buildingStateNuds[slot].Value;
+        int value = (int)(_buildingStateNuds[slot].NumericValue ?? 0);
         _editorUpdating = true;
         try
         {
@@ -955,9 +956,9 @@ public partial class SettlementPanel : UserControl
 
             _buildingStateInfoLabels[slot].Text = SettlementLogic.SettlementBuildingState.GetBuildingSlotDescription(value);
 
-            if (_editorSlotSelector != null && (int)_editorSlotSelector.Value - 1 == slot)
+            if (_editorSlotSelector != null && (int)(_editorSlotSelector.NumericValue ?? 1) - 1 == slot)
             {
-                _editorRawValueField.Value = value;
+                _editorRawValueField.NumericValue = value;
                 UpdateEditorCheckboxesFromValue(value);
                 UpdateEditorClassState(value);
             }
@@ -977,24 +978,24 @@ public partial class SettlementPanel : UserControl
             if (selectedIdx < SettlementDatabase.KnownMilestones.Length)
             {
                 int value = SettlementDatabase.KnownMilestones[selectedIdx].Value;
-                _buildingStateNuds[slot].Value = value;
+                _buildingStateNuds[slot].NumericValue = value;
                 _buildingStateInfoLabels[slot].Text = SettlementLogic.SettlementBuildingState.GetBuildingSlotDescription(value);
 
-                if (_editorSlotSelector != null && (int)_editorSlotSelector.Value - 1 == slot)
+                if (_editorSlotSelector != null && (int)(_editorSlotSelector.NumericValue ?? 1) - 1 == slot)
                 {
-                    _editorRawValueField.Value = value;
+                    _editorRawValueField.NumericValue = value;
                     UpdateEditorCheckboxesFromValue(value);
                     UpdateEditorClassState(value);
                 }
             }
             else
             {
-                _buildingStateNuds[slot].Value = 0;
+                _buildingStateNuds[slot].NumericValue = 0;
                 _buildingStateInfoLabels[slot].Text = SettlementLogic.SettlementBuildingState.GetBuildingSlotDescription(0);
 
-                if (_editorSlotSelector != null && (int)_editorSlotSelector.Value - 1 == slot)
+                if (_editorSlotSelector != null && (int)(_editorSlotSelector.NumericValue ?? 1) - 1 == slot)
                 {
-                    _editorRawValueField.Value = 0;
+                    _editorRawValueField.NumericValue = 0;
                     UpdateEditorCheckboxesFromValue(0);
                     UpdateEditorClassState(0);
                 }
@@ -1035,7 +1036,7 @@ public partial class SettlementPanel : UserControl
     /// <summary>Sets the value of a building state slot, syncing both NUD and ComboBox.</summary>
     private void SetBuildingStateComboValue(int slot, int value)
     {
-        _buildingStateNuds[slot].Value = value;
+        _buildingStateNuds[slot].NumericValue = value;
         SyncComboToValue(slot, value);
     }
 
@@ -1045,7 +1046,7 @@ public partial class SettlementPanel : UserControl
         if (_buildingStateFields == null) return;
         for (int i = 0; i < _buildingStateFields.Length; i++)
         {
-            int currentValue = (int)_buildingStateNuds[i].Value;
+            int currentValue = (int)(_buildingStateNuds[i].NumericValue ?? 0);
             _buildingStateFields[i].Items.Clear();
             PopulateBuildingStateCombo(_buildingStateFields[i]);
             SyncComboToValue(i, currentValue);
@@ -1063,15 +1064,15 @@ public partial class SettlementPanel : UserControl
     private void LoadEditorFromSlot()
     {
         if (_editorRawValueField == null || _editorInitCheckboxes == null) return;
-        int slot = (int)_editorSlotSelector.Value - 1;
+        int slot = (int)(_editorSlotSelector.NumericValue ?? 1) - 1;
         if (slot < 0 || slot >= SettlementLogic.BuildingStateSlotCount) return;
 
-        int value = (int)_buildingStateNuds[slot].Value;
+        int value = (int)(_buildingStateNuds[slot].NumericValue ?? 0);
 
         _editorUpdating = true;
         try
         {
-            _editorRawValueField.Value = value;
+            _editorRawValueField.NumericValue = value;
             UpdateEditorCheckboxesFromValue(value);
             UpdateEditorClassState(value);
         }
@@ -1124,7 +1125,7 @@ public partial class SettlementPanel : UserControl
         _editorUpdating = true;
         try
         {
-            _editorRawValueField.Value = value;
+            _editorRawValueField.NumericValue = value;
             UpdateEditorClassState(value);
         }
         finally { _editorUpdating = false; }
@@ -1133,7 +1134,7 @@ public partial class SettlementPanel : UserControl
     private void OnEditorRawValueChanged(object? sender, EventArgs e)
     {
         if (_editorUpdating) return;
-        int value = (int)_editorRawValueField.Value;
+        int value = (int)(_editorRawValueField.NumericValue ?? 0);
         _editorUpdating = true;
         try
         {
@@ -1145,7 +1146,7 @@ public partial class SettlementPanel : UserControl
 
     private void OnEditorApply(object? sender, EventArgs e)
     {
-        int slot = (int)_editorSlotSelector.Value - 1;
+        int slot = (int)(_editorSlotSelector.NumericValue ?? 1) - 1;
         if (slot < 0 || slot >= SettlementLogic.BuildingStateSlotCount) return;
 
         int value = ComputeValueFromEditorCheckboxes();
@@ -1166,7 +1167,7 @@ public partial class SettlementPanel : UserControl
     private void ApplyStatColor(int index)
     {
         if (index < 0 || index >= StatCount) return;
-        int value = (int)_statFields[index].Value;
+        int value = (int)(_statFields[index].NumericValue ?? 0);
         if (value < SettlementLogic.StatMinValues[index])
             _statFields[index].ForeColor = Color.Crimson;
         else if (value > SettlementLogic.StatMaxValues[index])
@@ -1182,7 +1183,7 @@ public partial class SettlementPanel : UserControl
     /// </summary>
     private void ApplyPopulationColor()
     {
-        int value = (int)_populationField.Value;
+        int value = (int)(_populationField.NumericValue ?? 0);
         if (value < 0)
             _populationField.ForeColor = Color.Crimson;
         else if (value > SettlementLogic.PopulationSoftMax)

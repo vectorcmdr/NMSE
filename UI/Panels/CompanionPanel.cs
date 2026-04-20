@@ -33,9 +33,6 @@ public partial class CompanionPanel : UserControl
     /// <summary>Raw (unclamped) battle int values read from JSON at load time, keyed by field name.</summary>
     private readonly Dictionary<string, int> _rawBattleIntValues = new();
 
-    /// <summary>Raw (unclamped) battle decimal values read from JSON at load time, keyed by field name.</summary>
-    private readonly Dictionary<string, decimal> _rawBattleDecimalValues = new();
-
     /// <summary>Raw (unclamped) battle double values read from JSON at load time, keyed by field name.</summary>
     private readonly Dictionary<string, double> _rawBattleDoubleValues = new();
 
@@ -345,10 +342,10 @@ public partial class CompanionPanel : UserControl
             catch { _creatureTypeField.SelectedIndex = -1; }
 
             // Scale
-            try { _scaleField.NumericValue = comp.GetDouble("Scale"); } catch { _scaleField.NumericValue = null; }
+            try { _scaleField.SetValueWithText(comp.GetDouble("Scale"), comp.GetDoubleText("Scale")); } catch { _scaleField.NumericValue = null; }
 
             // Trust
-            try { _trustField.NumericValue = comp.GetDouble("Trust"); } catch { _trustField.NumericValue = null; }
+            try { _trustField.SetValueWithText(comp.GetDouble("Trust"), comp.GetDoubleText("Trust")); } catch { _trustField.NumericValue = null; }
 
             // Bone Scale Seed
             try
@@ -373,9 +370,18 @@ public partial class CompanionPanel : UserControl
             try
             {
                 var traits = comp.GetArray("Traits");
-                _helpfulnessField.NumericValue = traits != null && traits.Length > 0 ? traits.GetDouble(0) : 0;
-                _aggressionField.NumericValue = traits != null && traits.Length > 1 ? traits.GetDouble(1) : 0;
-                _independenceField.NumericValue = traits != null && traits.Length > 2 ? traits.GetDouble(2) : 0;
+                if (traits != null && traits.Length > 0)
+                    _helpfulnessField.SetValueWithText(traits.GetDouble(0), traits.GetDoubleText(0));
+                else
+                    _helpfulnessField.NumericValue = 0;
+                if (traits != null && traits.Length > 1)
+                    _aggressionField.SetValueWithText(traits.GetDouble(1), traits.GetDoubleText(1));
+                else
+                    _aggressionField.NumericValue = 0;
+                if (traits != null && traits.Length > 2)
+                    _independenceField.SetValueWithText(traits.GetDouble(2), traits.GetDoubleText(2));
+                else
+                    _independenceField.NumericValue = 0;
             }
             catch
             {
@@ -388,8 +394,14 @@ public partial class CompanionPanel : UserControl
             try
             {
                 var moods = comp.GetArray("Moods");
-                _hungryField.NumericValue = moods != null && moods.Length > 0 ? moods.GetDouble(0) : 0;
-                _lonelyField.NumericValue = moods != null && moods.Length > 1 ? moods.GetDouble(1) : 0;
+                if (moods != null && moods.Length > 0)
+                    _hungryField.SetValueWithText(moods.GetDouble(0), moods.GetDoubleText(0));
+                else
+                    _hungryField.NumericValue = 0;
+                if (moods != null && moods.Length > 1)
+                    _lonelyField.SetValueWithText(moods.GetDouble(1), moods.GetDoubleText(1));
+                else
+                    _lonelyField.NumericValue = 0;
             }
             catch
             {
@@ -705,8 +717,13 @@ public partial class CompanionPanel : UserControl
         {
             // Preserve RawDouble if the numeric value hasn't changed
             var existing = comp.Get("Scale");
-            if (!(existing is RawDouble rd && rd.Value == val))
-                comp.Set("Scale", val);
+            if (existing is RawDouble rd && rd.Value == val)
+                return;
+            if (existing is double d && d == val)
+                return;
+            // Store as RawDouble with the user's display text to preserve
+            // the exact representation in serialised output.
+            comp.Set("Scale", new RawDouble(val, _scaleField.DisplayText));
         }
     }
 
@@ -719,8 +736,11 @@ public partial class CompanionPanel : UserControl
         {
             // Preserve RawDouble if the numeric value hasn't changed
             var existing = comp.Get("Trust");
-            if (!(existing is RawDouble rd && rd.Value == val))
-                comp.Set("Trust", val);
+            if (existing is RawDouble rd && rd.Value == val)
+                return;
+            if (existing is double d && d == val)
+                return;
+            comp.Set("Trust", new RawDouble(val, _trustField.DisplayText));
         }
     }
 
@@ -766,7 +786,15 @@ public partial class CompanionPanel : UserControl
         if (comp == null) return;
         var traits = comp.GetArray("Traits");
         if (traits != null && index < traits.Length && field.NumericValue is double val)
-            traits.Set(index, val);
+        {
+            // Preserve RawDouble if the numeric value hasn't changed
+            var existing = traits.Get(index);
+            if (existing is RawDouble rd && rd.Value == val)
+                return;
+            if (existing is double d && d == val)
+                return;
+            traits.Set(index, new RawDouble(val, field.DisplayText));
+        }
     }
 
     private void WriteMood(int index, InvariantNumericTextBox field)
@@ -776,7 +804,15 @@ public partial class CompanionPanel : UserControl
         if (comp == null) return;
         var moods = comp.GetArray("Moods");
         if (moods != null && index < moods.Length && field.NumericValue is double val)
-            moods.Set(index, val);
+        {
+            // Preserve RawDouble if the numeric value hasn't changed
+            var existing = moods.Get(index);
+            if (existing is RawDouble rd && rd.Value == val)
+                return;
+            if (existing is double d && d == val)
+                return;
+            moods.Set(index, new RawDouble(val, field.DisplayText));
+        }
     }
 
     private void WriteCustomSpeciesName()
@@ -1089,9 +1125,24 @@ public partial class CompanionPanel : UserControl
             return;
         }
 
-        // Determine which accessory slots this creature supports
+        // Determine which accessory slots this creature supports.
+        // Pass the companion's part descriptors so that creatures whose own entry has
+        // no variant data (e.g. HERMITCRAB) can resolve accessories via shared descriptors
+        // defined on other creature types (e.g. SPIDER's _CRABSHELL_* variants).
         string creatureId = entry.Companion.GetString("CreatureID") ?? "";
-        _currentSlotLayout = CompanionAccessoryDatabase.GetSlotLayoutForCreature(creatureId);
+        List<string>? descriptors = null;
+        var descArr = entry.Companion.GetArray("Descriptors");
+        if (descArr != null)
+        {
+            descriptors = new List<string>();
+            for (int i = 0; i < descArr.Length; i++)
+            {
+                string desc = (descArr.GetString(i) ?? "").TrimStart('^');
+                if (!string.IsNullOrEmpty(desc))
+                    descriptors.Add(desc);
+            }
+        }
+        _currentSlotLayout = CompanionAccessoryDatabase.GetSlotLayoutForCreature(creatureId, descriptors);
 
         // Update slot labels and visibility based on creature type
         UpdateAccessorySlotLabels();
@@ -1165,7 +1216,7 @@ public partial class CompanionPanel : UserControl
                                 try
                                 {
                                     double scale = customData.GetDouble("Scale");
-                                    _accessoryScaleFields[uiRow].NumericValue = scale;
+                                    _accessoryScaleFields[uiRow].SetValueWithText(scale, customData.GetDoubleText("Scale"));
                                 }
                                 catch { }
                             }
@@ -1428,7 +1479,7 @@ public partial class CompanionPanel : UserControl
         if (_accessoryScaleFields[uiRow].NumericValue is double val)
         {
             var customData = slotData.GetObject("CustomData");
-            customData?.Set("Scale", val);
+            customData?.Set("Scale", new RawDouble(val, _accessoryScaleFields[uiRow].DisplayText));
         }
     }
 
@@ -1583,7 +1634,6 @@ public partial class CompanionPanel : UserControl
 
         // Clear raw battle values for the newly selected companion
         _rawBattleIntValues.Clear();
-        _rawBattleDecimalValues.Clear();
         _rawBattleDoubleValues.Clear();
 
         // Treats
@@ -1596,18 +1646,18 @@ public partial class CompanionPanel : UserControl
             _rawBattleIntValues["TreatHealth"] = rawHealth;
             _rawBattleIntValues["TreatAgility"] = rawAgility;
             _rawBattleIntValues["TreatCombat"] = rawCombat;
-            _battleTreatHealth.Value = Math.Clamp(rawHealth, 0, 10);
-            _battleTreatAgility.Value = Math.Clamp(rawAgility, 0, 10);
-            _battleTreatCombat.Value = Math.Clamp(rawCombat, 0, 10);
+            _battleTreatHealth.NumericValue = Math.Clamp(rawHealth, 0, 10);
+            _battleTreatAgility.NumericValue = Math.Clamp(rawAgility, 0, 10);
+            _battleTreatCombat.NumericValue = Math.Clamp(rawCombat, 0, 10);
         }
         catch
         {
             _rawBattleIntValues["TreatHealth"] = 0;
             _rawBattleIntValues["TreatAgility"] = 0;
             _rawBattleIntValues["TreatCombat"] = 0;
-            _battleTreatHealth.Value = 0;
-            _battleTreatAgility.Value = 0;
-            _battleTreatCombat.Value = 0;
+            _battleTreatHealth.NumericValue = 0;
+            _battleTreatAgility.NumericValue = 0;
+            _battleTreatCombat.NumericValue = 0;
         }
         UpdateGenesLevel();
 
@@ -1615,27 +1665,27 @@ public partial class CompanionPanel : UserControl
         {
             int rawGenes = comp.GetInt("PetBattlerTreatsAvailable");
             _rawBattleIntValues["GenesAvailable"] = rawGenes;
-            _battleGenesAvailable.Value = Math.Clamp(rawGenes, 0, 1000);
+            _battleGenesAvailable.NumericValue = Math.Clamp(rawGenes, 0, 1000);
         }
-        catch { _rawBattleIntValues["GenesAvailable"] = 0; _battleGenesAvailable.Value = 0; }
+        catch { _rawBattleIntValues["GenesAvailable"] = 0; _battleGenesAvailable.NumericValue = 0; }
 
         try
         {
             double rawMutation = comp.GetDouble("PetBattleProgressToTreat");
             // Store the unclamped raw value so we only write back when the user
-            // explicitly changes it via the NUD (preserves out-of-range / Raw JSON Editor values).
-            _rawBattleDecimalValues["MutationProgress"] = (decimal)rawMutation;
-            _battleMutationProgress.Value = Math.Clamp((decimal)rawMutation, 0, 1.0m);
+            // explicitly changes the mutation progress control (preserves out-of-range / Raw JSON Editor values).
+            _rawBattleDoubleValues["MutationProgress"] = rawMutation;
+            _battleMutationProgress.SetValueWithText(rawMutation, comp.GetDoubleText("PetBattleProgressToTreat"));
         }
-        catch { _rawBattleDecimalValues["MutationProgress"] = 0; _battleMutationProgress.Value = 0; }
+        catch { _rawBattleDoubleValues["MutationProgress"] = 0; _battleMutationProgress.NumericValue = 0; }
 
         try
         {
             int rawVictories = comp.GetInt("PetBattlerVictories");
             _rawBattleIntValues["Victories"] = rawVictories;
-            _battleVictories.Value = Math.Clamp(rawVictories, 0, 999999);
+            _battleVictories.NumericValue = Math.Clamp(rawVictories, 0, 999999);
         }
-        catch { _rawBattleIntValues["Victories"] = 0; _battleVictories.Value = 0; }
+        catch { _rawBattleIntValues["Victories"] = 0; _battleVictories.NumericValue = 0; }
 
         // Move list
         LoadMoveSlots(comp);
@@ -2019,7 +2069,7 @@ public partial class CompanionPanel : UserControl
         _battleAverageClassValue.Text = IntToClass(sum / 3);
     }
 
-    /// <summary>Handles treat NumericUpDown changes.</summary>
+    /// <summary>Handles treat InvariantNumericTextBox changes.</summary>
     private void OnBattleTreatChanged()
     {
         var comp = SelectedCompanion;
@@ -2030,12 +2080,12 @@ public partial class CompanionPanel : UserControl
             var treats = comp.GetArray("PetBattlerTreatsEaten");
             if (treats != null)
             {
-                if (treats.Length > 0 && WasBattleIntChangedByUser("TreatHealth", (int)_battleTreatHealth.Value, _battleTreatHealth))
-                    treats.Set(0, (int)_battleTreatHealth.Value);
-                if (treats.Length > 1 && WasBattleIntChangedByUser("TreatAgility", (int)_battleTreatAgility.Value, _battleTreatAgility))
-                    treats.Set(1, (int)_battleTreatAgility.Value);
-                if (treats.Length > 2 && WasBattleIntChangedByUser("TreatCombat", (int)_battleTreatCombat.Value, _battleTreatCombat))
-                    treats.Set(2, (int)_battleTreatCombat.Value);
+                if (treats.Length > 0 && WasBattleIntChangedByUser("TreatHealth", (int)(_battleTreatHealth.NumericValue ?? 0), _battleTreatHealth))
+                    treats.Set(0, (int)(_battleTreatHealth.NumericValue ?? 0));
+                if (treats.Length > 1 && WasBattleIntChangedByUser("TreatAgility", (int)(_battleTreatAgility.NumericValue ?? 0), _battleTreatAgility))
+                    treats.Set(1, (int)(_battleTreatAgility.NumericValue ?? 0));
+                if (treats.Length > 2 && WasBattleIntChangedByUser("TreatCombat", (int)(_battleTreatCombat.NumericValue ?? 0), _battleTreatCombat))
+                    treats.Set(2, (int)(_battleTreatCombat.NumericValue ?? 0));
             }
         }
         catch { }
@@ -2046,7 +2096,7 @@ public partial class CompanionPanel : UserControl
     /// <summary>Updates the genes level display label.</summary>
     private void UpdateGenesLevel()
     {
-        int total = (int)_battleTreatHealth.Value + (int)_battleTreatAgility.Value + (int)_battleTreatCombat.Value;
+        int total = (int)(_battleTreatHealth.NumericValue ?? 0) + (int)(_battleTreatAgility.NumericValue ?? 0) + (int)(_battleTreatCombat.NumericValue ?? 0);
         _battleGenesLevelValue.Text = $"{total} / 30";
     }
 
@@ -2055,36 +2105,31 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null || _loading) return;
-        if (!WasBattleIntChangedByUser("GenesAvailable", (int)_battleGenesAvailable.Value, _battleGenesAvailable))
+        if (!WasBattleIntChangedByUser("GenesAvailable", (int)(_battleGenesAvailable.NumericValue ?? 0), _battleGenesAvailable))
             return;
-        comp.Set("PetBattlerTreatsAvailable", (int)_battleGenesAvailable.Value);
+        comp.Set("PetBattlerTreatsAvailable", (int)(_battleGenesAvailable.NumericValue ?? 0));
     }
 
-    /// <summary>Handles mutation progress value change.
-    /// Snaps the value to the nearest 0.1 increment so that e.g. 0.660000
-    /// with an up-arrow press results in 0.700000 rather than 0.760000.</summary>
+    /// <summary>Handles mutation progress value change.</summary>
     private void OnMutationProgressChanged()
     {
         if (_loading) return;
         var comp = SelectedCompanion;
         if (comp == null) return;
 
-        decimal rounded = Math.Round(_battleMutationProgress.Value, 1, MidpointRounding.AwayFromZero);
-        if (_battleMutationProgress.Value != rounded)
-        {
-            _loading = true;
-            try { _battleMutationProgress.Value = rounded; }
-            finally { _loading = false; }
-        }
+        double val = _battleMutationProgress.NumericValue ?? 0.0;
 
-        if (!WasBattleDecimalChangedByUser("MutationProgress", rounded, _battleMutationProgress))
+        // Check if the value was actually changed by the user
+        if (_rawBattleDoubleValues.TryGetValue("MutationProgress", out double raw) && val == raw)
             return;
 
-        double val = Math.Clamp((double)rounded, 0, 1.0);
         // Preserve RawDouble if the numeric value hasn't changed
         var existing = comp.Get("PetBattleProgressToTreat");
-        if (!(existing is RawDouble rd && rd.Value == val))
-            comp.Set("PetBattleProgressToTreat", val);
+        if (existing is RawDouble rd && rd.Value == val)
+            return;
+        if (existing is double d && d == val)
+            return;
+        comp.Set("PetBattleProgressToTreat", new RawDouble(val, _battleMutationProgress.DisplayText));
     }
 
     /// <summary>Writes the victories value.</summary>
@@ -2092,9 +2137,9 @@ public partial class CompanionPanel : UserControl
     {
         var comp = SelectedCompanion;
         if (comp == null || _loading) return;
-        if (!WasBattleIntChangedByUser("Victories", (int)_battleVictories.Value, _battleVictories))
+        if (!WasBattleIntChangedByUser("Victories", (int)(_battleVictories.NumericValue ?? 0), _battleVictories))
             return;
-        comp.Set("PetBattlerVictories", (int)_battleVictories.Value);
+        comp.Set("PetBattlerVictories", (int)(_battleVictories.NumericValue ?? 0));
     }
 
     /// <summary>Enables or disables all battle controls.</summary>
@@ -2262,27 +2307,16 @@ public partial class CompanionPanel : UserControl
     /// When the displayed (clamped) value still matches what we'd show for the raw value,
     /// we know the user hasn't interacted, so we preserve the original JSON value.
     /// </summary>
-    private bool WasBattleIntChangedByUser(string key, int displayValue, NumericUpDown nud)
+    private bool WasBattleIntChangedByUser(string key, int displayValue, InvariantNumericTextBox nud)
     {
         if (_rawBattleIntValues.TryGetValue(key, out int raw))
         {
-            int clamped = Math.Clamp(raw, (int)nud.Minimum, (int)nud.Maximum);
-            return displayValue != clamped;
+            // Compare the display value directly against the raw value. The UI
+            // does not clamp on display (InvariantNumericTextBox has no built-in
+            // clamping), so an unchanged field shows the raw value itself.
+            return displayValue != raw;
         }
         return true; // No raw value recorded – assume user set it
-    }
-
-    /// <summary>
-    /// Returns true if the user actually changed a decimal battle value from its clamped display.
-    /// </summary>
-    private bool WasBattleDecimalChangedByUser(string key, decimal displayValue, NumericUpDown nud)
-    {
-        if (_rawBattleDecimalValues.TryGetValue(key, out decimal raw))
-        {
-            decimal clamped = Math.Clamp(raw, nud.Minimum, nud.Maximum);
-            return displayValue != clamped;
-        }
-        return true;
     }
 
     private JsonObject? FindSaveDataRoot()

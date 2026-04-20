@@ -1,5 +1,6 @@
 using NMSE.Data;
 using NMSE.Core;
+using NMSE.UI.Controls;
 using NMSE.UI.Util;
 
 namespace NMSE.UI.Panels;
@@ -42,9 +43,9 @@ partial class FreighterPanel
         _crewRaceCombo = new ComboBox();
         _statsPanel = new TableLayoutPanel();
         _hyperdriveLabel = new Label();
-        _hyperdriveField = new NumericUpDown();
+        _hyperdriveField = new InvariantNumericTextBox();
         _fleetLabel = new Label();
-        _fleetField = new NumericUpDown();
+        _fleetField = new InvariantNumericTextBox();
         _baseItemsLabel = new Label();
         _baseItemsField = new TextBox();
         _modelSeedLabel = new Label();
@@ -350,11 +351,8 @@ partial class FreighterPanel
         // 
         // _hyperdriveField
         // 
-        _hyperdriveField.DecimalPlaces = 2;
         _hyperdriveField.Dock = DockStyle.Fill;
-        _hyperdriveField.Increment = new decimal(new int[] { 1, 0, 0, 131072 });
         _hyperdriveField.Location = new Point(127, 3);
-        _hyperdriveField.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
         _hyperdriveField.Name = "_hyperdriveField";
         _hyperdriveField.Size = new Size(536, 23);
         _hyperdriveField.TabIndex = 1;
@@ -372,11 +370,8 @@ partial class FreighterPanel
         // 
         // _fleetField
         // 
-        _fleetField.DecimalPlaces = 2;
         _fleetField.Dock = DockStyle.Fill;
-        _fleetField.Increment = new decimal(new int[] { 1, 0, 0, 131072 });
         _fleetField.Location = new Point(127, 32);
-        _fleetField.Maximum = new decimal(new int[] { 999999, 0, 0, 0 });
         _fleetField.Name = "_fleetField";
         _fleetField.Size = new Size(536, 23);
         _fleetField.TabIndex = 3;
@@ -680,8 +675,8 @@ partial class FreighterPanel
     private System.Windows.Forms.TextBox _homeSeed;
     private System.Windows.Forms.Button _generateHomeSeedBtn;
     private System.Windows.Forms.ComboBox _crewRaceCombo;
-    private System.Windows.Forms.NumericUpDown _hyperdriveField;
-    private System.Windows.Forms.NumericUpDown _fleetField;
+    private NMSE.UI.Controls.InvariantNumericTextBox _hyperdriveField;
+    private NMSE.UI.Controls.InvariantNumericTextBox _fleetField;
     private System.Windows.Forms.TextBox _baseItemsField;
     private System.Windows.Forms.TextBox _modelSeed;
     private System.Windows.Forms.Button _generateModelSeedBtn;

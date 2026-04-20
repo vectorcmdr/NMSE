@@ -1132,9 +1132,11 @@ public partial class CataloguePanel : UserControl
                                 System.Globalization.NumberStyles.Float,
                                 System.Globalization.CultureInfo.InvariantCulture, out double lc))
                         {
-                            // Store as RawDouble to preserve the exact text representation
-                            string text = lc.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-                            largestList.Set(idx, new RawDouble(lc, text));
+                            // Store as RawDouble using the cell text directly so that
+                            // the serialised output matches exactly what the user typed,
+                            // rather than reformatting through G17 which can add or
+                            // change trailing digits.
+                            largestList.Set(idx, new RawDouble(lc, cellText));
                         }
                     }
                 }

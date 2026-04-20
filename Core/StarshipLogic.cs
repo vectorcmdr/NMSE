@@ -276,10 +276,11 @@ internal static class StarshipLogic
 
         var shipInv = ship.GetObject("Inventory");
         double damage = 0, shield = 0, hyperdrive = 0, maneuver = 0;
-        try { damage = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_DAMAGE"); } catch { }
-        try { shield = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_SHIELD"); } catch { }
-        try { hyperdrive = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_HYPERDRIVE"); } catch { }
-        try { maneuver = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_AGILE"); } catch { }
+        string damageText = "0", shieldText = "0", hyperdriveText = "0", maneuverText = "0";
+        try { damage = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_DAMAGE"); damageText = StatHelper.ReadBaseStatText(shipInv, "^SHIP_DAMAGE"); } catch { }
+        try { shield = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_SHIELD"); shieldText = StatHelper.ReadBaseStatText(shipInv, "^SHIP_SHIELD"); } catch { }
+        try { hyperdrive = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_HYPERDRIVE"); hyperdriveText = StatHelper.ReadBaseStatText(shipInv, "^SHIP_HYPERDRIVE"); } catch { }
+        try { maneuver = StatHelper.ReadBaseStatValue(shipInv, "^SHIP_AGILE"); maneuverText = StatHelper.ReadBaseStatText(shipInv, "^SHIP_AGILE"); } catch { }
 
         string safeName = StringHelper.SanitizeFileName(name);
         string safeTypeName = StringHelper.SanitizeFileName(shipTypeName);
@@ -301,6 +302,10 @@ internal static class StarshipLogic
             Shield = shield,
             Hyperdrive = hyperdrive,
             Maneuver = maneuver,
+            DamageText = damageText,
+            ShieldText = shieldText,
+            HyperdriveText = hyperdriveText,
+            ManeuverText = maneuverText,
             Inventory = shipInv,
             TechInventory = ship.GetObject("Inventory_TechOnly"),
             CargoMaxLabel = cargoLabel,
@@ -341,7 +346,7 @@ internal static class StarshipLogic
             }
         }
 
-        if (values.ClassIndex >= 0)
+        if (values.ClassIndex >= 0 && values.ClassIndex != values.OriginalClassIndex)
         {
             string cls = ShipClasses[values.ClassIndex];
             // Set class on all ship inventories (Inventory, Inventory_TechOnly, Inventory_Cargo)
@@ -364,8 +369,9 @@ internal static class StarshipLogic
         }
         catch { }
 
-        // Write base stats to ALL inventories to keep them in sync
-        // Determine ship category for clamping: "Alien" if the selected type contains it, else "Normal"
+        // Write base stats to Inventory and Inventory_TechOnly.
+        // For ships on v400+ Waypoint the game uses these two inventories;
+        // Inventory_Cargo is NOT included for modern saves.
         string shipCategory = (values.SelectedTypeName ?? "").Contains("Alien", StringComparison.OrdinalIgnoreCase) ? "Alien" : "Normal";
 
         double writeDamage = Data.BaseStatLimits.ConditionalClampStatValue(shipCategory, "^SHIP_DAMAGE", values.Damage, Data.StatCategory.Ship, values.RawStatValues);
@@ -373,14 +379,21 @@ internal static class StarshipLogic
         double writeHyperdrive = Data.BaseStatLimits.ConditionalClampStatValue(shipCategory, "^SHIP_HYPERDRIVE", values.Hyperdrive, Data.StatCategory.Ship, values.RawStatValues);
         double writeManeuver = Data.BaseStatLimits.ConditionalClampStatValue(shipCategory, "^SHIP_AGILE", values.Maneuver, Data.StatCategory.Ship, values.RawStatValues);
 
-        foreach (string invKey in new[] { "Inventory", "Inventory_TechOnly", "Inventory_Cargo" })
+        // Only preserve the display text when clamping did not alter the value;
+        // a clamped value would no longer match its original text.
+        string? damageText = values.Damage == writeDamage ? values.DamageText : null;
+        string? shieldText = values.Shield == writeShield ? values.ShieldText : null;
+        string? hyperdriveText = values.Hyperdrive == writeHyperdrive ? values.HyperdriveText : null;
+        string? maneuverText = values.Maneuver == writeManeuver ? values.ManeuverText : null;
+
+        foreach (string invKey in new[] { "Inventory", "Inventory_TechOnly" })
         {
             var inv = ship.GetObject(invKey);
             if (inv == null) continue;
-            StatHelper.WriteBaseStatValue(inv, "^SHIP_DAMAGE", writeDamage);
-            StatHelper.WriteBaseStatValue(inv, "^SHIP_SHIELD", writeShield);
-            StatHelper.WriteBaseStatValue(inv, "^SHIP_HYPERDRIVE", writeHyperdrive);
-            StatHelper.WriteBaseStatValue(inv, "^SHIP_AGILE", writeManeuver);
+            StatHelper.WriteBaseStatValue(inv, "^SHIP_DAMAGE", writeDamage, damageText);
+            StatHelper.WriteBaseStatValue(inv, "^SHIP_SHIELD", writeShield, shieldText);
+            StatHelper.WriteBaseStatValue(inv, "^SHIP_HYPERDRIVE", writeHyperdrive, hyperdriveText);
+            StatHelper.WriteBaseStatValue(inv, "^SHIP_AGILE", writeManeuver, maneuverText);
         }
 
         // ShipUsesLegacyColours is an array indexed per-ship; update the correct element
@@ -395,7 +408,7 @@ internal static class StarshipLogic
         }
         catch { }
 
-        try { playerState.Set("PrimaryShip", values.PrimaryShipIndex); }
+        try { RawNumberGuard.SetInt(playerState, "PrimaryShip", values.PrimaryShipIndex); }
         catch { }
     }
 
@@ -915,6 +928,14 @@ internal static class StarshipLogic
         public double Hyperdrive { get; set; }
         /// <summary>The ship's base maneuverability stat.</summary>
         public double Maneuver { get; set; }
+        /// <summary>The original text representation of the damage stat from the save file.</summary>
+        public string DamageText { get; set; } = "0";
+        /// <summary>The original text representation of the shield stat from the save file.</summary>
+        public string ShieldText { get; set; } = "0";
+        /// <summary>The original text representation of the hyperdrive stat from the save file.</summary>
+        public string HyperdriveText { get; set; } = "0";
+        /// <summary>The original text representation of the maneuver stat from the save file.</summary>
+        public string ManeuverText { get; set; } = "0";
         /// <summary>The ship's cargo inventory JSON object.</summary>
         public JsonObject? Inventory { get; set; }
         /// <summary>The ship's tech-only inventory JSON object.</summary>
@@ -945,6 +966,8 @@ internal static class StarshipLogic
         public string? CustomFilename { get; set; }
         /// <summary>Index into <see cref="ShipClasses"/> for the desired class grade.</summary>
         public int ClassIndex { get; set; } = -1;
+        /// <summary>Original class index loaded from save; used to skip class writes when unchanged.</summary>
+        public int OriginalClassIndex { get; set; } = -1;
         /// <summary>The seed hex string to set.</summary>
         public string Seed { get; set; } = "";
         /// <summary>The damage stat value to write.</summary>
@@ -955,6 +978,14 @@ internal static class StarshipLogic
         public double Hyperdrive { get; set; }
         /// <summary>The maneuverability stat value to write.</summary>
         public double Maneuver { get; set; }
+        /// <summary>Display text for the damage stat, used to create a RawDouble on save.</summary>
+        public string? DamageText { get; set; }
+        /// <summary>Display text for the shield stat, used to create a RawDouble on save.</summary>
+        public string? ShieldText { get; set; }
+        /// <summary>Display text for the hyperdrive stat, used to create a RawDouble on save.</summary>
+        public string? HyperdriveText { get; set; }
+        /// <summary>Display text for the maneuver stat, used to create a RawDouble on save.</summary>
+        public string? ManeuverText { get; set; }
         /// <summary>Whether to use legacy colour rendering.</summary>
         public bool UseOldColours { get; set; }
         /// <summary>The zero-based index of this ship in the ShipOwnership array.</summary>

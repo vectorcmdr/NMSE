@@ -175,16 +175,16 @@ partial class StarshipPanel
         rightPanel.SetColumnSpan(_statsLabel, 2);
         statRow++;
 
-        _damageField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _damageField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _damageLabel = AddRow(rightPanel, "Damage:", _damageField, statRow++);
 
-        _shieldField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _shieldField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _shieldLabel = AddRow(rightPanel, "Shield:", _shieldField, statRow++);
 
-        _hyperdriveField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _hyperdriveField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _hyperdriveLabel = AddRow(rightPanel, "Hyperdrive:", _hyperdriveField, statRow++);
 
-        _maneuverField = new NumericUpDown { Dock = DockStyle.Fill, DecimalPlaces = 2, Minimum = 0, Maximum = 999999, Increment = 0.01m };
+        _maneuverField = new InvariantNumericTextBox { Dock = DockStyle.Fill };
         _maneuverLabel = AddRow(rightPanel, "Maneuverability:", _maneuverField, statRow++);
 
         _useOldColours = new CheckBox { Text = "Use Old Color", AutoSize = true };
@@ -306,10 +306,10 @@ partial class StarshipPanel
     private TextBox _shipSeed = null!;
     private Button _generateSeedBtn = null!;
     private CheckBox _useOldColours = null!;
-    private NumericUpDown _damageField = null!;
-    private NumericUpDown _shieldField = null!;
-    private NumericUpDown _hyperdriveField = null!;
-    private NumericUpDown _maneuverField = null!;
+    private InvariantNumericTextBox _damageField = null!;
+    private InvariantNumericTextBox _shieldField = null!;
+    private InvariantNumericTextBox _hyperdriveField = null!;
+    private InvariantNumericTextBox _maneuverField = null!;
     private Button _deleteBtn = null!;
     private Button _exportBtn = null!;
     private Button _importBtn = null!;

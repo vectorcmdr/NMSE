@@ -20,6 +20,9 @@ public partial class FreighterPanel : UserControl
     /// <summary>Raw (unclamped) freighter stat values read from JSON at load time.</summary>
     private Dictionary<string, double>? _rawFreighterStatValues;
 
+    /// <summary>Class index loaded from the save, used to detect user changes.</summary>
+    private int _originalClassIndex = -1;
+
     private static Dictionary<string, string> FreighterTypes => FreighterLogic.FreighterTypes;
 
     public FreighterPanel()
@@ -38,17 +41,6 @@ public partial class FreighterPanel : UserControl
     {
         _generalGrid.SetIconManager(iconManager);
         _techGrid.SetIconManager(iconManager);
-    }
-
-    /// <summary>Applies BaseStatLimits min/max to a NumericUpDown control.</summary>
-    private static void ApplyStatLimits(NumericUpDown nud, string entityType, string statId, StatCategory category)
-    {
-        var range = BaseStatLimits.GetRange(entityType, statId, category);
-        if (range != null)
-        {
-            nud.Minimum = range.MinValue;
-            nud.Maximum = range.MaxValue;
-        }
     }
 
     private static void AddRow(TableLayoutPanel layout, string label, Control field, int row)
@@ -76,12 +68,13 @@ public partial class FreighterPanel : UserControl
                 _freighterType.SelectedIndex = -1;
 
             _freighterClass.SelectedIndex = data.ClassIndex >= 0 ? data.ClassIndex : -1;
+            _originalClassIndex = data.ClassIndex;
 
             _homeSeed.Text = data.HomeSeed;
             _modelSeed.Text = data.ModelSeed;
 
-            _hyperdriveField.Value = (decimal)data.Hyperdrive;
-            _fleetField.Value = (decimal)data.FleetCoordination;
+            _hyperdriveField.SetValueWithText(data.Hyperdrive, data.HyperdriveText);
+            _fleetField.SetValueWithText(data.FleetCoordination, data.FleetCoordinationText);
 
             // Store raw stat values for preservation before limits clamp the NUDs
             _rawFreighterStatValues = new Dictionary<string, double>
@@ -89,10 +82,6 @@ public partial class FreighterPanel : UserControl
                 ["^FREI_HYPERDRIVE"] = data.Hyperdrive,
                 ["^FREI_FLEET"] = data.FleetCoordination,
             };
-
-            // Apply BaseStatLimits to the NumericUpDown controls
-            ApplyStatLimits(_hyperdriveField, "Normal", "^FREI_HYPERDRIVE", StatCategory.Freighter);
-            ApplyStatLimits(_fleetField, "Normal", "^FREI_FLEET", StatCategory.Freighter);
 
             _freighterBase = data.FreighterBase;
             if (_freighterBase != null)
@@ -167,10 +156,19 @@ public partial class FreighterPanel : UserControl
                 Name = _freighterName.Text,
                 SelectedTypeName = (_freighterType.SelectedItem as FreighterLogic.FreighterTypeItem)?.InternalName,
                 ClassIndex = _freighterClass.SelectedIndex,
+                OriginalClassIndex = _originalClassIndex,
                 HomeSeed = _homeSeed.Text,
                 ModelSeed = _modelSeed.Text,
-                Hyperdrive = (double)_hyperdriveField.Value,
-                FleetCoordination = (double)_fleetField.Value,
+                // Use raw values for unmodified fields to prevent any
+                // precision loss from the UI control text round-trip.
+                Hyperdrive = _hyperdriveField.UserModified
+                    ? (_hyperdriveField.NumericValue ?? 0.0)
+                    : (_rawFreighterStatValues?.GetValueOrDefault("^FREI_HYPERDRIVE") ?? _hyperdriveField.NumericValue ?? 0.0),
+                FleetCoordination = _fleetField.UserModified
+                    ? (_fleetField.NumericValue ?? 0.0)
+                    : (_rawFreighterStatValues?.GetValueOrDefault("^FREI_FLEET") ?? _fleetField.NumericValue ?? 0.0),
+                HyperdriveText = _hyperdriveField.UserModified ? _hyperdriveField.DisplayText : null,
+                FleetCoordinationText = _fleetField.UserModified ? _fleetField.DisplayText : null,
                 RawStatValues = _rawFreighterStatValues
             });
 
