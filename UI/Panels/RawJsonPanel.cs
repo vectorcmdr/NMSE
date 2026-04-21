@@ -208,6 +208,14 @@ public partial class RawJsonPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Marks the diff cache as stale so the next "Show Changes" click recomputes against
+    /// the current in memory JSON. Call this after any 'out of band' modification to the
+    /// underlying save data that does not go through the Raw JSON Editor itself (e.g.
+    /// bulk inventory actions triggered from the Tools menu).
+    /// </summary>
+    public void NotifyDataChanged() => InvalidateDiffCache();
+
 	/// <summary>
 	/// Loads a save file JSON object into the raw editor and initialises the selected view.
 	/// </summary>

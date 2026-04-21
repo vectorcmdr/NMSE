@@ -6626,6 +6626,50 @@ public class LogicTests
         Assert.DoesNotContain(result, dl => dl.Type == RawJsonLogic.DiffLineType.Removed);
     }
 
+    [Fact]
+    public void RawJsonLogic_ComputeCompactDiff_ExceedsMaxDiffDistance_WithCommonPrefix_ReturnsInfoHeader()
+    {
+        // Regression test for the fallback-detection bug:
+        // When the edit distance exceeds MaxDiffDistance, MyersDiff returns all removed + all added
+        // with no Context entries in the middle section.  ComputeRawDiff prepends the common
+        // prefix as Context lines before calling MyersDiff, so the old check
+        // (contextCount == 0) was always false and the 1 million line wall was shown instead of the
+        // informational header.  The correct check is removedCount + addedCount > MaxDiffDistance.
+        //
+        // We build a file with a long common prefix followed by more than MaxDiffDistance
+        // individual line substitutions so Myers must fall back.
+		//
+		// This way we ensure we don't absolutely blow out the diff with garbage output.
+        const int prefixLines = 20;
+        const int changedLines = 2001; // > MaxDiffDistance (2000)
+
+        var oldLines = new System.Text.StringBuilder();
+        var newLines = new System.Text.StringBuilder();
+
+        // Common prefix (identical in both versions)
+        for (int i = 0; i < prefixLines; i++)
+        {
+            oldLines.AppendLine(CultureInfo.InvariantCulture, $"  \"prefix_{i}\": {i}");
+            newLines.AppendLine(CultureInfo.InvariantCulture, $"  \"prefix_{i}\": {i}");
+        }
+
+        // Section where every line differs — forces edit distance >> MaxDiffDistance
+        for (int i = 0; i < changedLines; i++)
+        {
+            oldLines.AppendLine(CultureInfo.InvariantCulture, $"  \"Amount\": {i}");
+            newLines.AppendLine(CultureInfo.InvariantCulture, $"  \"Amount\": {i + 10000}");
+        }
+
+        var result = RawJsonLogic.ComputeCompactDiffFromLines(
+            oldLines.ToString().Split('\n'),
+            newLines.ToString().Split('\n'));
+
+        // Must return exactly one informational Header line... NOT the full 1 million line garbage wall.
+        Assert.Single(result);
+        Assert.Equal(RawJsonLogic.DiffLineType.Header, result[0].Type);
+        Assert.Contains("limit", result[0].Text, StringComparison.OrdinalIgnoreCase);
+    }
+
     // --- RawJsonLogic: Myers diff correctness (duplicate JSON lines) ---
 
     [Fact]
@@ -11687,10 +11731,38 @@ public class LogicTests
     // --- InventoryBulkActions ----------------------------------------
 
     /// <summary>
-    /// Helper to build a minimal inventory JSON object with the given slots.
+    /// Builds a minimal inventory JSON object with the given slots.
+    /// Uses the flat "Id" string format that matches real NMS save files
+    /// (e.g. "Id": "^FUEL1"), not the nested object format.
     /// Each slot is represented as (itemId, amount, maxAmount, damageFactor, inventoryType).
     /// </summary>
     private static JsonObject BuildInventory(params (string id, int amount, int maxAmount, double damage, string invType)[] slots)
+    {
+        var inv = JsonObject.Parse("{ \"Slots\": [], \"SpecialSlots\": [] }");
+        var slotsArr = inv.GetArray("Slots")!;
+        for (int i = 0; i < slots.Length; i++)
+        {
+            var (id, amount, maxAmount, damage, invType) = slots[i];
+            var slot = JsonObject.Parse($@"{{
+                ""Id"": ""{id}"",
+                ""Amount"": {amount},
+                ""MaxAmount"": {maxAmount},
+                ""DamageFactor"": {damage.ToString(CultureInfo.InvariantCulture)},
+                ""FullyInstalled"": {(damage > 0 ? "false" : "true")},
+                ""Type"": {{ ""InventoryType"": ""{invType}"" }},
+                ""Index"": {{ ""X"": {i}, ""Y"": 0 }}
+            }}");
+            slotsArr.Add(slot);
+        }
+        return inv;
+    }
+
+    /// <summary>
+    /// Builds a minimal inventory JSON object using the nested "Id" object format
+    /// (e.g. "Id": { "Id": "^FUEL1" }). This format is not produced by the game
+    /// but is tested to ensure ReadSlotItemId handles both forms.
+    /// </summary>
+    private static JsonObject BuildInventoryNestedIds(params (string id, int amount, int maxAmount, double damage, string invType)[] slots)
     {
         var inv = JsonObject.Parse("{ \"Slots\": [], \"SpecialSlots\": [] }");
         var slotsArr = inv.GetArray("Slots")!;
@@ -11847,7 +11919,7 @@ public class LogicTests
         // Damage placeholder should be removed from slots
         var slots = cargoInv.GetArray("Slots")!;
         Assert.Equal(1, slots.Length);
-        Assert.Equal("^FUEL1", slots.GetObject(0)!.GetObject("Id")!.GetString("Id"));
+        Assert.Equal("^FUEL1", slots.GetObject(0)!.GetString("Id"));
     }
 
     [Fact]
@@ -12077,5 +12149,194 @@ public class LogicTests
         Assert.Equal(0, InventoryBulkActions.RefillAllStacks(ps, db));
         Assert.Equal(0, InventoryBulkActions.RepairAllSlots(ps, db));
         Assert.Equal(0, InventoryBulkActions.RepairAllTechnology(ps, db));
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_SkipsTechnologyTypeItemsInCargoInventory()
+    {
+        // Technology type items stored in cargo slots (general inventories) carry
+        // charge amounts, not stack sizes. RefillAllStacks must not touch them -
+        // they belong to Recharge All Technology (weirdly).
+        var db = BuildTestDatabase();
+
+        var cargoInv = BuildInventory(
+            ("^FUEL1",      50, 500, 0, "Substance"),   // cargo item  — should be refilled
+            ("^HYPERDRIVE", 10, 200, 0, "Technology")   // tech in cargo — must NOT be refilled
+        );
+        var ps = BuildPlayerState(cargoInv: cargoInv);
+
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+
+        // Only the Substance item should be counted and refilled.
+        Assert.Equal(1, refilled);
+        var slots = cargoInv.GetArray("Slots")!;
+        Assert.Equal(500, slots.GetObject(0)!.GetInt("Amount"));  // Substance refilled
+        Assert.Equal(10,  slots.GetObject(1)!.GetInt("Amount"));  // Technology unchanged
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllTechnology_DoesNotTouchCargoInventories()
+    {
+        // RepairAllTechnology must only operate on technology inventories
+        // (Inventory_TechOnly and equivalents). A damaged tech item in a cargo
+        // inventory must not be repaired by this action.
+        var db = BuildTestDatabase();
+
+        var cargoInv  = BuildInventory(("^HYPERDRIVE", -1, 200, 1.0, "Technology")); // in cargo
+        var techInv   = BuildInventory(("^HYPERDRIVE", -1, 200, 1.0, "Technology")); // in tech
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Inventory",        cargoInv);  // cargo inventory
+        ps.Add("Inventory_TechOnly", techInv); // tech inventory
+
+        int repaired = InventoryBulkActions.RepairAllTechnology(ps, db);
+
+        // Only the tech inventory item should be repaired.
+        Assert.Equal(1, repaired);
+        Assert.Equal(1.0, cargoInv.GetArray("Slots")!.GetObject(0)!.GetDouble("DamageFactor")); // unchanged
+        Assert.Equal(0.0, techInv.GetArray("Slots")!.GetObject(0)!.GetDouble("DamageFactor"));  // repaired
+    }
+
+    [Fact]
+    public void BulkActions_RechargeAllTechnology_SkipsDamagedItems()
+    {
+        // Damaged tech items have Amount == -1. They must be repaired first
+        // before recharging. RechargeAllTechnology must not set them to MaxAmount.
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int maxCharge = hyperdrive.ChargeValue;
+
+        var techInv = BuildInventory(
+            ("^HYPERDRIVE", -1, maxCharge, 1.0, "Technology") // damaged (Amount = -1)
+        );
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+
+        // Damaged slot must not have been recharged.
+        Assert.Equal(0, recharged);
+        Assert.Equal(-1, techInv.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    // Flat-string slot ID format (the format used by real NMS save files).
+    // Slots in save files use "Id": "^ITEM", not "Id": { "Id": "^ITEM" }.
+    // These tests guard against regressions in ReadSlotItemId that would
+    // cause the nested-only check to silently skip every real slot.
+
+    [Fact]
+    public void BulkActions_RechargeAllTechnology_FlatStringId_RechargesSlots()
+    {
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int maxCharge = hyperdrive.ChargeValue;
+        Assert.True(maxCharge > 0);
+
+        // Flat "Id" format matches real NMS save files.
+        var techInv = BuildInventory(("^HYPERDRIVE", 0, maxCharge, 0, "Technology"));
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+
+        Assert.Equal(1, recharged);
+        Assert.Equal(maxCharge, techInv.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RefillAllStacks_FlatStringId_RefillsSlots()
+    {
+        var db = BuildTestDatabase();
+
+        var cargoInv = BuildInventory(("^FUEL1", 10, 500, 0, "Substance"));
+        var ps = BuildPlayerState(cargoInv: cargoInv);
+
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+
+        Assert.Equal(1, refilled);
+        Assert.Equal(500, cargoInv.GetArray("Slots")!.GetObject(0)!.GetInt("Amount"));
+    }
+
+    [Fact]
+    public void BulkActions_RepairAllSlots_FlatStringId_RepairsSlots()
+    {
+        var db = BuildTestDatabase();
+
+        var techInv = BuildInventory(("^HYPERDRIVE", -1, 200, 1.0, "Technology"));
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int repaired = InventoryBulkActions.RepairAllSlots(ps, db);
+
+        Assert.True(repaired >= 1);
+        var slot = techInv.GetArray("Slots")!.GetObject(0)!;
+        Assert.Equal(0.0, slot.GetDouble("DamageFactor"));
+        Assert.True((bool)slot.Get("FullyInstalled")!);
+    }
+
+    [Fact]
+    public void BulkActions_NestedObjectId_StillHandledByRecharge()
+    {
+        // Nested format ("Id": { "Id": "^ITEM" }) is not produced by the game
+        // but may appear if a slot was written by a different code path.
+        // ReadSlotItemId must handle it so no items are silently skipped.
+        var db = BuildTestDatabase();
+        if (db.Items.Count == 0) return;
+
+        var hyperdrive = db.GetItem("^HYPERDRIVE");
+        Assert.NotNull(hyperdrive);
+        int maxCharge = hyperdrive.ChargeValue;
+
+        var techInv = BuildInventoryNestedIds(("^HYPERDRIVE", 0, maxCharge, 0, "Technology"));
+        var ps = BuildPlayerState(techInv: techInv);
+
+        int recharged = InventoryBulkActions.RechargeAllTechnology(ps, db);
+
+        Assert.Equal(1, recharged);
+    }
+
+    [Fact]
+    public void BulkActions_BinaryDataId_IsDecodedAndProcessed()
+    {
+        // BinaryData IDs occur for tech-pack items whose ID body contains
+        // non-ASCII bytes. ReadSlotItemId must decode them via BinaryDataToItemId
+        // rather than returning an empty string and skipping the slot entirely.
+        // This test uses a BinaryData value whose first byte is 0x5E ('^'), which
+        // produces a non-empty ID string. Because the slot has Amount < MaxAmount,
+        // RefillAllStacks must count and fill it (proving the slot was not skipped).
+        var db = BuildTestDatabase();
+
+        var binaryId = new BinaryData(new byte[] { 0x5E, 0x80, 0x80, 0x80 });
+
+        var inv = JsonObject.Parse("{ \"Slots\": [], \"SpecialSlots\": [] }");
+        var slotsArr = inv.GetArray("Slots")!;
+
+        var slot = JsonObject.Parse(@"{
+            ""Amount"": 50,
+            ""MaxAmount"": 100,
+            ""DamageFactor"": 0.0,
+            ""FullyInstalled"": true,
+            ""Type"": { ""InventoryType"": ""Substance"" },
+            ""Index"": { ""X"": 0, ""Y"": 0 }
+        }");
+
+        // Insert the BinaryData Id directly - this mirrors the format that the
+        // JSON parser produces for save-file strings with non-ASCII bytes.
+        var idObj = JsonObject.Parse("{}");
+        idObj.Add("Id", binaryId);
+        slot.Add("Id", idObj);
+        slotsArr.Add(slot);
+
+        var ps = JsonObject.Parse("{}");
+        ps.Add("Inventory", inv);
+
+        // Before the fix, ReadSlotItemId returned "" for BinaryData, so the slot
+        // was skipped and refilled == 0. Derp.
+		// After the fix it is decoded and filled properly.
+        int refilled = InventoryBulkActions.RefillAllStacks(ps, db);
+        Assert.Equal(1, refilled);
+        Assert.Equal(100, slot.GetInt("Amount"));
     }
 }

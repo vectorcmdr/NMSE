@@ -1967,11 +1967,11 @@ public partial class MainFormResources : Form
     private void OnToolsRechargeAllTech(object? sender, EventArgs e)
     {
         if (_currentSaveData == null) return;
-        SyncAllPanelData();
         var playerState = _currentSaveData.GetObject("PlayerStateData");
         if (playerState == null) return;
 
         int count = InventoryBulkActions.RechargeAllTechnology(playerState, _database);
+        if (count > 0) _hasUnsavedChanges = true;
         ReloadAllLoadedPanels();
         _statusLabel.Text = UiStrings.Format("status.recharged_all_tech", count);
     }
@@ -1979,11 +1979,11 @@ public partial class MainFormResources : Form
     private void OnToolsRefillAllStacks(object? sender, EventArgs e)
     {
         if (_currentSaveData == null) return;
-        SyncAllPanelData();
         var playerState = _currentSaveData.GetObject("PlayerStateData");
         if (playerState == null) return;
 
         int count = InventoryBulkActions.RefillAllStacks(playerState, _database);
+        if (count > 0) _hasUnsavedChanges = true;
         ReloadAllLoadedPanels();
         _statusLabel.Text = UiStrings.Format("status.refilled_all_stacks", count);
     }
@@ -1991,11 +1991,11 @@ public partial class MainFormResources : Form
     private void OnToolsRepairAllSlots(object? sender, EventArgs e)
     {
         if (_currentSaveData == null) return;
-        SyncAllPanelData();
         var playerState = _currentSaveData.GetObject("PlayerStateData");
         if (playerState == null) return;
 
         int count = InventoryBulkActions.RepairAllSlots(playerState, _database);
+        if (count > 0) _hasUnsavedChanges = true;
         ReloadAllLoadedPanels();
         _statusLabel.Text = UiStrings.Format("status.repaired_all_slots", count);
     }
@@ -2003,11 +2003,11 @@ public partial class MainFormResources : Form
     private void OnToolsRepairAllTech(object? sender, EventArgs e)
     {
         if (_currentSaveData == null) return;
-        SyncAllPanelData();
         var playerState = _currentSaveData.GetObject("PlayerStateData");
         if (playerState == null) return;
 
         int count = InventoryBulkActions.RepairAllTechnology(playerState, _database);
+        if (count > 0) _hasUnsavedChanges = true;
         ReloadAllLoadedPanels();
         _statusLabel.Text = UiStrings.Format("status.repaired_all_tech", count);
     }
@@ -2030,6 +2030,10 @@ public partial class MainFormResources : Form
         if (_loadedTabIndices.Contains(4)) _fleetPanel.LoadData(_currentSaveData);
         if (_loadedTabIndices.Contains(5)) _vehiclePanel.LoadData(_currentSaveData);
         if (_loadedTabIndices.Contains(7)) _basePanel.LoadData(_currentSaveData);
+
+        // Tell the Raw JSON Editor that the underlying data has changed so its
+        // cached diff is discarded and "Show Changes" recomputes on next click.
+        if (_loadedTabIndices.Contains(14)) _rawJsonPanel.NotifyDataChanged();
     }
 
     private void OnGitHub(object? sender, EventArgs e)

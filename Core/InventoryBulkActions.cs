@@ -241,15 +241,16 @@ internal static class InventoryBulkActions
     }
 
     /// <summary>
-    /// Repairs all damaged technology across every inventory (cargo and tech), excluding
-    /// Chests and Storage inventories. Only repairs technology items (not regular cargo items).
-    /// Equivalent to calling "Repair All Technology" on each repairable inventory.
+    /// Repairs all damaged technology across every technology inventory (Exosuit tech,
+    /// Multitools, Starship tech, Freighter tech, and Exocraft tech).
+    /// Only repairs technology items (not regular cargo items) and only within
+    /// technology inventories. Cargo inventories are not touched.
     /// </summary>
     /// <returns>Total number of technology items repaired.</returns>
     public static int RepairAllTechnology(JsonObject playerState, GameItemDatabase database)
     {
         int repaired = 0;
-        foreach (var inventory in EnumerateRepairableInventories(playerState))
+        foreach (var inventory in EnumerateTechInventories(playerState))
         {
             repaired += RepairInventoryTechnology(inventory, database);
         }
@@ -260,6 +261,7 @@ internal static class InventoryBulkActions
 
     /// <summary>
     /// Recharges all chargeable technology in a single inventory to max amount.
+    /// Damaged items (Amount &lt; 0) are skipped — repair them first.
     /// Mirrors OnRechargeAllTech from InventoryGridPanel, operating on raw JSON.
     /// </summary>
     private static int RechargeInventoryTech(JsonObject inventory, GameItemDatabase database)
@@ -283,6 +285,8 @@ internal static class InventoryBulkActions
             if (maxAmount <= 0) continue;
 
             int currentAmount = slot.GetInt("Amount");
+            // Damaged tech items carry Amount == -1; they must be repaired first.
+            if (currentAmount < 0) continue;
             if (currentAmount >= maxAmount) continue;
 
             slot.Set("Amount", maxAmount);
@@ -292,7 +296,9 @@ internal static class InventoryBulkActions
     }
 
     /// <summary>
-    /// Refills all item stacks in a single inventory to their max amount.
+    /// Refills all cargo item stacks in a single inventory to their max amount.
+    /// Technology-type slots are skipped — they are recharged by
+    /// <see cref="RechargeInventoryTech"/> instead.
     /// Mirrors OnRefillAllStacks from InventoryGridPanel, operating on raw JSON.
     /// </summary>
     private static int RefillInventoryStacks(JsonObject inventory)
@@ -308,6 +314,12 @@ internal static class InventoryBulkActions
 
             string itemId = ReadSlotItemId(slot);
             if (string.IsNullOrEmpty(itemId)) continue;
+
+            // Technology-type items in cargo inventories (e.g. upgrade modules
+            // installed in the general bag) carry charge amounts rather than
+            // stack sizes. Skip them here; they belong to Recharge All Technology.
+            string invType = ResolveInventoryTypeForSlot(slot, null);
+            if (string.Equals(invType, "Technology", StringComparison.OrdinalIgnoreCase)) continue;
 
             int maxAmount = slot.GetInt("MaxAmount");
             if (maxAmount <= 0) continue;
@@ -423,15 +435,26 @@ internal static class InventoryBulkActions
     // Slot-level helpers
 
     /// <summary>
-    /// Reads the item ID from a slot's nested Id property.
-    /// Returns the raw ID string (e.g. "^HYPERDRIVE" or "^SHIPSLOT_DMG1").
+    /// Reads the item ID from a slot. Handles both the flat save-file format
+    /// ("Id": "^ITEM") and the nested object format ("Id": {"Id": "^ITEM"}).
+    /// BinaryData IDs (tech-pack packed bytes) are decoded to a hex string.
+    /// Returns the raw ID string (e.g. "^HYPERDRIVE" or "^SHIPSLOT_DMG1"),
+    /// or an empty string if the slot has no recognisable item ID.
     /// </summary>
     private static string ReadSlotItemId(JsonObject slot)
     {
-        var idObj = slot.Get("Id");
-        if (idObj is JsonObject idJsonObj)
-            return idJsonObj.GetString("Id") ?? "";
-        return "";
+        object? raw = slot.Get("Id");
+
+        // Unwrap nested object format: { "Id": { "Id": "^ITEM" } }
+        if (raw is JsonObject idObj)
+            raw = idObj.Get("Id");
+
+        return raw switch
+        {
+            BinaryData data => BinaryDataToItemId(data),
+            string text     => text,
+            _               => ""
+        };
     }
 
     /// <summary>

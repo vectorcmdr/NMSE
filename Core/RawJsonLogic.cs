@@ -178,9 +178,13 @@ internal static class RawJsonLogic
     {
         var rawDiff = ComputeRawDiff(oldLines, newLines);
 
-        // Detect the MaxDiffDistance fallback: rawDiff has no Context lines but does
-        // have both Added and Removed lines. Save files always share JSON structural
-        // characters so a genuine zero-context result is practically impossible.
+        // Detect the MaxDiffDistance fallback: when Myers exceeds its edit-distance cap it
+        // returns every line of oldMid as Removed followed by every line of newMid as Added
+        // (no Context lines in between).  ComputeRawDiff prepends the common prefix as
+        // Context *before* calling MyersDiff, so contextCount is never zero even in the
+        // fallback case — checking contextCount == 0 was always incorrect.
+        // The reliable invariant is: a successful Myers run produces at most MaxDiffDistance
+        // total edits; anything larger means the fallback fired.
         int contextCount = 0, removedCount = 0, addedCount = 0;
         foreach (var (type, _) in rawDiff)
         {
@@ -188,12 +192,14 @@ internal static class RawJsonLogic
             else if (type == DiffLineType.Removed) removedCount++;
             else addedCount++;
         }
-        if (contextCount == 0 && (removedCount > 0 || addedCount > 0))
+        if (removedCount + addedCount > MaxDiffDistance)
         {
-            // Too many differences: return a single informational header rather than
-            // an unusable wall of all-removed then all-added lines.
+            // Too many differences to display line-by-line: return a single informational
+            // header.  (The raw removedCount/addedCount figures come from the fallback
+            // array which equals the entire middle section of the file — not the true edit
+            // count — so we don't show them to avoid confusing the user.)
             return [new DiffLine(DiffLineType.Header,
-                $"{removedCount} lines removed, {addedCount} lines added – changes exceed line-by-line display limit")];
+                $"Changes exceed the line-by-line display limit ({MaxDiffDistance} edits). Save the file and compare externally for a full diff.")];
         }
 
         // Assign line numbers, collapse unchanged regions, then insert context headers.
@@ -397,13 +403,17 @@ internal static class RawJsonLogic
 
     /// <summary>
     /// Maximum edit distance (number of changed lines) before falling back to a summary diff.
-    /// Capping this at 300 bounds both the V-array allocation and the history snapshots to
-    /// O(MaxDiffDistance) rather than O(N+M), eliminating the multi-hundred-MB spike that
-    /// occurred when comparing large save files with thousands of edits. Files whose diff
-    /// exceeds this limit receive a single informational header line instead of an unusable
-    /// wall of all-removed-then-all-added output.
+    /// Capping this bounds both the V-array allocation and the history snapshots to
+    /// O(MaxDiffDistance) rather than O(N+M). Memory cost: each of the D+1 history snapshots
+    /// is (2*MaxDiffDistance+3) ints (~16 KB at 2000); total ~= 32 MB worst case. Time cost is
+    /// O(N + D²) where N ~= file length in lines — at D=2000 this is well under a second for
+    /// typical NMS saves (~500 K lines). Files whose diff exceeds this limit receive a single
+    /// informational header line instead of an unusable all-removed-then-all-added wall.
+    /// 2000 comfortably covers all practical bulk inventory operations (RefillAllStacks on
+    /// a fully-loaded save produces at most ~1500 single-line Amount edits; RepairAllSlots
+    /// produces slot-removal line-blocks that stay well under this limit).
     /// </summary>
-    private const int MaxDiffDistance = 300;
+    private const int MaxDiffDistance = 2000;
 
     /// <summary>
     /// Computes the raw diff between two line arrays using the Myers diff algorithm
