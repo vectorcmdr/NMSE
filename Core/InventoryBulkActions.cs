@@ -278,7 +278,14 @@ internal static class InventoryBulkActions
             string itemId = ReadSlotItemId(slot);
             if (string.IsNullOrEmpty(itemId)) continue;
 
-            var gameItem = database.GetItem(itemId);
+			// Procedural tech items (e.g. ^UP_COLD3#84346) need the
+			// seed suffix stripped for lookup, since the database does
+			// not store the seeds the filter returned null.
+			// Strip it to the base ID before lookup, mirroring the fallback
+			// logic in InventoryGridPanel.ResolveGameItem.
+			string lookupId = ProceduralSeedHelper.Strip(itemId).baseId;
+
+            var gameItem = database.GetItem(lookupId);
             if (gameItem == null || !gameItem.IsChargeable) continue;
 
             int maxAmount = slot.GetInt("MaxAmount");
@@ -479,7 +486,8 @@ internal static class InventoryBulkActions
                 string itemId = ReadSlotItemId(slot);
                 if (!string.IsNullOrEmpty(itemId))
                 {
-                    var gameItem = database.GetItem(itemId);
+                    string lookupId = ProceduralSeedHelper.Strip(itemId).baseId;
+                    var gameItem = database.GetItem(lookupId);
                     if (gameItem != null)
                     {
                         string invType = ResolveInventoryTypeForSlot(slot, gameItem);
