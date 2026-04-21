@@ -1,8 +1,12 @@
-## NMSE — No Man's Save Editor v1.1.45 (preview)
+## NMSE — No Man's Save Editor v1.1.46 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
-### Changelog
+### Changelog 1.1.46 (preview) - hotfix
+
+This is a quick hotfix to correct the bulk inventory actions in the Tools menu (they didn't get re-tested after the backend update) and to bump the game version to 6.34.
+
+### Changelog 1.1.45 (preview)
 
 #### Features:
 
