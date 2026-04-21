@@ -1,8 +1,17 @@
-## NMSE — No Man's Save Editor v1.1.46 (preview)
+## NMSE — No Man's Save Editor v1.1.47 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
+### Changelog 1.1.47 (preview) - hotfix
+
+#### Bug Fixes:
+
+This is a quick hotfix to correct bulk recharge skipping procedural technology items due to not filtering the seed suffix from the item ID.
+Apologies everyone!
+
 ### Changelog 1.1.46 (preview) - hotfix
+
+#### Bug Fixes:
 
 This is a quick hotfix to correct the bulk inventory actions in the Tools menu (they didn't get re-tested after the backend update) and to bump the game version to 6.34.
 
