@@ -181,6 +181,39 @@ public partial class CataloguePanel : UserControl
             CatalogueLogic.SyncWordStats(saveData, _knownWordGroups);
     }
 
+    /// <summary>
+    /// Releases the panel's heaviest runtime memory: DataGridView rows (which reference
+    /// icon <see cref="Image"/> objects) and the scaled icon bitmap cache.
+    /// <para>After this call the panel is effectively unloaded. Call <see cref="LoadData"/>
+    /// again before the panel becomes visible.</para>
+    /// <para>Always call <see cref="SaveData"/> first if any unsaved edits may exist.</para>
+    /// </summary>
+    public void PurgeData()
+    {
+        // Clear all DataGridView row collections. This releases the Image cell values
+        // for the icon columns and allows those Bitmap objects to be GC'd.
+        _techGrid.Rows.Clear();
+        _productGrid.Rows.Clear();
+        _specialsGrid.Rows.Clear();
+        _wordGrid.Rows.Clear();
+        _locationsGrid.Rows.Clear();
+        _fishGrid.Rows.Clear();
+
+        // Dispose every cached scaled icon bitmap (typically 24×24 px each) and
+        // clear the cache so they are re-created on the next LoadData call.
+        foreach (var img in _scaledIconCache.Values)
+            img.Dispose();
+        _scaledIconCache.Clear();
+
+        // Release references to save-data objects so the JsonObject graph is not
+        // pinned by this panel while it is unloaded.
+        _savedSaveData = null;
+        _savedPlayerState = null;
+        _knownWordGroups = null;
+        _teleportEndpoints = null;
+        _fishingRecord = null;
+    }
+
     // --- Shared helpers ---
 
     private static DataGridView CreateItemGrid()
