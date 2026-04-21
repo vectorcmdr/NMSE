@@ -169,6 +169,24 @@ internal sealed class JsonSyntaxTextBox : UserControl
         set => _readOnly = value;
     }
 
+    /// <summary>
+    /// Per-line background colour overlay used for diff/annotation display.
+    /// Keys are 0-based source line indices. When set, each matching line is filled with
+    /// the specified colour before text is painted, replacing the normal white background.
+    /// </summary>
+    private IReadOnlyDictionary<int, Color>? _lineBackgroundColors;
+
+    /// <summary>
+    /// Applies a per-line background colour map so the control can render coloured diff output.
+    /// Keys are 0-based source line indices; values are the desired fill colour.
+    /// Pass <c>null</c> to clear and revert to normal (white) line backgrounds.
+    /// </summary>
+    public void SetLineBackgroundColors(IReadOnlyDictionary<int, Color>? colors)
+    {
+        _lineBackgroundColors = colors;
+        Invalidate();
+    }
+
     /// <summary>Scrolls so that the specified 1-based line number is visible.</summary>
     public void ScrollToLine(int lineNumber)
     {
@@ -427,11 +445,20 @@ internal sealed class JsonSyntaxTextBox : UserControl
             int y = vi * _lineHeight;
             if (y > TextAreaHeight) break;
 
-            // Current line highlighter
-            int caretDisplayLine = SourceToDisplay(_caretLine);
-            if (displayIdx == caretDisplayLine && !HasSelection())
+            // Per-line background colour override (diff viewer mode)
+            if (_lineBackgroundColors != null && _lineBackgroundColors.TryGetValue(srcLine, out Color lineBg))
             {
-                g.FillRectangle(_currentLineBrush, textX, y, ClientSize.Width - textX - _vScroll.Width, _lineHeight);
+                using var lineBgBrush = new SolidBrush(lineBg);
+                g.FillRectangle(lineBgBrush, textX, y, ClientSize.Width - textX - _vScroll.Width, _lineHeight);
+            }
+            else
+            {
+                // Current line highlighter (only when not in diff colour mode)
+                int caretDisplayLine = SourceToDisplay(_caretLine);
+                if (displayIdx == caretDisplayLine && !HasSelection())
+                {
+                    g.FillRectangle(_currentLineBrush, textX, y, ClientSize.Width - textX - _vScroll.Width, _lineHeight);
+                }
             }
 
             // Selection highlighter

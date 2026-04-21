@@ -91,6 +91,55 @@ public static class JsonParser
     }
 
     /// <summary>
+    /// Serializes a JSON value to a formatted display string and returns the individual
+    /// lines <b>without ever allocating the full concatenated string</b>.
+    /// Iterates <see cref="StringBuilder.GetChunks"/> directly and splits on <c>'\n'</c>,
+    /// eliminating the large LOH allocation that <see cref="Serialize"/> + <c>string.Split</c>
+    /// would produce (for a typical NMS save that is one fewer ~100 MB string).
+    /// Returned lines have no trailing <c>'\r'</c> regardless of platform so callers do not
+    /// need to normalise them (e.g. <c>TrimEnd('\r')</c> in diff code becomes a no-op).
+    /// </summary>
+    public static string[] SerializeToLines(object? value, bool skipReverseMapping = true)
+    {
+        var mapper = skipReverseMapping ? null : (value as JsonObject)?.NameMapper;
+        var sb = new StringBuilder();
+        SerializeValue(sb, value, 0, true, mapper, skipReverseMapping);
+
+        // Iterate the StringBuilder's internal memory chunks and split on '\n' without
+        // calling sb.ToString(), which would allocate a second copy of the full string.
+        // Pre-size the list based on the total char count: formatted JSON averages ~30-50
+        // chars per line so sb.Length/40 gives a reasonable initial capacity that avoids
+        // repeated doubling for large save files while not over-allocating for small ones.
+        var lines = new List<string>(Math.Max(16, sb.Length / 40));
+        var lineBuffer = new StringBuilder(256);
+
+        foreach (var chunk in sb.GetChunks())
+        {
+            foreach (char c in chunk.Span)
+            {
+                if (c == '\n')
+                {
+                    // Strip trailing '\r' from Windows (\r\n) line endings.
+                    if (lineBuffer.Length > 0 && lineBuffer[lineBuffer.Length - 1] == '\r')
+                        lineBuffer.Length--;
+                    lines.Add(lineBuffer.ToString());
+                    lineBuffer.Clear();
+                }
+                else
+                {
+                    lineBuffer.Append(c);
+                }
+            }
+        }
+
+        // Add any trailing content that was not followed by a '\n'.
+        if (lineBuffer.Length > 0)
+            lines.Add(lineBuffer.ToString());
+
+        return [.. lines];
+    }
+
+    /// <summary>
     /// Serialize a value into the shared StringBuilder.
     /// depth &lt; 0 means unformatted (no newlines/indentation).
     /// </summary>

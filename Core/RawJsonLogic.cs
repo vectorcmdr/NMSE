@@ -39,6 +39,18 @@ internal static class RawJsonLogic
     }
 
     /// <summary>
+    /// Converts save data to a formatted display string split into individual lines,
+    /// without allocating the full intermediate string.
+    /// Prefer this over <see cref="ToDisplayString"/> when the result is only needed
+    /// for line-level operations (e.g., computing a diff), as it eliminates one large
+    /// LOH allocation per call. Returned lines have no trailing <c>'\r'</c>.
+    /// </summary>
+    internal static string[] ToLines(JsonObject saveData)
+    {
+        return saveData.ToLines();
+    }
+
+    /// <summary>
     /// Serializes any JSON value (object, array, or primitive) to a formatted
     /// display string with human-readable (deobfuscated) keys.
     /// </summary>
@@ -154,16 +166,39 @@ internal static class RawJsonLogic
         // to avoid doubling the string[] memory allocation.
         var oldLines = original.Split('\n');
         var newLines = current.Split('\n');
+        return ComputeCompactDiffFromLines(oldLines, newLines, contextLines);
+    }
 
+    /// <summary>
+    /// Computes a compact diff from pre-split line arrays.
+    /// Use this overload when the caller has already split the strings (e.g., after
+    /// nulling the original strings to allow early GC of large JSON text).
+    /// </summary>
+    internal static List<DiffLine> ComputeCompactDiffFromLines(string[] oldLines, string[] newLines, int contextLines = 3)
+    {
         var rawDiff = ComputeRawDiff(oldLines, newLines);
 
-        // Assign line numbers to each raw diff line
+        // Detect the MaxDiffDistance fallback: rawDiff has no Context lines but does
+        // have both Added and Removed lines. Save files always share JSON structural
+        // characters so a genuine zero-context result is practically impossible.
+        int contextCount = 0, removedCount = 0, addedCount = 0;
+        foreach (var (type, _) in rawDiff)
+        {
+            if (type == DiffLineType.Context) contextCount++;
+            else if (type == DiffLineType.Removed) removedCount++;
+            else addedCount++;
+        }
+        if (contextCount == 0 && (removedCount > 0 || addedCount > 0))
+        {
+            // Too many differences: return a single informational header rather than
+            // an unusable wall of all-removed then all-added lines.
+            return [new DiffLine(DiffLineType.Header,
+                $"{removedCount} lines removed, {addedCount} lines added – changes exceed line-by-line display limit")];
+        }
+
+        // Assign line numbers, collapse unchanged regions, then insert context headers.
         var numberedDiff = AssignLineNumbers(rawDiff);
-
-        // Collapse unchanged regions, keeping only contextLines around changes
         var collapsed = CollapseContext(numberedDiff, contextLines);
-
-        // Insert JSON path context headers above each diff hunk
         return InsertContextHeaders(collapsed, oldLines, newLines);
     }
 
@@ -361,10 +396,14 @@ internal static class RawJsonLogic
     #region Myers Diff Algorithm
 
     /// <summary>
-    /// Maximum edit distance before falling back to a simple all-removed/all-added diff.
-    /// Guards against pathological inputs where the two files are completely different.
+    /// Maximum edit distance (number of changed lines) before falling back to a summary diff.
+    /// Capping this at 300 bounds both the V-array allocation and the history snapshots to
+    /// O(MaxDiffDistance) rather than O(N+M), eliminating the multi-hundred-MB spike that
+    /// occurred when comparing large save files with thousands of edits. Files whose diff
+    /// exceeds this limit receive a single informational header line instead of an unusable
+    /// wall of all-removed-then-all-added output.
     /// </summary>
-    private const int MaxDiffDistance = 5000;
+    private const int MaxDiffDistance = 300;
 
     /// <summary>
     /// Computes the raw diff between two line arrays using the Myers diff algorithm
@@ -422,6 +461,8 @@ internal static class RawJsonLogic
     /// Myers diff algorithm - computes the shortest minimal
 	/// diff between two arrays of pre-normalized lines. 
 	/// O(N*D) time where D is the edit distance.
+    /// V array is bounded to O(MaxDiffDistance) rather than O(N+M) so that each
+    /// per-step history snapshot is tiny regardless of file size.
     /// </summary>
     private static List<(DiffLineType Type, string Text)> MyersDiff(string[] oldArr, string[] newArr)
     {
@@ -433,15 +474,19 @@ internal static class RawJsonLogic
         if (M == 0) return oldArr.Select(l => (DiffLineType.Removed, l)).ToList();
 
         int max = N + M;
-        int offset = max + 1;
-        int vSize = 2 * max + 3;
+        // Size the V array by MaxDiffDistance, not by N+M. Diagonals k only ever
+        // fall in [-d, d] where d <= MaxDiffDistance, so this covers all accessed
+        // indices. Each history snapshot shrinks from O(N+M) to O(MaxDiffDistance),
+        // eliminating hundreds of MB of allocations for large but mostly-unchanged files.
+        int offset = MaxDiffDistance + 1;
+        int vSize = 2 * MaxDiffDistance + 3;
 
         var V = new int[vSize];
         Array.Fill(V, -1);
         V[1 + offset] = 0;
 
         // Save snapshots of V at the start of each d-step for backtracking
-        var history = new List<int[]>();
+        var history = new List<int[]>(Math.Min(max, MaxDiffDistance) + 1);
 
         for (int d = 0; d <= Math.Min(max, MaxDiffDistance); d++)
         {

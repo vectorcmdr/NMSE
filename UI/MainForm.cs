@@ -89,6 +89,9 @@ public partial class MainFormResources : Form
     // Deferred panel loading: track which tabs have had LoadData called
     private readonly HashSet<int> _loadedTabIndices = new();
 
+    /// <summary>Tracks the previously selected tab index for purge on leave logic.</summary>
+    private int _prevTabIndex = -1;
+
     /// <summary>Background icon preload task started during construction.</summary>
     private Task? _iconPreloadTask;
 
@@ -435,6 +438,21 @@ public partial class MainFormResources : Form
     {
         int idx = _tabControl.SelectedIndex;
         if (idx < 0 || _currentSaveData == null) return;
+
+        // Purge the Catalogue panel when navigating away from it. CataloguePanel is one of
+        // the heaviest panels (DataGridViews with icon images + scaled icon bitmap cache)
+		// and it is safe to reload on demand via the deferred loading path below.
+        const int catalogueTabIdx = 8;
+        if (_prevTabIndex == catalogueTabIdx && idx != catalogueTabIdx
+            && _loadedTabIndices.Contains(catalogueTabIdx))
+        {
+            // Sync any pending changes before clearing the rows.
+            _cataloguePanel.SaveData(_currentSaveData);
+            _cataloguePanel.PurgeData();
+            // Remove from loaded set so the deferred loader rehydrates it next visit.
+            _loadedTabIndices.Remove(catalogueTabIdx);
+        }
+        _prevTabIndex = idx;
 
         // Deferred panel loading: if this tab hasn't been loaded yet, load it now.
         // Hide the content panel before loading and show it after. Because the
@@ -1255,6 +1273,13 @@ public partial class MainFormResources : Form
                 if (saveDir != null) _accountPanel.LoadAccountFile(saveDir);
                 _rawJsonPanel.SetSaveFilePath(filePath);
                 _rawJsonPanel.SetAccountData(_accountPanel.AccountData, _accountPanel.AccountFilePath);
+                // Capture the diff baseline now, before any panel LoadData is called.
+                // Some panels (e.g. companion panel) write changes directly to the JSON
+                // object the moment the user interacts with a control, so if baseline
+                // capture is deferred to the first Raw JSON Editor tab visit it may
+                // already include panel side changes, causing "Show Changes" to miss
+				// them in the diff.
+                _rawJsonPanel.CaptureBaseline(_currentSaveData);
 
                 // Load only the currently selected tab (other tabs loaded on first selection)
                 activeContent?.SuspendLayout();
@@ -1475,6 +1500,8 @@ public partial class MainFormResources : Form
                 // Account data for Xbox is already loaded in PopulateSaveSlots via LoadXboxAccountData
                 _rawJsonPanel.SetSaveFilePath(containersIndexPath);
                 _rawJsonPanel.SetAccountData(_accountPanel.AccountData, _accountPanel.AccountFilePath);
+                // Capture the diff baseline before any panel LoadData is called (see LoadSaveData).
+                _rawJsonPanel.CaptureBaseline(_currentSaveData);
                 activeContent?.SuspendLayout();
                 try
                 {
@@ -1542,6 +1569,8 @@ public partial class MainFormResources : Form
                 if (saveDir != null) _accountPanel.LoadAccountFile(saveDir);
                 _rawJsonPanel.SetSaveFilePath(memoryDatPath);
                 _rawJsonPanel.SetAccountData(_accountPanel.AccountData, _accountPanel.AccountFilePath);
+                // Capture the diff baseline before any panel LoadData is called (see LoadSaveData).
+                _rawJsonPanel.CaptureBaseline(_currentSaveData);
                 activeContent?.SuspendLayout();
                 try
                 {
@@ -1895,6 +1924,10 @@ public partial class MainFormResources : Form
                 // the same context transforms that LoadSaveFile applies so that all
                 // panels and meta-file extraction can resolve these virtual keys.
                 SaveFileManager.RegisterContextTransforms(_currentSaveData);
+
+                // Capture the diff baseline before any panel LoadData is called so that
+                // the baseline reflects the imported state (see LoadSaveData for details).
+                _rawJsonPanel.CaptureBaseline(_currentSaveData);
 
                 _mainStatsPanel.LoadData(_currentSaveData);
                 _exosuitPanel.LoadData(_currentSaveData);

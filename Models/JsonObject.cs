@@ -510,6 +510,14 @@ public partial class JsonObject
     /// </summary>
     public string ToDisplayString() => JsonParser.Serialize(this, true, skipReverseMapping: true);
 
+    /// <summary>
+    /// Serialize with human-readable names and split into lines, without allocating the
+    /// full intermediate string. More memory-efficient than
+    /// <see cref="ToDisplayString"/> followed by <c>string.Split</c> for diff operations.
+    /// Returned lines have no trailing <c>'\r'</c> regardless of platform.
+    /// </summary>
+    public string[] ToLines() => JsonParser.SerializeToLines(this);
+
     private static void SetParent(object? value, object parent)
     {
         if (value is JsonObject obj) obj.Parent = parent;

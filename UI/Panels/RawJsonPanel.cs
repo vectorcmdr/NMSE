@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.IO.Compression;
+using System.Runtime;
 using NMSE.Models;
 using NMSE.Core;
 using NMSE.Data;
+using NMSE.UI.Controls;
 
 namespace NMSE.UI.Panels;
 
@@ -28,11 +30,26 @@ public partial class RawJsonPanel : UserControl
     private bool _treeModified;
     private bool _isShowingAccount;
     /// <summary>
-    /// Gzip-compressed bytes of the original JSON baseline string.
+    /// Gzip-compressed bytes of the original JSON baseline string for the active view.
     /// Stored compressed to reduce long-lived memory overhead (JSON text
     /// compresses ~5-10x). Decompressed on demand when computing diffs.
     /// </summary>
     private byte[]? _originalJsonCompressed;
+
+    /// <summary>
+    /// Gzip-compressed bytes of the save data baseline captured immediately when the save
+    /// file is loaded, before any other panel can write changes back to the JSON object.
+    /// This is what "Show Changes" compares against for the save data view.
+    /// </summary>
+    private byte[]? _originalSaveJsonCompressed;
+
+    /// <summary>
+    /// The <see cref="JsonObject"/> for which <see cref="_originalSaveJsonCompressed"/> was
+    /// captured. Used to detect when a new save has been loaded so the stale baseline is
+    /// not reused for a different file.
+    /// </summary>
+    private JsonObject? _capturedSaveDataRef;
+
     private bool _textModifiedSinceSwitch;
 
     /// <summary>
@@ -127,6 +144,33 @@ public partial class RawJsonPanel : UserControl
     }
 
     /// <summary>
+    /// Decompresses GZip-compressed bytes and returns the content as individual lines
+    /// <b>without ever allocating the full decompressed string</b>.
+    /// <para>
+    /// <see cref="StreamReader.ReadLine"/> strips line endings, so the returned strings
+    /// contain no trailing <c>'\r'</c> regardless of platform. This means
+    /// <c>TrimEnd('\r')</c> in diff normalization is a no-op (same reference returned),
+    /// avoiding a full per-line string copy of ~100 MB that the old
+    /// <c>DecompressString + Split('\n')</c> path caused on Windows.
+    /// </para>
+    /// </summary>
+    private static string[] ReadCompressedLines(byte[] compressed)
+    {
+        using var ms = new MemoryStream(compressed);
+        using var gz = new GZipStream(ms, CompressionMode.Decompress);
+        using var reader = new StreamReader(gz, System.Text.Encoding.UTF8);
+        // Heuristic initial capacity: JSON typically compresses 5-10x, and each line
+        // averages ~40 UTF-8 bytes, so compressed.Length * 6 / 40 gives a reasonable
+        // estimate that avoids repeated list doubling for large saves while staying
+        // proportional for small ones.
+        var lines = new List<string>(Math.Max(16, compressed.Length * 6 / 40));
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+            lines.Add(line);
+        return [.. lines];
+    }
+
+    /// <summary>
     /// Initialises a new instance of the RawJsonPanel control.
     /// </summary>
     public RawJsonPanel()
@@ -141,6 +185,29 @@ public partial class RawJsonPanel : UserControl
 
 	#region Public API
 
+    /// <summary>
+    /// Captures the diff baseline for the save data immediately at load time, before any
+    /// other panel has had a chance to write changes back to the JSON object.
+    /// <para>
+    /// Call this right after loading a save file in MainForm. Because some panels (such as
+    /// the companion panel) write changes to the JSON object as soon as the user interacts
+    /// with a control, deferring baseline capture until the Raw JSON Editor tab is first
+    /// opened would bake those changes into the baseline and hide them from "Show Changes".
+    /// </para>
+    /// </summary>
+    /// <param name="saveData">The freshly loaded save data JSON object.</param>
+    public void CaptureBaseline(JsonObject saveData)
+    {
+        var originalJson = RawJsonLogic.ToDisplayString(saveData);
+        _originalSaveJsonCompressed = CompressString(originalJson);
+        _capturedSaveDataRef = saveData;
+        if (!_isShowingAccount)
+        {
+            _originalJsonCompressed = _originalSaveJsonCompressed;
+            InvalidateDiffCache();
+        }
+    }
+
 	/// <summary>
 	/// Loads a save file JSON object into the raw editor and initialises the selected view.
 	/// </summary>
@@ -151,10 +218,21 @@ public partial class RawJsonPanel : UserControl
         _isShowingAccount = false;
         _treeModified = false;
         InvalidateDisplayCache();
-        // Capture the original JSON as a compressed snapshot for the diff baseline.
-        // Compression reduces the long-lived memory footprint by ~5-10x for JSON text.
-        var originalJson = RawJsonLogic.ToDisplayString(saveData);
-        _originalJsonCompressed = CompressString(originalJson);
+        // If CaptureBaseline was called immediately after loading this save file, reuse
+        // that snapshot so the baseline reflects the unmodified file state. Otherwise
+        // capture now as a fallback (e.g. when this method is called directly without a
+        // prior CaptureBaseline call, such as after an in-panel JSON import).
+        if (ReferenceEquals(saveData, _capturedSaveDataRef) && _originalSaveJsonCompressed != null)
+        {
+            _originalJsonCompressed = _originalSaveJsonCompressed;
+        }
+        else
+        {
+            var originalJson = RawJsonLogic.ToDisplayString(saveData);
+            _originalJsonCompressed = CompressString(originalJson);
+            _originalSaveJsonCompressed = _originalJsonCompressed;
+            _capturedSaveDataRef = saveData;
+        }
         _undoStack.Clear();
         _redoStack.Clear();
         UpdateFileSelector();
@@ -237,7 +315,13 @@ public partial class RawJsonPanel : UserControl
             _isShowingAccount = false;
             _treeModified = false;
             InvalidateDisplayCache();
-            _originalJsonCompressed = CompressString(RawJsonLogic.ToDisplayString(_saveData));
+            // Restore the baseline that was captured at load time so that changes made
+            // by other panels (e.g. companion panel spinner edits) are still visible in
+            // the diff after returning from the account data view.
+            if (ReferenceEquals(_saveData, _capturedSaveDataRef) && _originalSaveJsonCompressed != null)
+                _originalJsonCompressed = _originalSaveJsonCompressed;
+            else
+                _originalJsonCompressed = CompressString(RawJsonLogic.ToDisplayString(_saveData));
             _undoStack.Clear();
             _redoStack.Clear();
             if (_viewMode == ViewMode.Tree)
@@ -1742,15 +1826,35 @@ public partial class RawJsonPanel : UserControl
         try
         {
             // Run the expensive serialization + diff on a background thread.
-            // Decompress the original baseline on the background thread to avoid
-            // holding the full uncompressed string in long-lived memory.
             var compressedOrig = _originalJsonCompressed;
             diffLines = await Task.Run(() =>
             {
-                string origJson = DecompressString(compressedOrig);
-                string currentJson = RawJsonLogic.ToDisplayString(data);
-                return RawJsonLogic.ComputeCompactDiff(origJson, currentJson);
+                // Baseline: stream line by line from the compressed baseline
+                // WITHOUT decompressing to a full string first.
+                // StreamReader.ReadLine strips '\r', so the returned strings are already
+                // normalised (no trailing '\r').  This eliminates the ~100 MB LOH
+                // origJson string AND the ~100 MB TrimEnd copy that ComputeRawDiff would
+                // have made for oldNorm (on Windows \r\n line endings), saving ~200 MB.
+                var oldLines = ReadCompressedLines(compressedOrig);
+
+                // Current data: serialize directly into a line array using
+                // StringBuilder.GetChunks() without calling sb.ToString().
+                // This eliminates the ~100 MB LOH currentJson string AND the ~100 MB
+                // TrimEnd copy for newNorm, saving another ~200 MB.
+                // Lines are \r-free by construction (see JsonParser.SerializeToLines).
+                var newLines = RawJsonLogic.ToLines(data);
+
+                return RawJsonLogic.ComputeCompactDiffFromLines(oldLines, newLines);
             });
+
+            // Force a Gen2 collection with LOH compaction.
+            // After the task the large StringBuilder char[] chunks (from serialisation)
+            // and the oldLines/newLines string arrays are all unreachable. Running a
+            // non-blocking collection here lets the GC start reclaiming them in the
+            // background while the dialog is being shown; the wait cursor is still up,
+            // so the user won't notice any pause from the background GC threads.
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(2, GCCollectionMode.Forced, blocking: false);
         }
         catch (Exception ex)
         {
@@ -1783,6 +1887,9 @@ public partial class RawJsonPanel : UserControl
 
     /// <summary>
     /// Creates and shows the diff dialog form with coloured diff output and navigation.
+    /// Uses <see cref="JsonSyntaxTextBox"/> instead of a <see cref="RichTextBox"/> so the
+    /// content is stored as a plain <c>List&lt;string&gt;</c> (no hidden RTF/COM document)
+    /// and is freed predictably via <see cref="JsonSyntaxTextBox.ClearContent"/> before disposal.
     /// Separated from <see cref="OnShowDiff"/> so it can be reused for cached results.
     /// </summary>
     private void ShowDiffDialog(List<RawJsonLogic.DiffLine> diffLines)
@@ -1795,20 +1902,18 @@ public partial class RawJsonPanel : UserControl
             MinimizeBox = false
         };
 
-        // RichTextBox for coloured diff output
-        var richDiff = new RichTextBox
+        // JsonSyntaxTextBox: stores lines as a plain List<string> with no RTF overhead.
+        // Memory is released predictably when ClearContent() is called before disposal.
+        var diffTextBox = new JsonSyntaxTextBox
         {
             ReadOnly = true,
-            Dock = DockStyle.Fill,
-            Font = new Font("Consolas", 10),
-            WordWrap = false,
-            BackColor = Color.White,
-            BorderStyle = BorderStyle.None
+            Dock = DockStyle.Fill
         };
 
-        // Efficiently populate the RichTextBox: build all text first, then colour ranges.
-        // This is MUCH faster than line-by-line AppendText with per-line colour changes.
-        PopulateDiffRichTextBox(richDiff, diffLines);
+        // Build the text and per line background colour map, then populate the control.
+        var (diffText, lineColors) = BuildDiffContent(diffLines);
+        diffTextBox.JsonText = diffText;
+        diffTextBox.SetLineBackgroundColors(lineColors);
 
         // Count changed lines for navigation
         var changeLineIndices = new List<int>();
@@ -1852,14 +1957,11 @@ public partial class RawJsonPanel : UserControl
             MinimumSize = new Size(90, 0)
         };
 
-        // Jump to line helper
+        // Jump to line helper (ScrollToLine takes 1-based line numbers)
         void JumpToLine(int lineIdx)
         {
-            if (lineIdx < 0 || lineIdx >= richDiff.Lines.Length) return;
-            int charIdx = richDiff.GetFirstCharIndexFromLine(lineIdx);
-            richDiff.SelectionStart = charIdx;
-            richDiff.SelectionLength = 0;
-            richDiff.ScrollToCaret();
+            if (lineIdx < 0 || lineIdx >= diffLines.Count) return;
+            diffTextBox.ScrollToLine(lineIdx + 1);
         }
 
         prevChangeBtn.Click += (_, _) =>
@@ -1888,27 +1990,27 @@ public partial class RawJsonPanel : UserControl
             Height = 35
         };
         diffForm.AcceptButton = closeBtn;
-        diffForm.Controls.Add(richDiff);
+        diffForm.Controls.Add(diffTextBox);
         diffForm.Controls.Add(toolbar);
         diffForm.Controls.Add(closeBtn);
         diffForm.ShowDialog(this);
 
-        // Explicitly clear the RichTextBox content before disposal to help
-        // release the RTF document's internal memory promptly.
-        richDiff.Clear();
+        // Release all line content before the control is disposed so the plain
+        // List<string> backing the text is freed immediately (no RTF tear-down lag).
+        diffTextBox.ClearContent();
+        diffTextBox.SetLineBackgroundColors(null);
     }
 
     /// <summary>
-    /// Populates a RichTextBox with coloured diff lines efficiently, including line numbers
-    /// and JSON path context headers above each hunk.
-    /// Builds all text in a StringBuilder first, sets it in one shot, then applies
-    /// colour ranges - this is orders of magnitude faster than line-by-line AppendText.
+    /// Builds the formatted diff text and per line background colour map for the diff viewer.
+    /// Returns the complete text string and a dictionary mapping 0-based line index -> background colour.
+    /// Replaces the old <c>PopulateDiffRichTextBox</c> approach: separating text building from
+    /// RTF colour selection means the output can be loaded into any plain text control.
     /// </summary>
-    private static void PopulateDiffRichTextBox(RichTextBox rtb, List<RawJsonLogic.DiffLine> lines)
+    private static (string Text, Dictionary<int, Color> LineColors) BuildDiffContent(List<RawJsonLogic.DiffLine> lines)
     {
         var sb = new System.Text.StringBuilder();
-        // Record which line indices need colouring
-        var lineColors = new List<(int LineIdx, Color Bg, Color Fg)>();
+        var lineColors = new Dictionary<int, Color>(lines.Count);
 
         // Calculate max line number width for gutter alignment
         int maxOldLine = 0, maxNewLine = 0;
@@ -1917,9 +2019,9 @@ public partial class RawJsonPanel : UserControl
             if (dl.OldLineNum > maxOldLine) maxOldLine = dl.OldLineNum;
             if (dl.NewLineNum > maxNewLine) maxNewLine = dl.NewLineNum;
         }
-        int gutterWidth = Math.Max(maxOldLine.ToString(CultureInfo.InvariantCulture).Length, maxNewLine.ToString(CultureInfo.InvariantCulture).Length);
+        int gutterWidth = Math.Max(maxOldLine.ToString(CultureInfo.InvariantCulture).Length,
+                                   maxNewLine.ToString(CultureInfo.InvariantCulture).Length);
         if (gutterWidth < 3) gutterWidth = 3;
-        string gutterFmt = new(' ', gutterWidth);
 
         for (int i = 0; i < lines.Count; i++)
         {
@@ -1929,26 +2031,26 @@ public partial class RawJsonPanel : UserControl
                 case RawJsonLogic.DiffLineType.Header:
                     sb.Append(new string(' ', gutterWidth * 2 + 5));
                     sb.AppendLine("@@ " + dl.Text + " @@");
-                    lineColors.Add((i, Color.FromArgb(235, 235, 255), Color.FromArgb(80, 80, 160)));
+                    lineColors[i] = Color.FromArgb(235, 235, 255);
                     break;
                 case RawJsonLogic.DiffLineType.Added:
                     sb.Append(new string(' ', gutterWidth + 1));
                     sb.Append(dl.NewLineNum.ToString(CultureInfo.InvariantCulture).PadLeft(gutterWidth));
                     sb.Append("  + ");
                     sb.AppendLine(dl.Text);
-                    lineColors.Add((i, Color.FromArgb(220, 255, 220), Color.DarkGreen));
+                    lineColors[i] = Color.FromArgb(220, 255, 220);
                     break;
                 case RawJsonLogic.DiffLineType.Removed:
                     sb.Append(dl.OldLineNum.ToString(CultureInfo.InvariantCulture).PadLeft(gutterWidth));
                     sb.Append(new string(' ', gutterWidth + 1));
                     sb.Append("  - ");
                     sb.AppendLine(dl.Text);
-                    lineColors.Add((i, Color.FromArgb(255, 220, 220), Color.DarkRed));
+                    lineColors[i] = Color.FromArgb(255, 220, 220);
                     break;
                 case RawJsonLogic.DiffLineType.Separator:
                     sb.Append(new string(' ', gutterWidth * 2 + 3));
                     sb.AppendLine("  ---");
-                    lineColors.Add((i, Color.FromArgb(240, 240, 240), Color.Gray));
+                    lineColors[i] = Color.FromArgb(240, 240, 240);
                     break;
                 default:
                     sb.Append(dl.OldLineNum.ToString(CultureInfo.InvariantCulture).PadLeft(gutterWidth));
@@ -1960,28 +2062,7 @@ public partial class RawJsonPanel : UserControl
             }
         }
 
-        // Set all text in one shot (fast)
-        rtb.Text = sb.ToString();
-
-        // Now apply colours to changed/separator/header lines only (skip unchanged lines)
-        rtb.SuspendLayout();
-        foreach (var (lineIdx, bg, fg) in lineColors)
-        {
-            int startChar = rtb.GetFirstCharIndexFromLine(lineIdx);
-            if (startChar < 0) continue;
-            int lineEnd = (lineIdx + 1 < rtb.Lines.Length)
-                ? rtb.GetFirstCharIndexFromLine(lineIdx + 1)
-                : rtb.TextLength;
-            int length = lineEnd - startChar;
-            if (length <= 0) continue;
-
-            rtb.Select(startChar, length);
-            rtb.SelectionBackColor = bg;
-            rtb.SelectionColor = fg;
-        }
-        rtb.SelectionStart = 0;
-        rtb.SelectionLength = 0;
-        rtb.ResumeLayout();
+        return (sb.ToString(), lineColors);
     }
 
     #endregion
