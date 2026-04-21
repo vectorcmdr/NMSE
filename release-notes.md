@@ -1,8 +1,36 @@
-## NMSE — No Man's Save Editor v1.1.29 (preview)
+## NMSE — No Man's Save Editor v1.1.45 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Features:
+
+- Updated Raw JSON Editor:
+    - Text view now has basic syntax colouring and node folding
+    - Split view now available (text view + tree view in one window with node syncing)
+    - Diffing window "Show Changes" improved with custom rendering, basic syntax colouring, line numbers, Myers diff algorithm, hunk management.
+    - Memory management rebalanced to help lower it despite the additional editing features.
+- NumericUpDown UI controls fully swapped to a custom solution for supporting doubles (backend) and large decimals (frontend). (per Issue #56)
+- Inventory bulk actions are available in the "Tools" menu for repair/refill/recharge on all inventories. (per Discord Feature Request)
+
+#### Bug Fixes:
+
+- Backend and rendering of the Inventory Grid has been rewritten to reduce handles, drastically lowering them to 10% of previous use and protecting against potential edge case crashes preemptively.
+- Rewards no longer subscribe to a sync event automatically, allowing users to keep out of sync reward/known* arrays. Syncing is still available via editing a reward/known or by using the Check Consistency button.
+- Raw number guards extended via the NUD replacement and additional changes to panel calls. (per Issue #56)
+- All string based numbers in the save are now managed in multiple logic layers for a double (backend) decimal (frontend) round-trip to avoid actual precision loss, or perceived precision loss via G17 and custom handling. (per Issue #56)
+- Supported Game Version label in auto build fixed. (per Discord Bug Report)
+- Overall tweaks to memory management and JSON object handling (not user facing).
+- Minor change to unicode symbols handling (not user facing).
+- Companion Database updated to do reverse lookup on part descriptors for creatures with shared rigs (like HERMITCRAB) for accessory rules. (per Issue #61)
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Previous Changelog 1.1.29 (preview)
 
 #### Features:
 
@@ -15,9 +43,6 @@
 - Added additional raw double guard method and changes to calls for all string based high precision numbers to further mitigate erroneous precision loss on ~billionths decimal values. (per Issue #56)
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.1.28 (preview)
 
