@@ -8829,7 +8829,7 @@ public class LogicTests
         string name = obj.GetString("Name")!;
         Assert.Equal("Hello \u03BB World", name);
 
-        // Re-serialize (this writes \u03BB as a \uXXXX escape)
+        // Re-serialize: λ (U+03BB > 0xFF) is emitted as raw UTF-8 bytes CE BB.
         string output = obj.ToString();
 
         // Parse again
@@ -8837,6 +8837,87 @@ public class LogicTests
         string name2 = obj2.GetString("Name")!;
         Assert.Equal(name, name2);
     }
+
+    [Fact]
+    public void JsonParser_FrenchCharacters_RoundTrip_PreservesBytes()
+    {
+        // Regression test: French/accented characters (U+0080-U+00FF range) stored as
+        // raw UTF-8 bytes in a save file must survive a full parse → serialize cycle
+        // with their original byte sequences preserved.
+        //
+        // The game writes "Étoile" as UTF-8 bytes 0xC3 0x89 0x74 0x6F 0x69 0x6C 0x65.
+        // Our editor reads the file with Latin-1, producing the string containing chars
+        // U+00C3 and U+0089.  The UTF-8 validator then correctly decodes these to É
+        // (U+00C9).  The bug was that the serializer then emitted É as a single byte
+        // 0xC9 (Latin-1) instead of the correct 2-byte UTF-8 sequence 0xC3 0x89.
+        //
+        // É = U+00C9, UTF-8: C3 89
+        // à = U+00E0, UTF-8: C3 A0
+        // ç = U+00E7, UTF-8: C3 A7
+        string latin1Name =
+            (char)0xC3 + "" + (char)0x89 + "toile " +   // Étoile
+            (char)0xC3 + "" + (char)0xA0 + " " +         // à
+            (char)0xC3 + "" + (char)0xA7;                // ç
+        string json = "{\"ShipName\": \"" + latin1Name + "\"}";
+        var obj = JsonObject.Parse(json);
+
+        // Parser decodes to proper Unicode
+        string decoded = obj.GetString("ShipName")!;
+        Assert.Equal("\u00C9toile \u00E0 \u00E7", decoded); // "Étoile à ç"
+
+        // Serialize back: must emit UTF-8 byte sequences, not single Latin-1 bytes
+        string output = obj.ToString();
+        var latin1Encoding = System.Text.Encoding.GetEncoding(28591);
+        byte[] outputBytes = latin1Encoding.GetBytes(output);
+
+        // The serialized JSON must contain the correct UTF-8 byte pairs
+        // É → 0xC3 0x89
+        bool hasE = ContainsBytes(outputBytes, 0xC3, 0x89);
+        // à → 0xC3 0xA0
+        bool hasA = ContainsBytes(outputBytes, 0xC3, 0xA0);
+        // ç → 0xC3 0xA7
+        bool hasC = ContainsBytes(outputBytes, 0xC3, 0xA7);
+        Assert.True(hasE, "É must be serialized as UTF-8 bytes 0xC3 0x89, not single byte 0xC9");
+        Assert.True(hasA, "à must be serialized as UTF-8 bytes 0xC3 0xA0, not single byte 0xE0");
+        Assert.True(hasC, "ç must be serialized as UTF-8 bytes 0xC3 0xA7, not single byte 0xE7");
+
+        // And re-parsing the serialized form must recover the same string
+        var obj2 = JsonObject.Parse(output);
+        Assert.Equal(decoded, obj2.GetString("ShipName"));
+    }
+
+    [Fact]
+    public void JsonParser_FrenchCharacters_BytesNotCorrupted()
+    {
+        // Verify byte-level round-trip: serialize + Latin1.GetBytes must produce
+        // the exact same byte sequence as the original UTF-8-encoded save data.
+        // É (U+00C9) = UTF-8 0xC3 0x89; must NOT become single byte 0xC9.
+        string latin1 = "" + (char)0xC3 + (char)0x89; // É as raw bytes via Latin-1 window
+        string json = "{\"Name\": \"" + latin1 + "\"}";
+        var obj = JsonObject.Parse(json);
+
+        // Decoded correctly
+        Assert.Equal("\u00C9", obj.GetString("Name"));
+
+        // Serialized, then encoded with Latin-1 (as SaveFileManager.SaveToFile does)
+        string serialized = obj.ToString();
+        var latin1Enc = System.Text.Encoding.GetEncoding(28591);
+        byte[] bytes = latin1Enc.GetBytes(serialized);
+
+        // Must contain 0xC3 0x89 (UTF-8 for É), not isolated 0xC9 (Latin-1 for É)
+        Assert.True(ContainsBytes(bytes, 0xC3, 0x89),
+            "É (U+00C9) must be written as UTF-8 bytes 0xC3 0x89, not as single Latin-1 byte 0xC9");
+        Assert.False(Array.Exists(bytes, b => b == 0xC9),
+            "Single byte 0xC9 must not appear – it would be read by the game as invalid UTF-8");
+    }
+
+    private static bool ContainsBytes(byte[] haystack, byte b1, byte b2)
+    {
+        for (int i = 0; i < haystack.Length - 1; i++)
+            if (haystack[i] == b1 && haystack[i + 1] == b2) return true;
+        return false;
+    }
+
 
     [Fact]
     public void JsonParser_HexEscapes_ReturnsBinaryData()
