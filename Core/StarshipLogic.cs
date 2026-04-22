@@ -703,6 +703,96 @@ internal static class StarshipLogic
         return 0;
     }
 
+	/// <summary>
+	/// Constructs a new, fully-structured <c>PlayerShipBase</c> entry for
+	/// <c>PersistentPlayerBases</c> without relying on an existing entry in the
+	/// save file as a template. All player-specific fields (GalacticAddress,
+	/// Position, Forward, Owner, timestamps) are initialised to safe empty/zero
+	/// defaults; the game will overwrite them the next time the player accesses
+	/// the corvette in-game.
+	/// This method exists for use with .nmsship ZIP format imports from NMS
+	/// Model IO Tool which neglects to include the full base entry structure.
+	/// </summary>
+	/// <param name="userDataSlot">
+	/// The zero-based <c>ShipOwnership</c> index of the corvette, written to
+	/// the <c>UserData</c> field so the game and editor can match the base to
+	/// its ship.
+	/// </param>
+	/// <param name="objects">
+	/// The building-objects array to embed in the <c>Objects</c> field. Pass
+	/// an empty <see cref="JsonArray"/> (not <c>null</c>) when no objects are
+	/// available.
+	/// </param>
+	/// <returns>A new <see cref="JsonObject"/> representing the base entry.</returns>
+	internal static JsonObject CreatePlayerShipBase(int userDataSlot, JsonArray objects)
+    {
+        // Position / Forward default to zero-vector
+        var zeroVec = new JsonArray();
+        zeroVec.Add(0.0); zeroVec.Add(0.0); zeroVec.Add(0.0);
+
+        var forwardVec = new JsonArray();
+        forwardVec.Add(0.0); forwardVec.Add(0.0); forwardVec.Add(1.0);
+
+        var screenshotVec = new JsonArray();
+        screenshotVec.Add(0.0); screenshotVec.Add(0.0); screenshotVec.Add(0.0);
+
+        var screenshotPos = new JsonArray();
+        screenshotPos.Add(0.0); screenshotPos.Add(0.0); screenshotPos.Add(0.0);
+
+        // Owner block - all strings empty
+        var owner = new JsonObject();
+        owner.Set("LID", "");
+        owner.Set("UID", "");
+        owner.Set("USN", "");
+        owner.Set("PTK", "");
+        owner.Set("TS", 0.0);
+
+        // BaseType discriminator required so FindCorvetteBaseIndex can match it.
+        var baseType = new JsonObject();
+        baseType.Set("PersistentBaseTypes", "PlayerShipBase");
+
+        // GameMode and Difficulty blocks match the defaults seen in live saves.
+        var gameMode = new JsonObject();
+        gameMode.Set("PresetGameMode", "Normal");
+
+        var diffPreset = new JsonObject();
+        diffPreset.Set("DifficultyPresetType", "Normal");
+
+        var difficulty = new JsonObject();
+        difficulty.Set("DifficultyPreset", diffPreset);
+        difficulty.Set("PersistentBaseDifficultyFlags", 0.0);
+
+        var autoPower = new JsonObject();
+        autoPower.Set("BaseAutoPowerSetting", "UseDefault");
+
+        // Assemble the full entry in the same field order as live saves.
+        var entry = new JsonObject();
+        entry.Set("BaseVersion", 8.0);
+        entry.Set("OriginalBaseVersion", 8.0);
+        entry.Set("GalacticAddress", 0.0);
+        entry.Set("Position", zeroVec);
+        entry.Set("Forward", forwardVec);
+        entry.Set("UserData", (double)userDataSlot);
+        entry.Set("LastUpdateTimestamp", 0.0);
+        entry.Set("Objects", objects);
+        entry.Set("RID", "");
+        entry.Set("Owner", owner);
+        entry.Set("Name", "Default");
+        entry.Set("BaseType", baseType);
+        entry.Set("LastEditedById", "");
+        entry.Set("LastEditedByUsername", "");
+        entry.Set("ScreenshotAt", screenshotVec);
+        entry.Set("ScreenshotPos", screenshotPos);
+        entry.Set("GameMode", gameMode);
+        entry.Set("Difficulty", difficulty);
+        entry.Set("PlatformToken", "");
+        entry.Set("IsReported", false);
+        entry.Set("IsFeatured", false);
+        entry.Set("AutoPowerSetting", autoPower);
+
+        return entry;
+    }
+
     /// <summary>
     /// Finds the index of a corvette's player ship base entry in the PersistentPlayerBases array.
     /// Matches by the base's UserData field, which stores the ShipOwnership index directly.

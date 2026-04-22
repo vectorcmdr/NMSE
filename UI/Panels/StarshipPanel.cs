@@ -910,10 +910,26 @@ public partial class StarshipPanel : UserControl
                 }
                 else if (bases != null)
                 {
-                    // No existing base for this slot - add the imported base
-                    // as a new entry in PersistentPlayerBases.
-                    importedBase.Set("UserData", targetIdx);
-                    bases.Add(importedBase);
+                    // No existing base for this slot. When importing from a NMS
+					// Model IO Tool ZIP the imported base only contains Objects,
+					// so it lacks BaseType and all other required fields.
+					// Why don't they include this and instead manually re-write it
+					// in the tool? No idea. So:
+					// We build a complete PlayerShipBase entry from scratch for the
+					// import, so that the game can properly recognise it.
+                    JsonObject baseToAdd;
+                    if (importedBase.GetObject("BaseType") == null)
+                    {
+                        var objects = importedBase.GetArray("Objects") ?? new JsonArray();
+                        baseToAdd = StarshipLogic.CreatePlayerShipBase(targetIdx, objects);
+                    }
+                    else
+                    {
+                        baseToAdd = importedBase;
+                    }
+
+                    baseToAdd.Set("UserData", targetIdx);
+                    bases.Add(baseToAdd);
                 }
             }
 
