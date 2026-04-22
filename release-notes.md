@@ -1,6 +1,19 @@
-## NMSE — No Man's Save Editor v1.1.47 (preview)
+## NMSE — No Man's Save Editor v1.1.48 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
+
+### Changelog
+
+#### Bug Fixes:
+
+- Fixed a bug with French special character ranges U+0080 - U+00FF (e.g. éèàç) being parsed/written correctly after the unicode change in the JSON parser.
+
+Affected users will unfortunately need to re-enter these names as the fix cannot be made 'self-healing' in this case. Sorry about that French friends!
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
 
 ### Changelog 1.1.47 (preview) - hotfix
 
@@ -9,11 +22,15 @@
 This is a quick hotfix to correct bulk recharge skipping procedural technology items due to not filtering the seed suffix from the item ID.
 Apologies everyone!
 
+<br />
+
 ### Changelog 1.1.46 (preview) - hotfix
 
 #### Bug Fixes:
 
 This is a quick hotfix to correct the bulk inventory actions in the Tools menu (they didn't get re-tested after the backend update) and to bump the game version to 6.34.
+
+<br />
 
 ### Changelog 1.1.45 (preview)
 
@@ -39,9 +56,6 @@ This is a quick hotfix to correct the bulk inventory actions in the Tools menu (
 - Companion Database updated to do reverse lookup on part descriptors for creatures with shared rigs (like HERMITCRAB) for accessory rules. (per Issue #61)
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Previous Changelog 1.1.29 (preview)
 
