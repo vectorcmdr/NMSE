@@ -1,8 +1,23 @@
-## NMSE — No Man's Save Editor v1.1.48 (preview)
+## NMSE — No Man's Save Editor v1.1.49 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Features:
+
+- Added support to Settlement Panel for displaying settlements that match any Owner ID in your saves discovery owners, even for duplicate platforms IDs, refuse IDs, etc.
+
+#### Bug Fixes:
+
+- Fix for importing to empty slot for NMS Model IO Tool exported corvettes by adding a base data structure rebuilder for the base JSON node (these files don't include full base data - only object data). In theory this fix will also allow other malformed corvette imports with varying degrees of success - your mileage may vary importing malformed data.
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Changelog 1.1.48 (preview) - hotfix
 
 #### Bug Fixes:
 
@@ -11,9 +26,6 @@
 Affected users will unfortunately need to re-enter these names as the fix cannot be made 'self-healing' in this case. Sorry about that French friends!
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Changelog 1.1.47 (preview) - hotfix
 
