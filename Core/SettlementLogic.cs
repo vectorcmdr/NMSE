@@ -142,30 +142,41 @@ internal static class SettlementLogic
     {
         var filteredIndices = new List<int>();
 
-        // Get the player's owner identifiers from CommonStateData.UsedDiscoveryOwnersV2[0]
+        // Get the player's owner identifiers from CommonStateData.UsedDiscoveryOwnersV2
         // Note: UsedDiscoveryOwnersV2 is a direct child of CommonStateData, NOT under SeasonData
-        string? playerLid = null;
-        string? playerUid = null;
-        string? playerUsn = null;
-        try
+		var playerLIDs = new List<string>();
+		var playerUIDs = new List<string>();
+		var playerUSNs = new List<string>();
+
+		try
         {
             var commonState = saveData.GetObject("CommonStateData");
             var owners = commonState?.GetArray("UsedDiscoveryOwnersV2");
-            if (owners != null && owners.Length > 0)
-            {
-                var firstOwner = owners.GetObject(0);
-                playerLid = firstOwner?.GetString("LID");
-                playerUid = firstOwner?.GetString("UID");
-                playerUsn = firstOwner?.GetString("USN");
-            }
+
+			if (owners != null && owners.Length > 0)
+			{
+				for (int i = 0; i < owners.Length; i++)
+				{
+					playerLIDs.Add(owners.GetObject(i)?.GetString("LID") ?? "");
+					playerUIDs.Add(owners.GetObject(i)?.GetString("UID") ?? "");
+					playerUSNs.Add(owners.GetObject(i)?.GetString("USN") ?? "");
+				}
+			}
         }
         catch { }
 
-        bool hasIdentifier = !string.IsNullOrEmpty(playerLid) || !string.IsNullOrEmpty(playerUid) || !string.IsNullOrEmpty(playerUsn);
+		// Check if we have any valid identifiers to match against
+		bool hasIdentifier = playerLIDs.Count > 0 || playerUIDs.Count > 0 || playerUSNs.Count > 0;
 
-        // Filter settlements by matching Owner LID, UID, or USN
-        if (hasIdentifier)
+		// Filter settlements by matching Owner LIDs, UIDs, or USNs
+		// (any IDs in Owners including multiple same platform IDs in one save, etc.)
+		if (hasIdentifier)
         {
+            // Convert to HashSets for O(1) lookup instead of O(n) loops
+            var lidSet = new HashSet<string>(playerLIDs.Where(lid => !string.IsNullOrEmpty(lid)), StringComparer.Ordinal);
+            var uidSet = new HashSet<string>(playerUIDs.Where(uid => !string.IsNullOrEmpty(uid)), StringComparer.Ordinal);
+            var usnSet = new HashSet<string>(playerUSNs.Where(usn => !string.IsNullOrEmpty(usn)), StringComparer.Ordinal);
+
             for (int i = 0; i < settlements.Length; i++)
             {
                 try
@@ -174,25 +185,18 @@ internal static class SettlementLogic
                     var owner = settlement?.GetObject("Owner");
                     if (owner == null) continue;
 
-                    bool match = false;
-                    if (!string.IsNullOrEmpty(playerLid))
-                    {
-                        var ownerLid = owner.GetString("LID");
-                        if (playerLid.Equals(ownerLid, StringComparison.Ordinal)) match = true;
-                    }
-                    if (!match && !string.IsNullOrEmpty(playerUid))
-                    {
-                        var ownerUid = owner.GetString("UID");
-                        if (playerUid.Equals(ownerUid, StringComparison.Ordinal)) match = true;
-                    }
-                    if (!match && !string.IsNullOrEmpty(playerUsn))
-                    {
-                        var ownerUsn = owner.GetString("USN");
-                        if (playerUsn.Equals(ownerUsn, StringComparison.Ordinal)) match = true;
-                    }
+                    // Get owner identifiers once
+                    var ownerLid = owner.GetString("LID");
+                    var ownerUid = owner.GetString("UID");
+                    var ownerUsn = owner.GetString("USN");
 
-                    if (match)
+                    // Check if any identifier matches using O(1) HashSet lookup with short circuit eval
+                    if ((!string.IsNullOrEmpty(ownerLid) && lidSet.Contains(ownerLid)) ||
+                        (!string.IsNullOrEmpty(ownerUid) && uidSet.Contains(ownerUid)) ||
+                        (!string.IsNullOrEmpty(ownerUsn) && usnSet.Contains(ownerUsn)))
+                    {
                         filteredIndices.Add(i);
+                    }
                 }
                 catch { }
             }
