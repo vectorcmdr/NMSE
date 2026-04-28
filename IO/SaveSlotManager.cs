@@ -46,6 +46,19 @@ public class TransferOptions
 /// Cross-platform transfer converts ownership UIDs, platform tokens, as well as base,
 /// settlement, discovery and ByteBeat author references so saves work correctly on the
 /// destination platform.
+///
+/// Each NMS save "slot" (as shown in the game's UI) contains TWO files: an auto save
+/// and a manual save.  The slot index is 0-based (slot 0 = game "Slot 1").
+///
+/// Steam/GOG file layout (15 slots × 2 files each = 30 files):
+///   Slot 0: save.hg   (auto)  + save2.hg   (manual)
+///   Slot 1: save3.hg  (auto)  + save4.hg   (manual)
+///   Slot N: save(2N+1).hg     + save(2N+2).hg   (with special case: slot 0 auto = save.hg)
+///
+/// Switch / PS4 streaming file layout (15 slots × 2 files each = 30 files):
+///   Slot 0: savedata00.hg (auto) + savedata01.hg (manual)
+///   Slot 1: savedata02.hg (auto) + savedata03.hg (manual)
+///   Slot N: savedata(2N).hg      + savedata(2N+1).hg
 /// </summary>
 public static class SaveSlotManager
 {
@@ -65,46 +78,100 @@ public static class SaveSlotManager
     };
 
     /// <summary>
-    /// Get file paths for a save slot on a given platform.
+    /// Returns both file pairs (auto save and manual save) for a given slot index on a
+    /// given platform.  Index 0 is the auto save, index 1 is the manual save.
     /// </summary>
-    public static SlotFiles GetSlotFiles(string saveDirectory, int slotIndex,
+    public static SlotFiles[] GetAllSlotFiles(string saveDirectory, int slotIndex,
         SaveFileManager.Platform platform)
     {
         return platform switch
         {
             SaveFileManager.Platform.Steam or SaveFileManager.Platform.GOG =>
-                GetSteamSlotFiles(saveDirectory, slotIndex),
+                GetSteamAllSlotFiles(saveDirectory, slotIndex),
             SaveFileManager.Platform.Switch =>
-                GetSwitchSlotFiles(saveDirectory, slotIndex),
+                GetSwitchAllSlotFiles(saveDirectory, slotIndex),
             SaveFileManager.Platform.PS4 =>
-                GetPlaystationSlotFiles(saveDirectory, slotIndex),
-            _ => new SlotFiles()
+                GetPlaystationAllSlotFiles(saveDirectory, slotIndex),
+            _ => Array.Empty<SlotFiles>()
         };
     }
 
-    private static SlotFiles GetSteamSlotFiles(string dir, int slotIndex)
+    /// <summary>
+    /// Get file paths for the primary (manual) save in a slot on a given platform.
+    /// Used by <see cref="TransferCrossPlatform"/> to locate the destination file.
+    /// </summary>
+    public static SlotFiles GetSlotFiles(string saveDirectory, int slotIndex,
+        SaveFileManager.Platform platform)
     {
-        // Steam/GOG: save.hg, save2.hg, save3.hg... with mf_ prefix for meta
-        string dataName = slotIndex == 0 ? "save.hg" : $"save{slotIndex + 1}.hg";
-        string dataPath = Path.Combine(dir, dataName);
-        string metaPath = MetaFileWriter.GetSteamMetaPath(dataPath);
-        return new SlotFiles { DataFile = dataPath, MetaFile = metaPath };
+        var all = GetAllSlotFiles(saveDirectory, slotIndex, platform);
+        // Return the manual save (index 1) when available; fall back to index 0 or empty.
+        return all.Length > 1 ? all[1] : (all.Length == 1 ? all[0] : new SlotFiles());
     }
 
-    private static SlotFiles GetSwitchSlotFiles(string dir, int slotIndex)
+    // === Steam / GOG ===
+
+    private static SlotFiles[] GetSteamAllSlotFiles(string dir, int slotIndex)
     {
-        // Switch: savedata{NN}.hg with manifest{NN}.hg for meta
-        string dataPath = Path.Combine(dir, $"savedata{slotIndex:D2}.hg");
-        string metaPath = Path.Combine(dir, $"manifest{slotIndex:D2}.hg");
-        return new SlotFiles { DataFile = dataPath, MetaFile = metaPath };
+        // Slot N:  auto  = save.hg (N==0) or save{2N+1}.hg (N>0)
+        //          manual = save{2N+2}.hg
+        string autoDataName   = slotIndex == 0 ? "save.hg" : $"save{slotIndex * 2 + 1}.hg";
+        string manualDataName = $"save{slotIndex * 2 + 2}.hg";
+
+        string autoDataPath   = Path.Combine(dir, autoDataName);
+        string manualDataPath = Path.Combine(dir, manualDataName);
+
+        return
+        [
+            new SlotFiles { DataFile = autoDataPath,   MetaFile = MetaFileWriter.GetSteamMetaPath(autoDataPath)   },
+            new SlotFiles { DataFile = manualDataPath, MetaFile = MetaFileWriter.GetSteamMetaPath(manualDataPath) },
+        ];
     }
 
-    private static SlotFiles GetPlaystationSlotFiles(string dir, int slotIndex)
+    // === Switch ===
+
+    private static SlotFiles[] GetSwitchAllSlotFiles(string dir, int slotIndex)
     {
-        // PS4 streaming: savedata{NN}.hg with manifest{NN}.hg for meta
-        string dataPath = Path.Combine(dir, $"savedata{slotIndex:D2}.hg");
-        string metaPath = Path.Combine(dir, $"manifest{slotIndex:D2}.hg");
-        return new SlotFiles { DataFile = dataPath, MetaFile = metaPath };
+        // Slot N:  auto   = savedata{2N:D2}.hg  + manifest{2N:D2}.hg
+        //          manual = savedata{2N+1:D2}.hg + manifest{2N+1:D2}.hg
+        int autoIdx   = slotIndex * 2;
+        int manualIdx = slotIndex * 2 + 1;
+
+        return
+        [
+            new SlotFiles
+            {
+                DataFile = Path.Combine(dir, $"savedata{autoIdx:D2}.hg"),
+                MetaFile = Path.Combine(dir, $"manifest{autoIdx:D2}.hg"),
+            },
+            new SlotFiles
+            {
+                DataFile = Path.Combine(dir, $"savedata{manualIdx:D2}.hg"),
+                MetaFile = Path.Combine(dir, $"manifest{manualIdx:D2}.hg"),
+            },
+        ];
+    }
+
+    // === PS4 streaming ===
+
+    private static SlotFiles[] GetPlaystationAllSlotFiles(string dir, int slotIndex)
+    {
+        // Same two file per slot layout as Switch.
+        int autoIdx   = slotIndex * 2;
+        int manualIdx = slotIndex * 2 + 1;
+
+        return
+        [
+            new SlotFiles
+            {
+                DataFile = Path.Combine(dir, $"savedata{autoIdx:D2}.hg"),
+                MetaFile = Path.Combine(dir, $"manifest{autoIdx:D2}.hg"),
+            },
+            new SlotFiles
+            {
+                DataFile = Path.Combine(dir, $"savedata{manualIdx:D2}.hg"),
+                MetaFile = Path.Combine(dir, $"manifest{manualIdx:D2}.hg"),
+            },
+        ];
     }
 
     private static void WriteMetaForPlatform(SlotFiles files, JsonObject saveData,
@@ -133,7 +200,11 @@ public static class SaveSlotManager
                 {
                     string json = saveData.ToString();
                     uint decompressedSize = (uint)(System.Text.Encoding.GetEncoding(28591).GetByteCount(json) + 1);
-                    MetaFileWriter.WriteSwitchMeta(files.DataFile, decompressedSize, metaInfo, slotIndex);
+                    // Derive the manifest index from the savedata file name (savedata01.hg -> 1).
+                    // Falls back to the raw slotIndex when the file name cannot be parsed.
+                    int manifestIdx = ExtractSwitchManifestIndex(files.DataFile);
+                    if (manifestIdx < 0) manifestIdx = slotIndex;
+                    MetaFileWriter.WriteSwitchMeta(files.DataFile, decompressedSize, metaInfo, manifestIdx);
                     break;
                 }
 
@@ -141,7 +212,9 @@ public static class SaveSlotManager
                 {
                     string json = saveData.ToString();
                     uint decompressedSize = (uint)(System.Text.Encoding.GetEncoding(28591).GetByteCount(json) + 1);
-                    MetaFileWriter.WritePlaystationStreamingMeta(files.DataFile, decompressedSize, metaInfo, slotIndex);
+                    int manifestIdx = ExtractSwitchManifestIndex(files.DataFile);
+                    if (manifestIdx < 0) manifestIdx = slotIndex;
+                    MetaFileWriter.WritePlaystationStreamingMeta(files.DataFile, decompressedSize, metaInfo, manifestIdx);
                     break;
                 }
         }
@@ -159,11 +232,13 @@ public static class SaveSlotManager
     }
 
     /// <summary>
-    /// Copy a save from one slot to another within the same save directory.
-    /// Creates a backup of the destination if it exists.
+    /// Copy all files in a save slot (auto save + manual save) to another slot within the
+    /// same save directory.  Creates a <c>.backup</c> of each destination file that exists.
+    /// For Steam/GOG, the companion meta file is re-keyed to the destination storage slot
+    /// so that the game can decrypt it correctly.
     /// </summary>
     /// <param name="saveDirectory">Path to the save directory.</param>
-    /// <param name="sourceSlotIndex">Source slot index (0-based, as stored on disk).</param>
+    /// <param name="sourceSlotIndex">Source slot index (0-based; 0 = game "Slot 1").</param>
     /// <param name="destSlotIndex">Destination slot index.</param>
     /// <param name="platform">Platform type for the saves.</param>
     public static void CopySlot(string saveDirectory, int sourceSlotIndex, int destSlotIndex,
@@ -171,31 +246,37 @@ public static class SaveSlotManager
     {
         if (sourceSlotIndex == destSlotIndex) return;
 
-        var sourceFiles = GetSlotFiles(saveDirectory, sourceSlotIndex, platform);
-        var destFiles = GetSlotFiles(saveDirectory, destSlotIndex, platform);
+        var sourcePairs = GetAllSlotFiles(saveDirectory, sourceSlotIndex, platform);
+        var destPairs   = GetAllSlotFiles(saveDirectory, destSlotIndex,   platform);
 
-        if (sourceFiles.DataFile == null || !File.Exists(sourceFiles.DataFile))
+        bool anySourceFound = sourcePairs.Any(f => f.DataFile != null && File.Exists(f.DataFile));
+        if (!anySourceFound)
             throw new FileNotFoundException($"Source save slot {sourceSlotIndex} not found.");
 
-        // Backup destination if it exists
-        if (destFiles.DataFile != null && File.Exists(destFiles.DataFile))
+        int count = Math.Min(sourcePairs.Length, destPairs.Length);
+        for (int i = 0; i < count; i++)
         {
-            string backup = destFiles.DataFile + ".backup";
-            File.Copy(destFiles.DataFile, backup, true);
-        }
+            var src = sourcePairs[i];
+            var dst = destPairs[i];
 
-        // Copy data file
-        File.Copy(sourceFiles.DataFile, destFiles.DataFile!, true);
+            if (src.DataFile == null || !File.Exists(src.DataFile))
+                continue;
 
-        // Copy meta file if it exists
-        if (sourceFiles.MetaFile != null && File.Exists(sourceFiles.MetaFile) && destFiles.MetaFile != null)
-        {
-            File.Copy(sourceFiles.MetaFile, destFiles.MetaFile, true);
+            // Backup destination data file if it exists
+            if (dst.DataFile != null && File.Exists(dst.DataFile))
+                File.Copy(dst.DataFile, dst.DataFile + ".backup", true);
+
+            // Copy data file
+            File.Copy(src.DataFile, dst.DataFile!, true);
+
+            // Copy meta file with re-keying for Steam/GOG
+            if (src.MetaFile != null && File.Exists(src.MetaFile) && dst.MetaFile != null)
+                CopyMetaFile(src.DataFile, src.MetaFile, dst.DataFile!, dst.MetaFile, platform);
         }
     }
 
     /// <summary>
-    /// Move a save from one slot to another (copy then delete source).
+    /// Move all files in a save slot to another slot (copy then delete source).
     /// </summary>
     public static void MoveSlot(string saveDirectory, int sourceSlotIndex, int destSlotIndex,
         SaveFileManager.Platform platform)
@@ -205,7 +286,8 @@ public static class SaveSlotManager
     }
 
     /// <summary>
-    /// Swap two save slots.
+    /// Swap all files in two save slots (auto save and manual save for each).
+    /// For Steam/GOG, meta files are re-keyed to the swapped destination storage slots.
     /// </summary>
     public static void SwapSlots(string saveDirectory, int slotA, int slotB,
         SaveFileManager.Platform platform)
@@ -217,28 +299,51 @@ public static class SaveSlotManager
 
         try
         {
-            var filesA = GetSlotFiles(saveDirectory, slotA, platform);
-            var filesB = GetSlotFiles(saveDirectory, slotB, platform);
+            var filesA = GetAllSlotFiles(saveDirectory, slotA, platform);
+            var filesB = GetAllSlotFiles(saveDirectory, slotB, platform);
 
-            // Move A to temp
-            if (filesA.DataFile != null && File.Exists(filesA.DataFile))
-                File.Move(filesA.DataFile, Path.Combine(tempDir, "data_a"));
-            if (filesA.MetaFile != null && File.Exists(filesA.MetaFile))
-                File.Move(filesA.MetaFile, Path.Combine(tempDir, "meta_a"));
+            int count = Math.Min(filesA.Length, filesB.Length);
+            for (int i = 0; i < count; i++)
+            {
+                var fa = filesA[i];
+                var fb = filesB[i];
 
-            // Move B to A
-            if (filesB.DataFile != null && File.Exists(filesB.DataFile))
-                File.Move(filesB.DataFile, filesA.DataFile!);
-            if (filesB.MetaFile != null && File.Exists(filesB.MetaFile) && filesA.MetaFile != null)
-                File.Move(filesB.MetaFile, filesA.MetaFile);
+                // Capture the original file paths before any moves so that
+                // StorageSlotFromFileName always operates on the correct filename,
+                // even after the underlying files have been relocated.
+                string? faDataPath = fa.DataFile;
+                string? fbDataPath = fb.DataFile;
 
-            // Move temp (A) to B
-            string tempData = Path.Combine(tempDir, "data_a");
-            string tempMeta = Path.Combine(tempDir, "meta_a");
-            if (File.Exists(tempData) && filesB.DataFile != null)
-                File.Move(tempData, filesB.DataFile);
-            if (File.Exists(tempMeta) && filesB.MetaFile != null)
-                File.Move(tempMeta, filesB.MetaFile);
+                string tmpData = Path.Combine(tempDir, $"data_{i}");
+                string tmpMeta = Path.Combine(tempDir, $"meta_{i}");
+
+                // Phase 1: move A's files to temp
+                if (faDataPath != null && File.Exists(faDataPath))
+                    File.Move(faDataPath, tmpData);
+                if (fa.MetaFile != null && File.Exists(fa.MetaFile))
+                    File.Move(fa.MetaFile, tmpMeta);
+
+                // Phase 2: move B's files to A's location, re-key B's meta to A's slot
+                if (fbDataPath != null && File.Exists(fbDataPath) && faDataPath != null)
+                {
+                    File.Move(fbDataPath, faDataPath);
+                    // Re-key B's meta using the original B path (for srcSlot) -> A path (for dstSlot)
+                    if (fb.MetaFile != null && File.Exists(fb.MetaFile) && fa.MetaFile != null)
+                        CopyMetaFile(fbDataPath, fb.MetaFile, faDataPath, fa.MetaFile, platform);
+                }
+                // Delete B's meta separately (it was either copied above, or B had no meta)
+                if (fb.MetaFile != null && File.Exists(fb.MetaFile))
+                    File.Delete(fb.MetaFile);
+
+                // Phase 3: move A's original files (from temp) to B's location, re-key to B's slot
+                if (File.Exists(tmpData) && fbDataPath != null)
+                {
+                    File.Move(tmpData, fbDataPath);
+                    // Re-key A's meta using the original A path (for srcSlot) -> B path (for dstSlot)
+                    if (File.Exists(tmpMeta) && fb.MetaFile != null && faDataPath != null)
+                        CopyMetaFile(faDataPath, tmpMeta, fbDataPath, fb.MetaFile, platform);
+                }
+            }
         }
         finally
         {
@@ -248,16 +353,118 @@ public static class SaveSlotManager
     }
 
     /// <summary>
-    /// Delete a save slot.
+    /// Delete all files in a save slot (auto save and manual save).
     /// </summary>
     public static void DeleteSlot(string saveDirectory, int slotIndex,
         SaveFileManager.Platform platform)
     {
-        var files = GetSlotFiles(saveDirectory, slotIndex, platform);
-        if (files.DataFile != null && File.Exists(files.DataFile))
-            File.Delete(files.DataFile);
-        if (files.MetaFile != null && File.Exists(files.MetaFile))
-            File.Delete(files.MetaFile);
+        foreach (var files in GetAllSlotFiles(saveDirectory, slotIndex, platform))
+        {
+            if (files.DataFile != null && File.Exists(files.DataFile))
+                File.Delete(files.DataFile);
+            if (files.MetaFile != null && File.Exists(files.MetaFile))
+                File.Delete(files.MetaFile);
+        }
+    }
+
+    // === Meta file helpers ===
+
+    /// <summary>
+    /// Copy a meta file from source to destination.
+    /// For Steam/GOG the meta is re-encrypted with the destination storage slot key.
+    /// For Switch the slot-index field at offset 12 is updated.
+    /// For other platforms the file is copied verbatim.
+    /// </summary>
+    private static void CopyMetaFile(
+        string srcDataFile, string srcMetaFile,
+        string dstDataFile, string dstMetaFile,
+        SaveFileManager.Platform platform)
+    {
+        if (platform is SaveFileManager.Platform.Steam or SaveFileManager.Platform.GOG)
+        {
+            ReKeyMetaFile(srcDataFile, srcMetaFile, dstDataFile, dstMetaFile, platform);
+        }
+        else if (platform == SaveFileManager.Platform.Switch)
+        {
+            // Copy then patch the slot-index field at byte offset 12.
+            byte[] bytes = File.ReadAllBytes(srcMetaFile);
+            int dstIdx = ExtractSwitchManifestIndex(dstDataFile);
+            if (dstIdx >= 0 && bytes.Length >= 16)
+            {
+                byte[] idx = BitConverter.GetBytes(dstIdx);
+                Buffer.BlockCopy(idx, 0, bytes, 12, 4);
+            }
+            File.WriteAllBytes(dstMetaFile, bytes);
+        }
+        else
+        {
+            File.Copy(srcMetaFile, dstMetaFile, true);
+        }
+    }
+
+    /// <summary>
+    /// Decrypt a Steam/GOG meta file with the source storage slot key and
+    /// re-encrypt it with the destination storage slot key, writing the result
+    /// to <paramref name="dstMetaFile"/>.
+    /// Falls back to a plain file copy if decryption fails.
+    /// </summary>
+    private static void ReKeyMetaFile(
+        string srcDataFile, string srcMetaFile,
+        string dstDataFile, string dstMetaFile,
+        SaveFileManager.Platform platform)
+    {
+        if (platform is not (SaveFileManager.Platform.Steam or SaveFileManager.Platform.GOG))
+        {
+            File.Copy(srcMetaFile, dstMetaFile, true);
+            return;
+        }
+
+        int srcSlot = StorageSlotFromFileName(srcDataFile);
+        int dstSlot = StorageSlotFromFileName(dstDataFile);
+
+        if (srcSlot == dstSlot)
+        {
+            File.Copy(srcMetaFile, dstMetaFile, true);
+            return;
+        }
+
+        byte[] raw = File.ReadAllBytes(srcMetaFile);
+        if (raw.Length < 4)
+        {
+            File.Copy(srcMetaFile, dstMetaFile, true);
+            return;
+        }
+
+        uint[] encrypted  = MetaFileWriter.BytesToUInts(raw);
+        int    iterations = raw.Length == MetaFileWriter.STEAM_META_LENGTH_VANILLA ? 8 : 6;
+        uint[] decrypted  = MetaCrypto.Decrypt(encrypted, srcSlot, iterations);
+
+        if (decrypted[0] != MetaFileWriter.META_HEADER)
+        {
+            // Decryption failed – copy verbatim as a best-effort fallback
+            File.Copy(srcMetaFile, dstMetaFile, true);
+            return;
+        }
+
+        uint[] reKeyed = MetaCrypto.Encrypt(decrypted, dstSlot, iterations);
+        File.WriteAllBytes(dstMetaFile, MetaFileWriter.UIntsToBytes(reKeyed));
+    }
+
+    /// <summary>
+    /// Derive the Switch manifest index from a savedata file path.
+    /// e.g. "savedata03.hg" -> 3, "savedata00.hg" -> 0.
+    /// Returns -1 if the name cannot be parsed.
+    /// </summary>
+    private static int ExtractSwitchManifestIndex(string dataFilePath)
+    {
+        string name = Path.GetFileNameWithoutExtension(dataFilePath);
+        const string prefix = "savedata";
+        if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(name.AsSpan(prefix.Length),
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int idx))
+            return idx;
+        return -1;
     }
 
     /// <summary>

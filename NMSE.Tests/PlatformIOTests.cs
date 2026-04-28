@@ -274,11 +274,16 @@ public class PlatformIOTests
 
     // --- SaveSlotManager: slot file path resolution ---
 
+    /// <summary>
+    /// GetSlotFiles returns the MANUAL save of each slot.
+    /// Steam layout:  slot 0 manual = save2.hg,   slot 1 manual = save4.hg,   slot 2 manual = save6.hg
+    /// Auto  layout:  slot 0 auto   = save.hg,    slot 1 auto   = save3.hg,   slot 2 auto   = save5.hg
+    /// </summary>
     [Theory]
-    [InlineData(0, "save.hg")]
-    [InlineData(1, "save2.hg")]
-    [InlineData(2, "save3.hg")]
-    public void SaveSlotManager_GetSlotFiles_Steam(int slotIndex, string expectedDataName)
+    [InlineData(0, "save2.hg")]
+    [InlineData(1, "save4.hg")]
+    [InlineData(2, "save6.hg")]
+    public void SaveSlotManager_GetSlotFiles_Steam_ReturnsManualSave(int slotIndex, string expectedDataName)
     {
         var files = SaveSlotManager.GetSlotFiles("/saves/st_12345", slotIndex, SaveFileManager.Platform.Steam);
         Assert.NotNull(files.DataFile);
@@ -287,10 +292,26 @@ public class PlatformIOTests
         Assert.Contains("mf_", files.MetaFile!);
     }
 
+    /// <summary>
+    /// GetAllSlotFiles returns BOTH the auto-save and the manual save for each slot.
+    /// </summary>
     [Theory]
-    [InlineData(0, "savedata00.hg")]
-    [InlineData(1, "savedata01.hg")]
-    public void SaveSlotManager_GetSlotFiles_Switch(int slotIndex, string expectedDataName)
+    [InlineData(0, "save.hg",  "save2.hg")]
+    [InlineData(1, "save3.hg", "save4.hg")]
+    [InlineData(2, "save5.hg", "save6.hg")]
+    public void SaveSlotManager_GetAllSlotFiles_Steam_ReturnsBothFiles(
+        int slotIndex, string expectedAuto, string expectedManual)
+    {
+        var pairs = SaveSlotManager.GetAllSlotFiles("/saves/st_12345", slotIndex, SaveFileManager.Platform.Steam);
+        Assert.Equal(2, pairs.Length);
+        Assert.EndsWith(expectedAuto,   pairs[0].DataFile!);
+        Assert.EndsWith(expectedManual, pairs[1].DataFile!);
+    }
+
+    [Theory]
+    [InlineData(0, "savedata01.hg")]
+    [InlineData(1, "savedata03.hg")]
+    public void SaveSlotManager_GetSlotFiles_Switch_ReturnsManualSave(int slotIndex, string expectedDataName)
     {
         var files = SaveSlotManager.GetSlotFiles("/saves/switch", slotIndex, SaveFileManager.Platform.Switch);
         Assert.NotNull(files.DataFile);
@@ -300,9 +321,21 @@ public class PlatformIOTests
     }
 
     [Theory]
-    [InlineData(0, "savedata00.hg")]
-    [InlineData(1, "savedata01.hg")]
-    public void SaveSlotManager_GetSlotFiles_PS4(int slotIndex, string expectedDataName)
+    [InlineData(0, "savedata00.hg", "savedata01.hg")]
+    [InlineData(1, "savedata02.hg", "savedata03.hg")]
+    public void SaveSlotManager_GetAllSlotFiles_Switch_ReturnsBothFiles(
+        int slotIndex, string expectedAuto, string expectedManual)
+    {
+        var pairs = SaveSlotManager.GetAllSlotFiles("/saves/switch", slotIndex, SaveFileManager.Platform.Switch);
+        Assert.Equal(2, pairs.Length);
+        Assert.EndsWith(expectedAuto,   pairs[0].DataFile!);
+        Assert.EndsWith(expectedManual, pairs[1].DataFile!);
+    }
+
+    [Theory]
+    [InlineData(0, "savedata01.hg")]
+    [InlineData(1, "savedata03.hg")]
+    public void SaveSlotManager_GetSlotFiles_PS4_ReturnsManualSave(int slotIndex, string expectedDataName)
     {
         var files = SaveSlotManager.GetSlotFiles("/saves/ps4", slotIndex, SaveFileManager.Platform.PS4);
         Assert.NotNull(files.DataFile);
@@ -318,14 +351,22 @@ public class PlatformIOTests
         Directory.CreateDirectory(tmpDir);
         try
         {
-            // Create source slot files
-            File.WriteAllText(Path.Combine(tmpDir, "save.hg"), "slot0data");
-            File.WriteAllText(Path.Combine(tmpDir, "mf_save.hg"), "slot0meta");
+            // Slot 0 auto = save.hg, slot 0 manual = save2.hg
+            // Copying slot 0 to slot 1 should place the data into slot 1:
+            //   slot 1 auto = save3.hg, slot 1 manual = save4.hg
+            File.WriteAllText(Path.Combine(tmpDir, "save.hg"),  "slot0_auto");
+            File.WriteAllText(Path.Combine(tmpDir, "save2.hg"), "slot0_manual");
 
             SaveSlotManager.CopySlot(tmpDir, 0, 1, SaveFileManager.Platform.Steam);
 
+            Assert.True(File.Exists(Path.Combine(tmpDir, "save3.hg")), "auto-save of slot 1 (save3.hg) should be created");
+            Assert.Equal("slot0_auto",   File.ReadAllText(Path.Combine(tmpDir, "save3.hg")));
+            Assert.True(File.Exists(Path.Combine(tmpDir, "save4.hg")), "manual save of slot 1 (save4.hg) should be created");
+            Assert.Equal("slot0_manual", File.ReadAllText(Path.Combine(tmpDir, "save4.hg")));
+
+            // Source files must still exist (copy, not move)
+            Assert.True(File.Exists(Path.Combine(tmpDir, "save.hg")));
             Assert.True(File.Exists(Path.Combine(tmpDir, "save2.hg")));
-            Assert.Equal("slot0data", File.ReadAllText(Path.Combine(tmpDir, "save2.hg")));
         }
         finally
         {
@@ -360,13 +401,18 @@ public class PlatformIOTests
         Directory.CreateDirectory(tmpDir);
         try
         {
-            File.WriteAllText(Path.Combine(tmpDir, "save.hg"), "data");
-            File.WriteAllText(Path.Combine(tmpDir, "mf_save.hg"), "meta");
+            // Slot 0 has auto (save.hg + mf_save.hg) and manual (save2.hg + mf_save2.hg)
+            File.WriteAllText(Path.Combine(tmpDir, "save.hg"),    "auto_data");
+            File.WriteAllText(Path.Combine(tmpDir, "mf_save.hg"), "auto_meta");
+            File.WriteAllText(Path.Combine(tmpDir, "save2.hg"),    "manual_data");
+            File.WriteAllText(Path.Combine(tmpDir, "mf_save2.hg"), "manual_meta");
 
             SaveSlotManager.DeleteSlot(tmpDir, 0, SaveFileManager.Platform.Steam);
 
             Assert.False(File.Exists(Path.Combine(tmpDir, "save.hg")));
             Assert.False(File.Exists(Path.Combine(tmpDir, "mf_save.hg")));
+            Assert.False(File.Exists(Path.Combine(tmpDir, "save2.hg")));
+            Assert.False(File.Exists(Path.Combine(tmpDir, "mf_save2.hg")));
         }
         finally
         {
@@ -381,13 +427,22 @@ public class PlatformIOTests
         Directory.CreateDirectory(tmpDir);
         try
         {
-            File.WriteAllText(Path.Combine(tmpDir, "save.hg"), "data0");
+            // Slot 0: save.hg (auto) + save2.hg (manual)
+            // Move to slot 2: save5.hg (auto) + save6.hg (manual)
+            File.WriteAllText(Path.Combine(tmpDir, "save.hg"),  "auto_data");
+            File.WriteAllText(Path.Combine(tmpDir, "save2.hg"), "manual_data");
 
             SaveSlotManager.MoveSlot(tmpDir, 0, 2, SaveFileManager.Platform.Steam);
 
+            // Source files must be gone
             Assert.False(File.Exists(Path.Combine(tmpDir, "save.hg")));
-            Assert.True(File.Exists(Path.Combine(tmpDir, "save3.hg")));
-            Assert.Equal("data0", File.ReadAllText(Path.Combine(tmpDir, "save3.hg")));
+            Assert.False(File.Exists(Path.Combine(tmpDir, "save2.hg")));
+
+            // Destination files must exist with the original content
+            Assert.True(File.Exists(Path.Combine(tmpDir, "save5.hg")));
+            Assert.Equal("auto_data",   File.ReadAllText(Path.Combine(tmpDir, "save5.hg")));
+            Assert.True(File.Exists(Path.Combine(tmpDir, "save6.hg")));
+            Assert.Equal("manual_data", File.ReadAllText(Path.Combine(tmpDir, "save6.hg")));
         }
         finally
         {
@@ -402,13 +457,21 @@ public class PlatformIOTests
         Directory.CreateDirectory(tmpDir);
         try
         {
-            File.WriteAllText(Path.Combine(tmpDir, "save.hg"), "dataA");
-            File.WriteAllText(Path.Combine(tmpDir, "save2.hg"), "dataB");
+            // Slot 0: save.hg (auto) + save2.hg (manual)
+            // Slot 1: save3.hg (auto) + save4.hg (manual)
+            File.WriteAllText(Path.Combine(tmpDir, "save.hg"),  "A_auto");
+            File.WriteAllText(Path.Combine(tmpDir, "save2.hg"), "A_manual");
+            File.WriteAllText(Path.Combine(tmpDir, "save3.hg"), "B_auto");
+            File.WriteAllText(Path.Combine(tmpDir, "save4.hg"), "B_manual");
 
             SaveSlotManager.SwapSlots(tmpDir, 0, 1, SaveFileManager.Platform.Steam);
 
-            Assert.Equal("dataB", File.ReadAllText(Path.Combine(tmpDir, "save.hg")));
-            Assert.Equal("dataA", File.ReadAllText(Path.Combine(tmpDir, "save2.hg")));
+            // Slot 0 should now contain B's data
+            Assert.Equal("B_auto",   File.ReadAllText(Path.Combine(tmpDir, "save.hg")));
+            Assert.Equal("B_manual", File.ReadAllText(Path.Combine(tmpDir, "save2.hg")));
+            // Slot 1 should now contain A's data
+            Assert.Equal("A_auto",   File.ReadAllText(Path.Combine(tmpDir, "save3.hg")));
+            Assert.Equal("A_manual", File.ReadAllText(Path.Combine(tmpDir, "save4.hg")));
         }
         finally
         {
