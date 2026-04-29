@@ -314,37 +314,45 @@ internal static class AccountLogic
     }
 
     /// <summary>
-    /// Synchronises Known* arrays (KnownSpecials, KnownTech) for a delta-only
-    /// list of rewards whose redeemed state was explicitly changed by the user.
+    /// Synchronises Known* arrays (KnownSpecials, KnownProducts, KnownTech) for a
+    /// delta-only list of rewards whose redeemed state was explicitly changed by the user.
     /// Items the user did not touch are left as-is, preserving any out-of-sync
     /// state the player may have for their own in-game reasons.
     /// </summary>
     /// <param name="saveData">The game save data object.</param>
     /// <param name="changedRewards">Only the rewards whose redeemed state changed.</param>
     /// <param name="database">Optional game item database for item lookups.</param>
+    /// <param name="productIdMap">
+    /// Optional map from reward ID (e.g. <c>^TWITCH_376</c>) to bare product ID
+    /// (e.g. <c>EXPD_POSTER11A</c>). Required for twitch rewards: the game stores
+    /// the product ID in <c>KnownSpecials</c> and <c>KnownProducts</c>, not the TwitchId.
+    /// When absent, the reward ID is used as the product ID (correct for season rewards).
+    /// </param>
     internal static void SyncKnownArraysForChangedRewards(JsonObject saveData,
-        List<(string Id, bool Redeemed)> changedRewards, GameItemDatabase? database)
+        List<(string Id, bool Redeemed)> changedRewards, GameItemDatabase? database,
+        IReadOnlyDictionary<string, string>? productIdMap = null)
     {
         if (changedRewards.Count == 0) return;
         var playerState = saveData.GetObject("PlayerStateData");
         if (playerState == null) return;
-        SyncKnownArraysForRewards(playerState, changedRewards, database);
+        SyncKnownArraysForRewards(playerState, changedRewards, database, productIdMap);
     }
 
     /// <summary>
     /// For each reward in the list, adds or removes entries in the Known* arrays
-    /// (KnownSpecials, KnownTech) based on the redeemed state.
+    /// (KnownSpecials, KnownProducts, KnownTech) based on the redeemed state.
     /// </summary>
     private static void SyncKnownArraysForRewards(JsonObject playerState,
-        List<(string Id, bool Redeemed)> rewards, GameItemDatabase? database)
+        List<(string Id, bool Redeemed)> rewards, GameItemDatabase? database,
+        IReadOnlyDictionary<string, string>? productIdMap = null)
     {
         foreach (var (id, redeemed) in rewards)
         {
             if (string.IsNullOrEmpty(id)) continue;
 
-            // Strip leading "^" for database lookups, add it back for save arrays.
-            string lookupId = CatalogueLogic.StripCaretPrefix(id);
-            string saveId = CatalogueLogic.EnsureCaretPrefix(id);
+            // Resolve to product ID (e.g. ^TWITCH_376 -> ^EXPD_POSTER11A for twitch rewards).
+            // KnownSpecials and KnownProducts store product IDs, not TwitchIds.
+            var (lookupId, saveId) = ResolveProductId(id, productIdMap);
 
             var item = database?.GetItem(lookupId);
 
@@ -352,15 +360,18 @@ internal static class AccountLogic
             bool isSpecial = item != null
                 && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
 
-            // Unless the item's GiveRewardOnSpecialPurchase contains a non-tech
-            // keyword (ships, eggs, frigates, weapons, fireworks, pets), it also
-            // goes in KnownTech. This matches NomNom's NON_TECH_REWARD check which
-            // uses the resolved reward type.
-            // When we don't have database info, we conservatively skip KnownTech.
-            bool addToKnownTech = item != null && !IsNonTechReward(item);
-
             if (isSpecial)
                 SyncJsonArrayEntry(playerState, "KnownSpecials", saveId, redeemed);
+
+            // Building-type rewards (decorations, posters, decals) are also tracked in
+            // KnownProducts in addition to KnownSpecials, matching the game's behaviour.
+            if (item?.IsBuilding == true)
+                SyncJsonArrayEntry(playerState, "KnownProducts", saveId, redeemed);
+
+            // Only add to KnownTech if the item actually gives a technology reward.
+            // Cosmetic-only items (empty GiveRewardOnSpecialPurchase) are NOT tech rewards.
+            // When we don't have database info, we conservatively skip KnownTech.
+            bool addToKnownTech = item != null && !IsNonTechReward(item);
 
             if (addToKnownTech)
                 SyncJsonArrayEntry(playerState, "KnownTech", saveId, redeemed);
@@ -368,20 +379,49 @@ internal static class AccountLogic
     }
 
     /// <summary>
-    /// Determines whether an item's <c>GiveRewardOnSpecialPurchase</c> value indicates
-    /// a non-technology reward (ship, egg, frigate, weapon, firework, pet) that should
-    /// NOT be added to KnownTech.
+    /// Resolves a reward ID to its product ID for use in Known* array operations.
+    /// For season rewards the reward ID already is the product ID (e.g. <c>^VAULT_ARMOUR</c>).
+    /// For twitch rewards the TwitchId (e.g. <c>^TWITCH_376</c>) must be mapped to the
+    /// product ID (e.g. <c>^EXPD_POSTER11A</c>) via <paramref name="productIdMap"/>.
+    /// </summary>
+    /// <returns>
+    /// A tuple of (lookupId, saveId) where lookupId is the bare ID for database lookups
+    /// (no caret) and saveId is the caret-prefixed ID for JSON array operations.
+    /// </returns>
+    private static (string LookupId, string SaveId) ResolveProductId(
+        string rewardId, IReadOnlyDictionary<string, string>? productIdMap)
+    {
+        if (productIdMap != null
+            && productIdMap.TryGetValue(rewardId, out var rawProductId)
+            && !string.IsNullOrEmpty(rawProductId))
+        {
+            return (rawProductId, CatalogueLogic.EnsureCaretPrefix(rawProductId));
+        }
+        return (CatalogueLogic.StripCaretPrefix(rewardId), CatalogueLogic.EnsureCaretPrefix(rewardId));
+    }
+
+    /// <summary>
+    /// Determines whether an item should NOT be added to <c>KnownTech</c> when redeemed.
+    /// Returns <c>true</c> (non-tech) for cosmetic-only items and items whose reward is
+    /// a ship, egg, frigate, weapon, firework, or pet.
+    /// Returns <c>false</c> (tech) only for items with a real technology reward ID
+    /// (e.g. a jetpack trail, staff weapon, or corvette upgrade).
     /// <para>
-    /// NomNom resolves reward table IDs to type codes ("^SHIP", "^EGG", etc.) and checks
-    /// against <c>NON_TECH_REWARD</c>. Our database stores the raw MBIN reward table IDs
-    /// (e.g. "RS_S13_SHIP", "R_TWIT_GUN01"), so we use keyword matching instead.
+    /// An empty <c>GiveRewardOnSpecialPurchase</c> means the item is cosmetic-only
+    /// (our Extractor leaves it empty for all purely decorative rewards).
+    /// Encodes "no technology reward; do NOT add to KnownTech."
+    /// </para>
+    /// <para>
+    /// When <c>GiveRewardOnSpecialPurchase</c> is non-empty, we keyword-match against
+    /// the raw MBIN reward table ID (e.g. "RS_S13_SHIP", "R_TWIT_GUN01") to identify
+    /// non-technology reward types, mirroring NomNom's NON_TECH_REWARD set.
     /// </para>
     /// </summary>
     internal static bool IsNonTechReward(GameItem item)
     {
         string reward = item.GiveRewardOnSpecialPurchase;
         if (string.IsNullOrEmpty(reward))
-            return false; // No reward → not non-tech; item goes to KnownTech
+            return true; // No reward specified -> cosmetic item; do NOT add to KnownTech
 
         foreach (string keyword in NonTechRewardKeywords)
         {
@@ -499,20 +539,27 @@ internal static class AccountLogic
     /// <param name="seasonRows">Season reward rows with unlock and redeem states.</param>
     /// <param name="twitchRows">Twitch reward rows with unlock and redeem states.</param>
     /// <param name="database">Optional game item database for item lookups.</param>
+    /// <param name="productIdMap">
+    /// Optional map from reward ID (e.g. <c>^TWITCH_376</c>) to bare product ID
+    /// (e.g. <c>EXPD_POSTER11A</c>). Required for twitch rewards: the game stores
+    /// the product ID in <c>KnownSpecials</c> and <c>KnownProducts</c>, not the TwitchId.
+    /// </param>
     internal static void CleanStaleKnownEntries(JsonObject saveData,
         List<(string Id, bool Unlocked, bool Redeemed)> seasonRows,
         List<(string Id, bool Unlocked, bool Redeemed)> twitchRows,
-        GameItemDatabase? database = null)
+        GameItemDatabase? database = null,
+        IReadOnlyDictionary<string, string>? productIdMap = null)
     {
         var playerState = saveData.GetObject("PlayerStateData");
         if (playerState == null) return;
 
-        CleanStaleForRewardList(playerState, seasonRows, database);
-        CleanStaleForRewardList(playerState, twitchRows, database);
+        CleanStaleForRewardList(playerState, seasonRows, database, productIdMap);
+        CleanStaleForRewardList(playerState, twitchRows, database, productIdMap);
     }
 
     private static void CleanStaleForRewardList(JsonObject playerState,
-        List<(string Id, bool Unlocked, bool Redeemed)> rows, GameItemDatabase? database)
+        List<(string Id, bool Unlocked, bool Redeemed)> rows, GameItemDatabase? database,
+        IReadOnlyDictionary<string, string>? productIdMap = null)
     {
         foreach (var (id, unlocked, redeemed) in rows)
         {
@@ -522,8 +569,8 @@ internal static class AccountLogic
             // If redeemed, the Known* entries should be present (handled by SyncKnownArraysForRewards).
             if (!unlocked || redeemed) continue;
 
-            string lookupId = CatalogueLogic.StripCaretPrefix(id);
-            string saveId = CatalogueLogic.EnsureCaretPrefix(id);
+            // Resolve to product ID (e.g. ^TWITCH_376 -> ^EXPD_POSTER11A for twitch rewards).
+            var (lookupId, saveId) = ResolveProductId(id, productIdMap);
             var item = database?.GetItem(lookupId);
 
             bool isSpecial = item != null
@@ -532,6 +579,10 @@ internal static class AccountLogic
             // Remove from KnownSpecials if present.
             if (isSpecial)
                 SyncJsonArrayEntry(playerState, "KnownSpecials", saveId, false);
+
+            // Building-type rewards: also remove from KnownProducts.
+            if (item?.IsBuilding == true)
+                SyncJsonArrayEntry(playerState, "KnownProducts", saveId, false);
 
             // Remove from KnownTech if present (same logic as SyncKnownArraysForRewards).
             if (item != null && !IsNonTechReward(item))
@@ -573,72 +624,143 @@ internal static class AccountLogic
         var redeemedSeason = GetUnlockedSet(playerState.GetArray("RedeemedSeasonRewards"));
         var redeemedTwitch = GetUnlockedSet(playerState.GetArray("RedeemedTwitchRewards"));
         var knownSpecials = GetUnlockedSet(playerState.GetArray("KnownSpecials"));
+        var knownProducts = GetUnlockedSet(playerState.GetArray("KnownProducts"));
         var knownTech = GetUnlockedSet(playerState.GetArray("KnownTech"));
 
+        // Build a map from TwitchId (^TWITCH_NNN) -> caret-prefixed product ID (^EXPD_POSTER11A)
+        // from the RewardDatabase. Used for KnownSpecials and KnownProducts checks which store
+        // product IDs, not TwitchIds.
+        var twitchToProduct = BuildTwitchProductMap();
+
         // Check: redeemed season rewards should have matching Known* entries.
+        // Season reward IDs are already product IDs (no translation needed).
         CheckRedeemedAgainstKnown(issues, redeemedSeason, "RedeemedSeasonRewards",
-            knownSpecials, knownTech, database);
+            null, knownSpecials, knownProducts, knownTech, database);
 
         // Check: redeemed Twitch rewards should have matching Known* entries.
+        // TwitchIds must be resolved to product IDs for KnownSpecials/KnownProducts checks.
         CheckRedeemedAgainstKnown(issues, redeemedTwitch, "RedeemedTwitchRewards",
-            knownSpecials, knownTech, database);
+            twitchToProduct, knownSpecials, knownProducts, knownTech, database);
 
-        // Check: Known* entries that correspond to rewards but are NOT in any Redeemed* array.
-        var allRedeemed = new HashSet<string>(redeemedSeason, StringComparer.OrdinalIgnoreCase);
-        foreach (var id in redeemedTwitch)
-            allRedeemed.Add(id);
+        // --- Reverse / stale check ---
+        // An item is stale in KnownSpecials if it is a KNOWN REWARD product ID that is NOT
+        // currently redeemed. Quicksilver-vendor items (purchasable specials) legitimately
+        // live in KnownSpecials without a Redeemed* entry; those are NOT flagged.
+
+        // Build set of all known redeemable product IDs (from our reward database).
+        var redeemableProductIds = BuildRedeemableProductIds();
+
+        // Build set of currently-redeemed product IDs.
+        // Season rewards: reward ID == product ID.
+        // Twitch rewards: resolve TwitchId -> product ID via twitchToProduct map.
+        var redeemedProductIds = new HashSet<string>(redeemedSeason, StringComparer.OrdinalIgnoreCase);
+        foreach (var twitchId in redeemedTwitch)
+        {
+            if (twitchToProduct.TryGetValue(twitchId, out var pid))
+                redeemedProductIds.Add(pid);
+        }
 
         foreach (var id in knownSpecials)
         {
-            if (allRedeemed.Contains(id)) continue;
+            // Skip if this is not a known redeemable reward product ID
+            // (it's a Quicksilver-vendor or other non-redeemable special).
+            if (!redeemableProductIds.Contains(id)) continue;
+
+            // Skip if correctly redeemed.
+            if (redeemedProductIds.Contains(id)) continue;
 
             string lookupId = CatalogueLogic.StripCaretPrefix(id);
             var item = database?.GetItem(lookupId);
-
-            bool isSpecial = item != null
-                && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
-            if (isSpecial)
+            string name = item?.Name ?? id;
+            issues.Add(new ConsistencyIssue
             {
-                string name = item?.Name ?? id;
-                issues.Add(new ConsistencyIssue
-                {
-                    Id = id,
-                    Name = name,
-                    CurrentArray = "KnownSpecials",
-                    MissingArray = "RedeemedSeasonRewards",
-                    Description = UiStrings.Format("account.consistency_stale_entry", name, id, "Known Specials"),
-                });
-            }
+                Id = id,
+                Name = name,
+                CurrentArray = "KnownSpecials",
+                MissingArray = "RedeemedSeasonRewards",
+                Description = UiStrings.Format("account.consistency_stale_entry", name, id, "Known Specials"),
+            });
         }
 
         return issues;
     }
 
     /// <summary>
+    /// Builds a map from TwitchId (e.g. <c>^TWITCH_376</c>) to caret-prefixed product ID
+    /// (e.g. <c>^EXPD_POSTER11A</c>) using the <see cref="RewardDatabase"/>.
+    /// Used so that KnownSpecials and KnownProducts checks can look up the product ID
+    /// for twitch rewards (those arrays store product IDs, not TwitchIds).
+    /// </summary>
+    private static Dictionary<string, string> BuildTwitchProductMap()
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var reward in RewardDatabase.TwitchRewards)
+        {
+            if (!string.IsNullOrEmpty(reward.ProductId))
+                map[reward.Id] = CatalogueLogic.EnsureCaretPrefix(reward.ProductId);
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Builds a set of all known redeemable product IDs from the <see cref="RewardDatabase"/>.
+    /// Used by the stale check to distinguish known reward product IDs (which should appear
+    /// in a Redeemed* array) from Quicksilver-vendor items (which legitimately appear only
+    /// in KnownSpecials).
+    /// </summary>
+    private static HashSet<string> BuildRedeemableProductIds()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Season reward IDs are already caret-prefixed product IDs.
+        foreach (var reward in RewardDatabase.SeasonRewards)
+            set.Add(reward.Id);
+        // Twitch rewards: add the product ID (which is what's stored in KnownSpecials).
+        foreach (var reward in RewardDatabase.TwitchRewards)
+        {
+            if (!string.IsNullOrEmpty(reward.ProductId))
+                set.Add(CatalogueLogic.EnsureCaretPrefix(reward.ProductId));
+        }
+        return set;
+    }
+
+    /// <summary>
     /// Checks a set of redeemed IDs against the Known* arrays and records any mismatches.
     /// </summary>
+    /// <param name="twitchToProduct">
+    /// When non-null, maps TwitchIds to product IDs for KnownSpecials/KnownProducts lookups.
+    /// Pass null for season rewards (their IDs are already product IDs).
+    /// </param>
     private static void CheckRedeemedAgainstKnown(
         List<ConsistencyIssue> issues,
         HashSet<string> redeemed,
         string redeemedArrayName,
+        Dictionary<string, string>? twitchToProduct,
         HashSet<string> knownSpecials,
+        HashSet<string> knownProducts,
         HashSet<string> knownTech,
         GameItemDatabase? database)
     {
         foreach (var id in redeemed)
         {
-            string lookupId = CatalogueLogic.StripCaretPrefix(id);
+            // Resolve to product ID for KnownSpecials/KnownProducts/database lookups.
+            // Twitch rewards store TwitchId in RedeemedTwitchRewards but product ID in
+            // KnownSpecials and KnownProducts.
+            string productId = id;
+            if (twitchToProduct != null && twitchToProduct.TryGetValue(id, out var pid))
+                productId = pid;
+
+            string lookupId = CatalogueLogic.StripCaretPrefix(productId);
             var item = database?.GetItem(lookupId);
-            string name = item?.Name ?? id;
+            string name = item?.Name ?? productId;
 
             bool isSpecial = item != null
                 && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
 
-            if (isSpecial && !knownSpecials.Contains(id))
+            if (isSpecial && !knownSpecials.Contains(productId))
             {
                 issues.Add(new ConsistencyIssue
                 {
-                    Id = id,
+                    Id = productId,
                     Name = name,
                     CurrentArray = redeemedArrayName,
                     MissingArray = "KnownSpecials",
@@ -646,12 +768,25 @@ internal static class AccountLogic
                 });
             }
 
-            bool shouldBeInTech = item != null && !IsNonTechReward(item);
-            if (shouldBeInTech && !knownTech.Contains(id))
+            // Building-type rewards are also tracked in KnownProducts.
+            if (item?.IsBuilding == true && !knownProducts.Contains(productId))
             {
                 issues.Add(new ConsistencyIssue
                 {
-                    Id = id,
+                    Id = productId,
+                    Name = name,
+                    CurrentArray = redeemedArrayName,
+                    MissingArray = "KnownProducts",
+                    Description = UiStrings.Get("account.consistency_missing_products"),
+                });
+            }
+
+            bool shouldBeInTech = item != null && !IsNonTechReward(item);
+            if (shouldBeInTech && !knownTech.Contains(productId))
+            {
+                issues.Add(new ConsistencyIssue
+                {
+                    Id = productId,
                     Name = name,
                     CurrentArray = redeemedArrayName,
                     MissingArray = "KnownTech",

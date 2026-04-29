@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "Probleem",
   "account.consistency_issues_found": "{0} inconsistentie(s) gevonden:",
   "account.consistency_missing_specials": "Ingewisseld maar niet in Bekende Specials.",
+  "account.consistency_missing_products": "Ingewisseld maar niet in Bekende Producten.",
   "account.consistency_missing_tech": "Ingewisseld maar niet in Bekende Technologie.",
   "account.consistency_no_save": "Geen opslag geladen. Laad eerst een opslag.",
   "account.consistency_ok": "Geen inconsistenties gevonden. Ingewisselde beloningen en Known-arrays zijn consistent.",

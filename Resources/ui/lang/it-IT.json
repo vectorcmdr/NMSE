@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "Problema",
   "account.consistency_issues_found": "{0} incoerenza/e trovata/e:",
   "account.consistency_missing_specials": "Riscattato ma non in Speciali noti.",
+  "account.consistency_missing_products": "Riscattato ma non in Prodotti noti.",
   "account.consistency_missing_tech": "Riscattato ma non in Tecnologia nota.",
   "account.consistency_no_save": "Nessun salvataggio caricato. Carica prima un salvataggio.",
   "account.consistency_ok": "Nessuna incoerenza trovata. Le ricompense riscattate e gli array Known sono coerenti.",

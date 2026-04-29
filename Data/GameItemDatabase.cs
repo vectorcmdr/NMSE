@@ -199,6 +199,12 @@ public class GameItemDatabase
                         if (element.TryGetProperty("IsTemporary", out var isTempProp) && isTempProp.ValueKind == JsonValueKind.True)
                             item.IsTemporary = true;
 
+                        // Items loaded from Buildings.json are base-building objects.
+                        // These are added to KnownProducts (in addition to KnownSpecials)
+                        // when redeemed, matching the game's own behaviour.
+                        if (itemType.Equals("Buildings", StringComparison.OrdinalIgnoreCase))
+                            item.IsBuilding = true;
+
                         // Procedural technology detection for Upgrades/Technology Module:
                         // Items with StatLevels AND no DeploysInto are procedural tech.
                         // Items WITH DeploysInto are consumable products (techpacks) that

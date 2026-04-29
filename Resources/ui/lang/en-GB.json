@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "Issue",
   "account.consistency_issues_found": "{0} inconsistency(ies) found:",
   "account.consistency_missing_specials": "Redeemed but not in Known Specials.",
+  "account.consistency_missing_products": "Redeemed but not in Known Products.",
   "account.consistency_missing_tech": "Redeemed but not in Known Tech.",
   "account.consistency_no_save": "No save file loaded. Load a save first to check consistency.",
   "account.consistency_ok": "No inconsistencies found. Redeemed rewards and Known arrays are consistent.",

@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "문제",
   "account.consistency_issues_found": "{0}개의 불일치 발견:",
   "account.consistency_missing_specials": "교환됨, 알려진 스페셜에 없음.",
+  "account.consistency_missing_products": "교환됨, 알려진 제품에 없음.",
   "account.consistency_missing_tech": "교환됨, 알려진 기술에 없음.",
   "account.consistency_no_save": "저장 파일이 로드되지 않았습니다. 먼저 저장 파일을 로드하세요.",
   "account.consistency_ok": "불일치가 없습니다. 교환된 보상과 Known 배열이 일치합니다.",

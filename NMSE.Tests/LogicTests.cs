@@ -11722,6 +11722,8 @@ public class LogicTests
     /// weapon, firework, and pet reward IDs as non-tech (should NOT go in KnownTech),
     /// while trails, staffs, bobbleheads, mech parts, and corvette parts are tech
     /// (should go in KnownTech).
+    /// Empty GiveRewardOnSpecialPurchase means the item is cosmetic-only (no tech reward)
+    /// and should therefore also NOT go in KnownTech (returns true = is non-tech).
     /// </summary>
     [Fact]
     public void IsNonTechReward_CorrectlyClassifiesRewardTypes()
@@ -11740,8 +11742,11 @@ public class LogicTests
         Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_PET01" }));
         Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_TWIT_PET25" }));
 
-        // Tech rewards -- should return false (these DO go in KnownTech)
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "" }));
+        // Empty GiveRewardOnSpecialPurchase = cosmetic item, no tech reward -> IS non-tech.
+        // (Our Extractor leaves this field empty for all purely decorative rewards.)
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "" }));
+
+        // Tech rewards -- non-empty reward IDs that are not non-tech keywords (DO go in KnownTech)
         Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S6_TRAIL" }));
         Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S12_STAFF" }));
         Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S2_SPEC" }));

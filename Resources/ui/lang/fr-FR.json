@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "Probleme",
   "account.consistency_issues_found": "{0} incoherence(s) trouvee(s) :",
   "account.consistency_missing_specials": "Échangé mais absent des Spéciaux connus.",
+  "account.consistency_missing_products": "Échangé mais absent des Produits connus.",
   "account.consistency_missing_tech": "Échangé mais absent des Technologies connues.",
   "account.consistency_no_save": "Aucune sauvegarde chargee. Chargez d'abord une sauvegarde.",
   "account.consistency_ok": "Aucune incoherence trouvee. Les recompenses echangees et les tableaux Known sont coherents.",

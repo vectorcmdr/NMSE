@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "Problem",
   "account.consistency_issues_found": "Znaleziono {0} niespojnosc(ci):",
   "account.consistency_missing_specials": "Odebrane, ale nie w Znanych specjalnych.",
+  "account.consistency_missing_products": "Odebrane, ale nie w Znanych produktach.",
   "account.consistency_missing_tech": "Odebrane, ale nie w Znanej technologii.",
   "account.consistency_no_save": "Nie zaladowano zapisu. Zaladuj najpierw zapis.",
   "account.consistency_ok": "Nie znaleziono niespojnosci. Odebrane nagrody i tablice Known sa spojne.",

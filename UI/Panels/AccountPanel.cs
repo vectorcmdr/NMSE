@@ -444,20 +444,23 @@ public partial class AccountPanel : UserControl
             twitchRows.Select(r => (r.Id, r.Redeemed)).ToList(),
             _database);
 
-        // Delta-only Known* sync: only touch KnownSpecials/KnownTech for items
+        // Delta-only Known* sync: only touch KnownSpecials/KnownProducts/KnownTech for items
         // whose redeemed state was explicitly changed by the user. Items the user
         // didn't touch are left as-is, preserving any out-of-sync state the player
         // may have for their own in-game reasons.
+        // Pass _productIdMap so that twitch rewards are resolved to their product ID
+        // before writing KnownSpecials / KnownProducts (those arrays store product IDs,
+        // not TwitchIds).
         var seasonChanged = GetChangedRewards(seasonRows, _originalSeasonRedeemed);
         var twitchChanged = GetChangedRewards(twitchRows, _originalTwitchRedeemed);
-        AccountLogic.SyncKnownArraysForChangedRewards(saveData, seasonChanged, _database);
-        AccountLogic.SyncKnownArraysForChangedRewards(saveData, twitchChanged, _database);
+        AccountLogic.SyncKnownArraysForChangedRewards(saveData, seasonChanged, _database, _productIdMap);
+        AccountLogic.SyncKnownArraysForChangedRewards(saveData, twitchChanged, _database, _productIdMap);
 
         // Delta-only stale cleanup: only clean Known* entries for items the user
         // explicitly un-redeemed (was redeemed at load, now not redeemed).
         var seasonStaleChanged = GetChangedStaleRows(seasonRows, _originalSeasonRedeemed);
         var twitchStaleChanged = GetChangedStaleRows(twitchRows, _originalTwitchRedeemed);
-        AccountLogic.CleanStaleKnownEntries(saveData, seasonStaleChanged, twitchStaleChanged, _database);
+        AccountLogic.CleanStaleKnownEntries(saveData, seasonStaleChanged, twitchStaleChanged, _database, _productIdMap);
 
         // Additionally write platform rewards to MXML file (PC platforms only).
         // Console platforms (Xbox, PS4, Switch) do not use MXML files.

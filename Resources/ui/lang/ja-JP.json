@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "問題",
   "account.consistency_issues_found": "{0}件の不整合が見つかりました:",
   "account.consistency_missing_specials": "交換済みだが既知のスペシャルにない。",
+  "account.consistency_missing_products": "交換済みだが既知の製品にない。",
   "account.consistency_missing_tech": "交換済みだが既知のテクノロジーにない。",
   "account.consistency_no_save": "セーブデータが読み込まれていません。先にセーブデータを読み込んでください。",
   "account.consistency_ok": "不整合はありませんでした。引き換え済み報酬とKnown配列は整合しています。",

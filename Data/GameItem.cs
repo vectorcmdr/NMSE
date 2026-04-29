@@ -113,6 +113,13 @@ public class GameItem
     /// </summary>
     public bool IsTemporary { get; set; }
     /// <summary>
+    /// Whether this item is a base-building object (loaded from Buildings.json).
+    /// Base buildings that are also SpecialShop items are added to both
+    /// <c>KnownSpecials</c> AND <c>KnownProducts</c> when redeemed,
+    /// matching the game's own behaviour.
+    /// </summary>
+    public bool IsBuilding { get; set; }
+    /// <summary>
     /// For "Technology Module" product items, the technology ID this module deploys into
     /// when installed (e.g. "UP_SENGUN"). Used to look up TechnologyCategory for filtering.
     /// </summary>

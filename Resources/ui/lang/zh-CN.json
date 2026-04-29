@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "问题",
   "account.consistency_issues_found": "发现{0}个不一致:",
   "account.consistency_missing_specials": "已兑换但不在已知特殊物品中。",
+  "account.consistency_missing_products": "已兑换但不在已知产品中。",
   "account.consistency_missing_tech": "已兑换但不在已知科技中。",
   "account.consistency_no_save": "未加载存档。请先加载一个存档。",
   "account.consistency_ok": "未发现不一致。已兑换的奖励和Known数组一致。",

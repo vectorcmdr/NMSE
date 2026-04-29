@@ -15,6 +15,7 @@
   "account.consistency_col_issue": "問題",
   "account.consistency_issues_found": "發現{0}個不一致:",
   "account.consistency_missing_specials": "已兌換但不在已知特殊物品中。",
+  "account.consistency_missing_products": "已兌換但不在已知產品中。",
   "account.consistency_missing_tech": "已兌換但不在已知科技中。",
   "account.consistency_no_save": "未載入存檔。請先載入一個存檔。",
   "account.consistency_ok": "未發現不一致。已兌換的獎勵和Known陣列一致。",
