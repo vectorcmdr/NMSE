@@ -260,7 +260,7 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 [code-of-conduct]: .github/CODE_OF_CONDUCT.md
 [support]: .github/SUPPORT.md
 [cross-platfom-plan]: docs/dev/cross-platform-workplan.md
-[roadmap]: https://github.com/users/vectorcmdr/projects/1
+[roadmap]: https://github.com/vectorcmdr/NMSE/projects?query=is%3Aopen
 
 <!-- Cross-Platform Guides -->
 [guide-wine]: docs/dev/wine-linux-guide.md
