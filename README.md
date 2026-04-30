@@ -9,22 +9,18 @@
 
 [![Build Status][badge-build]][workflow-build]
 [![GitHub Release][badge-release]][releases]
-[![GitHub Stars][badge-stars]][repo]
-
+[![GitHub Stars][badge-stars]][repo] <br />
 [![License][badge-license]][license]
-[![.NET][badge-dotnet]][dotnet]
 [![Platform][badge-platform]][releases]
+[![.NET][badge-dotnet]][dotnet]
 
-**NMSE** is a free, open-source desktop application for editing *No Man's Sky* save files.<br>
-It supports every platform the game ships on - **Steam**, **GOG**, **Xbox Game Pass**, **PlayStation 4**, and **Nintendo Switch** - and handles each platform's unique file layout, compression, and encryption transparently.<br>
 
-NMSE boasts the most complete set of editable items out of all available save editors.<br>
-You can see a set of thorough comparisons between the two most popular editors [here][comparison].
+**NMSE** is a free, open-source desktop application for editing *No Man's Sky* save files.<br />
+It boats the most complete set of editable features among editors and supports every platform the game ships on; <br />
+**Steam**, **GOG**, **Xbox Game Pass**, **PlayStation 4** & **Nintendo Switch**.<br />
 
-[**Download Latest Release**][releases] · [**See The Website**][website] · [**Report a Bug**][issues-bug] · [**Request a Feature**][issues-feature] <br>
+[**Download Latest Release**][releases] · [**See The Website**][website] · [**Report a Bug**][issues-bug] · [**Request a Feature**][issues-feature] <br />
 [**User Guide**][user-guide]
-
-<br />
 
 > **Latest Supported Game Version:** 6.34 *Xeno Arena*
 
@@ -32,7 +28,7 @@ You can see a set of thorough comparisons between the two most popular editors [
 
 ---
 
-## ✨ Features
+## ✨ Features Summary
 
 <table>
 <tr>
@@ -44,14 +40,18 @@ You can see a set of thorough comparisons between the two most popular editors [
 - Modify player state and galactic coordinates
 - Unlock words, glyphs, and discoveries
 - Full milestone and journey milestone editing
-- Edit multitool inventory, type, class, and seed
+- Edit multi-tool inventory, type, class, and seed
 
-### 🏗️ Bases, Settlements & Companions
+### 🏗️ Bases, Settlements
 - Edit base inventories and storage chests
 - Settlement stats, production, and perks
 - Edit corvette cache and salvage containers
 - Edit fishing inventories and cooking ingredients
-- Companion editing with creature builder
+
+### 🦎 Companion Pets
+- Companion editing
+- Custom creature builder
+- Pet battle editing
 
 </td>
 <td width="50%" valign="top">
@@ -80,16 +80,17 @@ You can see a set of thorough comparisons between the two most popular editors [
 </tr>
 </table>
 
+For a full breakdown of all of the features, refer to the [**User Guide**][user-guide]
+
 ### 🌍 Multi-Language Support
 
 NMSE is localised in **16 languages**: English (UK), English (US), French, Italian, German, Spanish, Russian, Polish, Dutch, Portuguese, Latin American Spanish, Brazilian Portuguese, Simplified Chinese, Traditional Chinese, Japanese and Korean. Any help in making language support more natural is welcome!
 
-### 🐧 Cross-Platform (via Wine)
+---
 
-While NMSE is a native Windows application, it runs on **Linux** and **macOS** via Wine compatibility layers. <br>
-An AppImage is available for Linux users from the releases page.
+## 🗺️ Roadmap
 
-Guides are available for [Wine][guide-wine], [Bottles][guide-bottles], [Gcenx Wine Builds][guide-gcenx-wine], and [CrossOver][guide-crossover]. A native cross-platform version [is planned][cross-platfom-plan].
+You can view the NMSE development roadmap **[here][roadmap]** for upcoming, planned and dreamt about features.
 
 ---
 
@@ -126,21 +127,17 @@ Guides are available for [Wine][guide-wine], [Bottles][guide-bottles], [Gcenx Wi
 
 ## 📥 Installation
 
-### Requirements
-
-- **Windows 10/11** (64-bit)
-> Runs on .NET 10.0 Runtime - no install required for Windows (pre-packed).
-
-### Quick Start
+### Windows: Quick Start
 
 1. Download the latest release from the [**Releases**][releases] page
 2. Extract the zip to a folder of your choice
 3. Run `NMSE.exe`
-4. Use **File -> Open Save Directory** to load your save files
+4. Select your save slot and click <kbd>Load</kbd>
+5. If you save location is not auto-detected; use the <kbd>Browse...</kbd> button or <kbd>File > Open Save Directory</kbd> to locate your save directory
 
-> 💡 **Tip:** NMSE auto-detects your save file location for Steam, GOG, and Xbox Game Pass.
+> 💡 **Tip:** _NMSE auto-detects your save file location for Steam, GOG, and Xbox Game Pass_
 
-### Linux & macOS
+### Linux & macOS:
 
 Wine based AppImage and DMG are available from the release page.<br>
 See the cross-platform guides for running NMSE via Wine:
@@ -150,17 +147,23 @@ See the cross-platform guides for running NMSE via Wine:
 - 🥃 [Gcenx Wine Builds on macOS][guide-gcenx-wine]
 - ✖️[CrossOver on macOS][guide-crossover]
 
+A native cross-platform version [is planned][cross-platfom-plan].
+
 ---
 
 ## 📖 Documentation
 
-| | |
-|---|---|
-| **[User Guide][user-guide]** | How to use NMSE - panel by panel, feature by feature |
-| **[Developer Docs][dev-docs]** | Architecture, core logic, data layer, IO, models, and UI internals |
-| **[Contributing][contributing]** | How to contribute code, report bugs, and submit pull requests |
-| **[Code of Conduct][code-of-conduct]** | Community guidelines |
-| **[Support][support]** | How to get help |
+* **[User Guide][user-guide]** - How to use NMSE panel by panel, feature by feature
+* **[Developer Docs][dev-docs]** - Architecture, core logic, data layer, IO, models, and UI internals
+* **[Contributing][contributing]** - How to contribute code, report bugs, and submit pull requests
+* **[Code of Conduct][code-of-conduct]** - Community guidelines
+* **[Support][support]** - How to get help
+
+---
+
+## 📄 License
+
+NMSE is licensed under the **GNU Affero General Public License** - see the [LICENSE][license] file for details.
 
 ---
 
@@ -184,25 +187,9 @@ dotnet test NMSE.Extractor.Tests/
 
 ---
 
-## 🗺️ Roadmap
-
-- [x] Full save file support (Steam, GOG, Xbox, PS4, Switch)
-- [x] 16-language UI localisation
-- [x] Wine compatibility scripts (Linux & macOS)
-- [X] Corvette build order optimizer
-- [X] Import support for NMS Model IO Tool
-- [ ] Native cross-platform UI (AvaloniaUI migration)
-- [ ] Base teleport reordering
-- [ ] Support for in-game archives
-- [ ] Starship/Multi-tool/etc. collection system
-- [ ] Community seeds library
-- [ ] Integrations with NMS Optimizer app
-
----
-
 ## 💖 Support the Project
 
-If NMSE has been useful to you, consider supporting its development:
+If NMSE has been useful to you, please consider supporting its development:
 
 <div align="center">
 
@@ -214,17 +201,11 @@ If NMSE has been useful to you, consider supporting its development:
 Your support helps cover hosting, tooling, and the many hours of development and testing that go into each release.<br>
 Every contribution - big or small - is greatly appreciated. ❤️
 
-### Sponsors:
+### Public Sponsors:
 
 Thanks to these users for their generous support:
 
 ![sponsors badge](https://readme-contribs.as93.net/sponsors/vectorcmdr?shape=circle&fontSize=10)
-
----
-
-## 📄 License
-
-NMSE is licensed under the **GNU Affero General Public License** - see the [LICENSE][license] file for details.
 
 ---
 
@@ -237,8 +218,6 @@ NMSE is licensed under the **GNU Affero General Public License** - see the [LICE
 ### Contributors:
 
 ![contributors badge](https://readme-contribs.as93.net/contributors/vectorcmdr/NMSE?shape=circle&fontSize=10)
-
-
 
 ---
 
@@ -254,11 +233,12 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 
 <!-- Badges -->
 [badge-build]: https://img.shields.io/github/actions/workflow/status/vectorcmdr/NMSE/build-nmse.yml?branch=main&label=build&logo=github
-[badge-license]: https://img.shields.io/badge/license-AGPL%203.0-0078D4
+[badge-license]: https://img.shields.io/badge/license-AGPL%203.0-4a8fff
 [badge-dotnet]: https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white
 [badge-release]: https://img.shields.io/github/v/release/vectorcmdr/NMSE?include_prereleases&label=⇓%20release&color=green
 [badge-stars]: https://img.shields.io/github/stars/vectorcmdr/NMSE?style=flat&color=yellow&label=★%20stars
 [badge-platform]: https://img.shields.io/badge/platform-Windows-0078D4?logo=windows&logoColor=white
+[badge-gamever]: https://img.shields.io/badge/game%20version-6.34-7644e3?logo=windows&logoColor=white
 [badge-sponsor]: https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-ea4aaa?logo=githubsponsors&logoColor=white
 [badge-kofi]: https://img.shields.io/badge/Support-Ko--fi-29abe0?logo=ko-fi&logoColor=white
 [badge-github]: https://img.shields.io/badge/GitHub-vectorcmdr-181717?logo=github&logoColor=white
@@ -279,8 +259,8 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 [contributing]: .github/CONTRIBUTING.md
 [code-of-conduct]: .github/CODE_OF_CONDUCT.md
 [support]: .github/SUPPORT.md
-[comparison]: docs/dev/comparison/README.md
 [cross-platfom-plan]: docs/dev/cross-platform-workplan.md
+[roadmap]: https://github.com/users/vectorcmdr/projects/1
 
 <!-- Cross-Platform Guides -->
 [guide-wine]: docs/dev/wine-linux-guide.md

@@ -103,14 +103,15 @@ There are two ways to open a save file:
 
 ### Method 1: Open Save Directory (Recommended)
 
-1. Click **File -> Open Save Directory** in the menu bar, or browse through the bar
+1. Click <kbd>Browse...</kbd> or <kbd>File > Open Save Directory</kbd> in the menu bar
 2. NMSE will automatically detect your save file location
 3. A list of available save slots will appear
-4. Select the save slot you want to edit
+4. Select the save slot and save file you want to edit
+5. Click <kbd>Load</kbd>
 
 ### Method 2: Load Save File (Manual)
 
-1. Click **File -> Load Save File**
+1. Click <kbd>File > Load Save File</kbd>
 2. Browse to the save file on your computer
 3. Select the file and click **Open**
 
@@ -122,8 +123,8 @@ Use this method for PlayStation or Nintendo Switch saves that you've copied to y
 
 After making edits, save your changes using one of these methods:
 
-- **File -> Save** - Overwrites the original file (a backup is created automatically)
-- **File -> Save As** - Save to a new location without overwriting the original
+- <kbd>File > Save</kbd> - Overwrites the original file (a backup is created automatically)
+- <kbd>File > Save As</kbd> - Save to a new location without overwriting the original
 
 > ⚠️ **Important:** While NMSE creates automatic backups, it's good practice to keep your own copy as well. Always keep a backup of your original save files before editing. 
 
@@ -131,8 +132,8 @@ After making edits, save your changes using one of these methods:
 
 If something goes wrong, you can restore from a backup:
 
-- **Edit -> Restore Backup (All)** - Restore all save slots from backup
-- **Edit -> Restore Backup (Single)** - Restore just the current save slot
+- <kbd>Edit > Restore Backup (All)</kbd> - Restore all save slots from backup
+- <kbd>Edit > Restore Backup (Single)</kbd> - Restore just the current save slot
 
 ---
 
@@ -149,7 +150,7 @@ Most sections support export and import in different ways (with cross-editor com
 | **Starships** | Ship selection, stats, seeds, and inventory |
 | **Fleet** | Freighter, frigates, and squadron stats, seeds, and inventories |
 | **Exocraft** | Exocraft vehicle inventories |
-| **Companions** | Companion management and creature creator |
+| **Companions** | Companion management, creature creator, pet battles |
 | **Bases & Storage** | Bases and NPCs, chest inventories and storage containers |
 | **Catalogue** | Words, glyphs, teleport locations, recipes, fish, product and technology catalogue |
 | **Milestones** | Journey milestones and statistics |
@@ -232,7 +233,7 @@ The **Exosuit** tab shows your personal inventory in a visual grid layout.
 
 - **Click** on any slot to select it
 - **Right-click** a slot to see available actions
-- Use the item picker to change what's in a slot
+- Use the item details / picker to view and change what's in a slot
 - Edit stack sizes to change quantities
 - Move items between slots by dragging
 - Duplicate items into empty slots by using <kbd>ctrl</kbd>/<kbd>cmd</kbd> + dragging
@@ -241,7 +242,7 @@ The **Exosuit** tab shows your personal inventory in a visual grid layout.
 
 1. Click an empty slot
 2. Use the item picker dialog to search for items
-3. Select the item and confirm with <kbd>Apply Changes</kbd>
+3. Select the item and confirm with <kbd>Add Item</kbd>
 
 > 💡 **Tip:** You can search items by name using the search bar in the item picker.
 
@@ -359,10 +360,15 @@ Changing the **Seed** value will change how your ship looks and it's base stats.
 
 Corvette ships are supported with some special considerations:
 - Corvettes work jankily in the game save data.
-- Corvette ships have additional <kbd>Export</kbd> / <kbd>Import</kbd> and <kbd>Snapshot</kbd> buttons. Due to how corvettes work, you should summon your corvette and then set a new starship to primary before editing.
-- NMS saves only store the Technology slots in the starship keys for your last actively docked Corvette(s). If you intend to edit a corvettes inventories, have it docked on your freighter or as your primary.
+- Due to how corvettes work, you should summon your corvette and then set a new starship to primary before editing.
+- NMS saves only store the Technology slots in the starship keys for your last 'Recently Boarded Corvette'. If you intend to edit a corvettes inventories, you should always have this ship as your second last summoned ship for safety.
 - Corvette inventory slots are reverse looked up from the base data to show the correct technology slots. If you don't see them, you need to cycle the corvette per above.
 - NMSE has some safety prompts around these to help to guide you when editing corvette starships safely.
+
+
+Corvette type starships allow the following extra features:
+- Snapshot / import a snapshot of the technology and ship status of a corvette, to reduce annoyance from the game jumbling the slots.
+- Optimise the build order of base components in the corvette design via the <kbd>Optimise Build</kbd> button. A Tick or Cross indicator shows the current optimisation status.
 
 | Corvettes |
 |-------|
@@ -474,11 +480,15 @@ The **Companion** tab lets you manage your collection of pets / companions, as w
 
 The system is complex and has some internal game constraints that can be hard to work with, so results may vary.
 
-You can use the <kbd>Creature Builder (Web)</kbd> button above the list of companions and eggs to go to the NMSCD Creature Builder site, and import / set your companions per the site.
+You can use the <kbd>Creature Builder (Web)</kbd> button above the list of companions and eggs to go to the NMSCD Creature Builder site, and import / set your companions per the site - but be warned that the site has some incorrect identifiers based on model scenes that will need to be substituted.
 
-| Companions |
-|-------|
-| <img src="../img/companions.png"> |
+You can also use the builtin editor to edit came rule compatible creatures. Currently there is no preview for the model though.
+
+Via the <kbd>Battle</kbd> tab you can also edit the Xeno Arena pet battle features of your companion pets and your team format.
+
+| Companions (Stats + Builder) | Pet Battles |
+| --- | --- |
+| <img src="../img/companions.png"> | <img src="../img/companions-pet-battles.png"> |
 
 ### What You Can Edit
 
@@ -495,19 +505,29 @@ You can use the <kbd>Creature Builder (Web)</kbd> button above the list of compa
 | **Trust** | Companion trust value |
 | **Birth Time** | Companion time of birth |
 | **Last Egg Time** | Companion last egg time |
+| **Induce Egg** | Induce an egg from this companion |
 | **Custom Species Name** | Custom species name |
 | **Egg Modified [ ]** | Egg modification state |
 | **Summoned [ ]** | Companion summoned state |
 | **Allow Reroll [ ]** | Companion reroll state |
-| **UA** | UA number |
+| **UA** | UA value |
 | **Seeds** | Creature, secondary, species, genus, bone scale, colour base |
 | **Stats** | Companion stats (Helpfulness, aggression, independence, hungry, lonely, trust increase/decrease dates) |
+| **Descriptors (Parts)** | Companion creature model parts and descriptors |
+| **Accessory Customisation** | Companion accessory customisation |
 
-> 💡 **Tip:** The Descriptors / Parts can be edited depending on the selected species and type so that you can select different body part types. These are defined by what the game allows, so different companions will offer different options (some of which are fixed).
+The <kbd>Induce Egg</kbd> button can be used to create a companion egg from the selected companion. It will enter the egg list, and produce an egg in the exosuit inventory.
+
+A creatures model parts / descriptors can be edited per creature with the game files rule limitations via the <kbd>Descriptors (Parts)</kbd> section
+
+> 💡 **Tip:** <br>
+>The Descriptors / Parts can be edited depending on the selected species and type so that you can select different body part types.<br>
+> These are defined by what the game allows, so different companions will offer different options (some of which are fixed).
+
+Additionally, the accessories of the companion can be set, coloured and reset via the <kbd>Accessory Customisation</kbd> section.
+This includes their move / ability list, mutation progress, stats, class overrides and different displays of ability statistics.
 
 Export / Import / Delete via the <kbd>Export</kbd>, <kbd>Import</kbd>, and <kbd>Delete</kbd> buttons.
-
-Additionally, the accessories of the companion can be reset via the <kbd>Reset Accessory</kbd> button.
 
 ---
 
@@ -519,9 +539,11 @@ The **Bases** tab shows your base NPCs and their race and seed (editable), as we
 
 Use the dropdown at the top of the Base Info section to switch between your bases.
 
-Backup / Restore / via the <kbd>Backup</kbd> and <kbd>Restore</kbd> buttons.
+Export / Import / via the <kbd>Export</kbd> and <kbd>Import</kbd> buttons.
 
 You can move the base computer to another component's location via the <kbd>Move Base Computer</kbd> button. It will prompt you to select a base component by ID.
+
+You can also clear terrain edit data at the associated base via the <kbd>Clear Terrain Edits</kbd> button.
 
 | Bases |
 |-------|
@@ -560,7 +582,7 @@ You can edit the contents of your special storage containers. Each container has
 
 ---
 
-## Catalogue (Technologies, Products, Words, Glyphs, Locations, Fishing & Recipes)
+## Catalogue (Technologies, Products, Specials Words, Glyphs, Locations, Fishing & Recipes)
 
 The **Catalogue** tab manages your discovery progress and knowledge.
 
@@ -575,18 +597,26 @@ Use the <kbd>Add {type}}</kbd> button to display a filterable list of items you 
 The <kbd>Remove Selected</kbd> removes a known entry. Export / Import via the <kbd>Export</kbd> and <kbd>Import</kbd> buttons.
 
 #### Known Technologies
-View and manage the technology plans that you can craft or use.
+View and manage the technologies that you can craft or use.
 
 | Known Technologies |
 |-------|
 | <img src="../img/discoveries-tech.png"> |
 
 #### Known Products
-View and manage the technology plans that you can craft or use.
+View and manage the products that you can craft or use.
 
 | Known Products |
 |-------|
 | <img src="../img/discoveries-product.png"> |
+
+#### Known Specials
+View and manage the special items that you can craft or use.
+This list is syncronised with the Account Rewards panel to some degree.
+
+| Known Specials |
+|-------|
+| <img src="../img/discoveries-specials.png"> |
 
 #### Known Words
 View and manage the alien words you've learned from each race (Gek, Vy'keen, Korvax).<br>
@@ -603,8 +633,8 @@ View and learn portal glyphs. You can learn / unlearn all 16 glyphs at once.
 |-------|
 | <img src="../img/discoveries-glyphs.png"> |
 
-#### Known Locations
-Known locations are displayed in a list with their **Name**, **Type**, **Galaxy**, **Portal Code (Hex)**, **Portal Code (Dec)** and **Signal Booster** address.
+#### Teleport Locations
+Known teleport locations are displayed in a list with their **Name**, **Type**, **Galaxy**, **Portal Code (Hex)**, **Portal Code (Dec)** and **Signal Booster** address.
 
 | Known Locations |
 |-------|
@@ -705,6 +735,8 @@ An approximation of the building is noted below the plots fields.
 
 These are a bitflag composites that pack multiple bolleans and small numbers into a single integer. Editing these manually is for advanced users.
 
+> This functionality is experimental and based on initial reverse engineering works.
+
 ### Building Editor
 
 | **Building Editor** | Edit an individual building/plots bitfields directly |
@@ -717,6 +749,8 @@ Select the plot via the slot field. You can set the buildings status via the raw
 The tick boxes below allow you to manipulate the bitflags in the bitfields within the composite integer. Each tickbox will manipulate the bits and produce the new integer to match.
 
 This panel is for advanced users and requires either known useful values, or a solid understanding of the bitflags to net the most benefit.
+
+> This functionality is experimental and based on initial reverse engineering works.
 
 ---
 
@@ -764,11 +798,11 @@ The **Account** tab shows seasonal reward (expedition), Twitch drops and platfor
 
 Each tab has the ability to unlock / lock all, unlock individually and filter the lists.
 
-Platform rewards require the user settings MXML file to also be edited directly. It will auto find the file on supported platforms, if not browse to `GCUSERSETTINGSDATA.MXML` in the NMS `Binaries\SETTINGS\` directory
+Platform rewards may require the user settings MXML file to also be edited directly depending on your platform. It will auto find the file on supported platforms, if not browse to `GCUSERSETTINGSDATA.MXML` in the NMS `Binaries\SETTINGS\` directory
 
-> 💡 **Tip:** Due to how the game works, Twitch drops and platform rewards, you need to set your game to offline before starting the game to unlock the rewards.
-
-> 💡 **Tip:** You may also need to edit the platform rewards after launching the game (or lock the file from editing until after launch) due to how the game recreates the user settings MXML at runtime.
+> 💡 **Tips:** <br>
+> Due to how the game works, Twitch drops and platform rewards, you need to set your game to offline before starting the game to unlock the rewards. <br>
+> You may also need to edit the platform rewards after launching the game (or lock the file from editing until after launch) due to how the game recreates the user settings MXML at runtime.
 
 ---
 
@@ -796,7 +830,9 @@ The **Raw JSON Editor** tab provides direct access to the underlying save file d
 
 ### When to Use This
 
-The Raw JSON editor is for **advanced users** who need to edit values that aren't exposed in the other tabs. It shows the complete save file structure as a navigable tree.
+The Raw JSON editor is for **advanced users** who need to edit values that aren't exposed in the other tabs. It shows the complete save file structure as a navigable tree view, text view, or a split view of both.
+
+It supports basic synatax highlighting, node export/import and change diffing.
 
 ### How to Use
 
@@ -805,9 +841,21 @@ The Raw JSON editor is for **advanced users** who need to edit values that aren'
 3. Modify the value in the edit field
 4. Press Enter to confirm the change
 
+> ⚠️ **Caution:** Editing raw JSON values incorrectly can corrupt your save file. Only use this if you know what you're doing, and always keep a backup!
+
+Use the <kbd>Tree View</kbd>, <kbd>Text View</kbd> or <kbd>Split View</kbd> buttons to switch betweeen the different view modes.
+
+Use the <kbd>Expand All</kbd> and <kbd>Collapse All</kbd> buttons to fold/unfold all.
+
 > 💡 **Tip:** The <kbd>Expand All</kbd> button will unfold up to half a million rows of keys and information depending on your saves age and density and can take a **very significant** amount of time to complete. It will warn you before you expand.
 
-> ⚠️ **Caution:** Editing raw JSON values incorrectly can corrupt your save file. Only use this if you know what you're doing, and always keep a backup!
+The <kbd>Show Changes</kbd> button an be used to show a basic diff (up to a maximum set of changes) for the save edits that have been made to the JSON objects.
+
+Use the <kbd>Search...</kbd> field to search by string, key, etc.
+
+You can also export/import per node object via the context menu by right-clicking the object/node.
+
+For advanced edits, it is recommended to export the whole save JSON (or relevant node) and make changes in a capable external editor such as Sublime, VS Code, etc.
 
 ---
 
@@ -856,12 +904,13 @@ We do not support or condone cheating or editing at the expense of others. Pleas
 
 1. Make sure you're using the [latest version of NMSE][releases]
 2. Check that your save is from a supported game version
-3. Try restoring from a backup (**Edit -> Restore Backup**)
-4. If the issue persists, [report a bug][issues-bug]
+3. Try restoring from a backup (<kbd>Edit > Restore Backup</kbd>)
+4. Ensure you haven't caused the issue externally with other tools or edits first
+5. If the issue persists, [report a bug][issues-bug] - ensuring that you give clear and thorough information
 
 ### Can I undo my changes?
 
-You can restore from the automatic backup that NMSE creates when you save. Use **Edit -> Restore Backup** to go back to the last version before your edits.
+You can restore from the automatic backup that NMSE creates when you save. Use <kbd>Edit > Restore Backup</kbd> to go back to the last version before your edits.
 
 ---
 
