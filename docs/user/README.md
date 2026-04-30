@@ -714,6 +714,8 @@ Select Perks from the list and enter a seed on the right hand side of the list f
 
 ### Production
 
+| Field | Description |
+|-------|-------------|
 | **Production** | What your settlement produces |
 
 | Production |
@@ -724,6 +726,8 @@ Use the edit button to change what your settlement is producing.
 
 ### Building States
 
+| Field | Description |
+|-------|-------------|
 | **Building State Slots** | Edit the plots to change the status of the building in that plot |
 
 | Building States |
@@ -739,6 +743,8 @@ These are a bitflag composites that pack multiple bolleans and small numbers int
 
 ### Building Editor
 
+| Field | Description |
+|-------|-------------|
 | **Building Editor** | Edit an individual building/plots bitfields directly |
 
 | Building Editor |
