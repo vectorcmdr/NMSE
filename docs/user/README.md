@@ -256,19 +256,19 @@ The **Exosuit** tab shows your personal inventory in a visual grid layout.
 
 ### Sort and Auto-Stack
 
-- Exosuit Cargo has a <kbd>Sort</kbd> control at the top of the grid.
-- The <kbd>Auto-Stack</kbd> button moves matching items from Exosuit Cargo to Chests, Starship Cargo, or Freighter Cargo.
-- The Exosuit Cargo context menu can also auto-stack only the slot you right-clicked.
-- You can pin a slot from the context menu. Pinned slots are ignored by auto-stack.
-- If you use the single-slot auto-stack action on a pinned slot, the action is blocked.
-- If the destination stack becomes full, the extra items go to another free slot in the same destination when possible.
-- If there is no valid free slot, the remaining items stay in Exosuit Cargo.
+- Exosuit Cargo has a <kbd>Sort</kbd> control at the top of the grid
+- The <kbd>Auto-Stack</kbd> button moves matching items from Exosuit Cargo to Chests, Starship Cargo, or Freighter Cargo
+- The Exosuit Cargo context menu can also auto-stack only the slot you right-clicked
+- You can pin a slot from the context menu. Pinned slots are ignored by auto-stack
+- If you use the single-slot auto-stack action on a pinned slot, the action is blocked
+- If the destination stack becomes full, the extra items go to another free slot in the same destination when possible
+- If there is no valid free slot, the remaining items stay in Exosuit Cargo
 
 ---
 
 ## Multi-tools
 
-The **Multi-tools** tab lets you manage your collection of multitools.
+The **Multi-tools** tab lets you manage your collection of multi-tools.
 
 | Multi-tools |
 |-------|
@@ -287,9 +287,9 @@ The **Multi-tools** tab lets you manage your collection of multitools.
 
 Editing the inventory works the same as the other inventory panels (see Exosuit).
 
-### Switching Multitools
+### Switching Multi-tools
 
-Use the dropdown at the top to switch between your multitools. The inventory grid below will update to show the selected multitool's contents.
+Use the dropdown at the top to switch between your multi-tools. The inventory grid below will update to show the selected multitool's contents.
 
 ### Managing Multi-tools
 
@@ -301,7 +301,7 @@ Set the selected multi-tool to the primary multi-tool with the <kbd>Make Primary
 
 ### Changing Multi-tool Seed
 
-Changing the **Seed** value will change how your multi-tool looks and it's base stats. Each seed generates a unique combination of parts and colours. You can find seeds shared by the community online to get specific appearances.
+Changing the **Seed** value will change how your multi-tool looks and its base stats. Each seed generates a unique combination of parts and colours. You can find seeds shared by the community online to get specific appearances.
 
 > 💡 **Tip:** Write down your current seed or export your multi-tool before changing it, so you can go back if you don't like the new one!
 
@@ -342,13 +342,13 @@ Set the selected ship to the primary starship with the <kbd>Make Primary</kbd> b
 
 ### Cargo Sort and Auto-Stack
 
-- Starship Cargo has a <kbd>Sort</kbd> control at the top of the grid.
-- The <kbd>Auto-Stack</kbd> button in Starship Cargo moves matching items to Chests or Freighter Cargo.
-- The Starship Cargo context menu can also auto-stack only the slot you right-clicked.
-- You can pin a slot from the context menu. Pinned slots are ignored by auto-stack.
-- If you use the single-slot auto-stack action on a pinned slot, the action is blocked.
-- If the destination stack becomes full, the extra items go to another free slot in the same destination when possible.
-- If there is no valid free slot, the remaining items stay in Starship Cargo.
+- Starship Cargo has a <kbd>Sort</kbd> control at the top of the grid
+- The <kbd>Auto-Stack</kbd> button in Starship Cargo moves matching items to Chests or Freighter Cargo
+- The Starship Cargo context menu can also auto-stack only the slot you right-clicked
+- You can pin a slot from the context menu. Pinned slots are ignored by auto-stack
+- If you use the single-slot auto-stack action on a pinned slot, the action is blocked
+- If the destination stack becomes full, the extra items go to another free slot in the same destination when possible
+- If there is no valid free slot, the remaining items stay in Starship Cargo
 
 ### Changing Ship Appearance
 
@@ -359,16 +359,16 @@ Changing the **Seed** value will change how your ship looks and it's base stats.
 ### Corvette Support
 
 Corvette ships are supported with some special considerations:
-- Corvettes work jankily in the game save data.
-- Due to how corvettes work, you should summon your corvette and then set a new starship to primary before editing.
-- NMS saves only store the Technology slots in the starship keys for your last 'Recently Boarded Corvette'. If you intend to edit a corvettes inventories, you should always have this ship as your second last summoned ship for safety.
-- Corvette inventory slots are reverse looked up from the base data to show the correct technology slots. If you don't see them, you need to cycle the corvette per above.
-- NMSE has some safety prompts around these to help to guide you when editing corvette starships safely.
+- Corvettes work jankily in the game save data
+- Due to how corvettes work, you should summon your corvette and then set a new starship to primary before editing
+- NMS saves only store the Technology slots in the starship keys for your last 'Recently Boarded Corvette'. If you intend to edit a corvettes inventories, you should always have this ship as your second last summoned ship for safety
+- Corvette inventory slots are reverse looked up from the base data to show the correct technology slots. If you don't see them, you need to cycle the corvette per above
+- NMSE has some safety prompts around these to help to guide you when editing corvette starships safely
 
 
 Corvette type starships allow the following extra features:
-- Snapshot / import a snapshot of the technology and ship status of a corvette, to reduce annoyance from the game jumbling the slots.
-- Optimise the build order of base components in the corvette design via the <kbd>Optimise Build</kbd> button. A Tick or Cross indicator shows the current optimisation status.
+- Snapshot / import a snapshot of the technology and ship status of a corvette, to reduce annoyance from the game jumbling the slots
+- Optimise the build order of base components in the corvette design via the <kbd>Optimise Build</kbd> button. A Tick or Cross indicator shows the current optimisation status
 
 | Corvettes |
 |-------|
@@ -592,7 +592,7 @@ Most of the tabs have functionality for:
 
 Sorting and filtering with the headers and the filter search field.
 
-Use the <kbd>Add {type}}</kbd> button to display a filterable list of items you can add to your known list.
+Use the <kbd>Add {type}</kbd> button to display a filterable list of items you can add to your known list.
 
 The <kbd>Remove Selected</kbd> removes a known entry. Export / Import via the <kbd>Export</kbd> and <kbd>Import</kbd> buttons.
 
@@ -737,7 +737,7 @@ Use the edit button to change what your settlement is producing.
 For each plot (numbered 01 to 48), you can set the buildings status via the number entry field (or drop down list for known safe values). <br>
 An approximation of the building is noted below the plots fields.
 
-These are a bitflag composites that pack multiple bolleans and small numbers into a single integer. Editing these manually is for advanced users.
+These are bitflag composites that pack multiple booleans and small numbers into a single integer. Editing these manually is for advanced users.
 
 > This functionality is experimental and based on initial reverse engineering works.
 
@@ -838,7 +838,7 @@ The **Raw JSON Editor** tab provides direct access to the underlying save file d
 
 The Raw JSON editor is for **advanced users** who need to edit values that aren't exposed in the other tabs. It shows the complete save file structure as a navigable tree view, text view, or a split view of both.
 
-It supports basic synatax highlighting, node export/import and change diffing.
+It supports basic syntax highlighting, node export/import and change diffing.
 
 ### How to Use
 
@@ -855,7 +855,7 @@ Use the <kbd>Expand All</kbd> and <kbd>Collapse All</kbd> buttons to fold/unfold
 
 > 💡 **Tip:** The <kbd>Expand All</kbd> button will unfold up to half a million rows of keys and information depending on your saves age and density and can take a **very significant** amount of time to complete. It will warn you before you expand.
 
-The <kbd>Show Changes</kbd> button an be used to show a basic diff (up to a maximum set of changes) for the save edits that have been made to the JSON objects.
+The <kbd>Show Changes</kbd> button can be used to show a basic diff (up to a maximum set of changes) for the save edits that have been made to the JSON objects.
 
 Use the <kbd>Search...</kbd> field to search by string, key, etc.
 
