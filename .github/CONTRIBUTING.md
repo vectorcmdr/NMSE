@@ -1,6 +1,6 @@
 # Contributing to NMSE
 
-Thank you for your interest in contributing! This project is licensed under **GPL-3.0**, and we welcome contributions of all kinds.
+Thank you for your interest in contributing! This project is licensed under **AGPL-3.0**, and we welcome contributions of all kinds.
 
 ## 👋 Getting Started
 
@@ -14,7 +14,9 @@ Thank you for your interest in contributing! This project is licensed under **GP
 
 ## 📌 Code Style
 
-- Follow existing project conventions.
+- Follow existing project / code conventions.
+- Favour small, efficient functions over bloated methods where applicable.
+- Reusable utility code should be in utility classes.
 - Keep changes small and focused.
 - Include tests for new behavior where appropriate.
 - Do not introduce external packages and libraries.
