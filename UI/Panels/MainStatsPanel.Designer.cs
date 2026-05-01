@@ -142,7 +142,7 @@ partial class MainStatsPanel
         _coordinateRouletteBtn = new Button { Text = "Coordinate Roulette!", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         _coordinateRouletteBtn.Click += OnCoordinateRoulette;
 
-        _warpsToNextBattleField = new InvariantNumericTextBox { Width = 100, Minimum = 0, Maximum = 999, ReadOnly = true };
+        _warpsToNextBattleField = new InvariantNumericTextBox { Width = 100, Minimum = 0, Maximum = 999 };
         _timeToNextBattleField = new TextBox { Width = 150, ReadOnly = true };
         _triggerBattleBtn = new Button { Text = "Trigger Space Battle", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         _triggerBattleBtn.Click += OnTriggerSpaceBattle;

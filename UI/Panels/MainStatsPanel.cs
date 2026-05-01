@@ -350,42 +350,44 @@ public partial class MainStatsPanel : UserControl
             // Warps - would need Stats array with ^DIST_WARP
             int warpsLastBattle = 0;
             try { warpsLastBattle = playerState.GetInt("WarpsLastSpaceBattle"); } catch { }
-            int totalWarps = 0;
-            // Try to read total warps from stats
-            try
-            {
-                var statsGroups = playerState.GetArray("Stats");
-                if (statsGroups != null)
-                {
-                    for (int i = 0; i < statsGroups.Length; i++)
-                    {
-                        var group = statsGroups.GetObject(i);
-                        if (group.GetString("GroupId") == "^GLOBAL_STATS")
-                        {
-                            var stats = group.GetArray("Stats");
-                            if (stats != null)
-                            {
-                                for (int j = 0; j < stats.Length; j++)
-                                {
-                                    var stat = stats.GetObject(j);
-                                    if (stat.GetString("Id") == "^DIST_WARP")
-                                    {
-                                        totalWarps = stat.GetObject("Value")?.GetInt("IntValue") ?? 0;
-                                        break;
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            catch { }
+            int totalWarps = ReadTotalWarps(playerState);
 
             int warpsRemaining = Math.Max(0, CoordinateHelper.SpaceBattleIntervalWarps - (totalWarps - warpsLastBattle));
             _warpsToNextBattleField.NumericValue = Math.Min((int)(_warpsToNextBattleField.Maximum ?? 999), warpsRemaining);
         }
         catch { }
+    }
+
+    /// <summary>Reads the total warp count from the player's global stats (^DIST_WARP).</summary>
+    private static int ReadTotalWarps(JsonObject playerState)
+    {
+        try
+        {
+            var statsGroups = playerState.GetArray("Stats");
+            if (statsGroups != null)
+            {
+                for (int i = 0; i < statsGroups.Length; i++)
+                {
+                    var group = statsGroups.GetObject(i);
+                    if (group.GetString("GroupId") == "^GLOBAL_STATS")
+                    {
+                        var stats = group.GetArray("Stats");
+                        if (stats != null)
+                        {
+                            for (int j = 0; j < stats.Length; j++)
+                            {
+                                var stat = stats.GetObject(j);
+                                if (stat.GetString("Id") == "^DIST_WARP")
+                                    return stat.GetObject("Value")?.GetInt("IntValue") ?? 0;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        catch { }
+        return 0;
     }
 
     public void LoadAccountData(JsonObject accountData)
@@ -552,6 +554,16 @@ public partial class MainStatsPanel : UserControl
 
         // Portal interference
         try { playerState.Set("OnOtherSideOfPortal", _portalInterference.Checked); } catch { }
+
+        // Space battle - warps to next
+        try
+        {
+            int warpsToNext = (int)(_warpsToNextBattleField.NumericValue ?? 0);
+            int totalWarps = ReadTotalWarps(playerState);
+            int warpsLastBattle = totalWarps - CoordinateHelper.SpaceBattleIntervalWarps + warpsToNext;
+            playerState.Set("WarpsLastSpaceBattle", Math.Max(0, warpsLastBattle));
+        }
+        catch { }
 
         // Coordinates
         SaveCoordinatesToJson(playerState);
