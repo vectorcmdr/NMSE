@@ -81,6 +81,17 @@ internal sealed class ConsistencyDialog : Form
         bulkPanel.Controls.Add(removeAllBtn);
         bulkPanel.Controls.Add(countLabel);
 
+        // Warning label.
+        var warningLabel = new Label
+        {
+            Text = UiStrings.Get("account.consistency_warning"),
+            AutoSize = false,
+            Dock = DockStyle.Top,
+            ForeColor = Color.DarkOrange,
+            Padding = new Padding(8, 4, 8, 4),
+            Height = 52,
+        };
+
         // Grid.
         _grid = new DataGridView
         {
@@ -168,6 +179,7 @@ internal sealed class ConsistencyDialog : Form
         bottomPanel.Controls.Add(closeBtn);
 
         Controls.Add(_grid);
+        Controls.Add(warningLabel);
         Controls.Add(bulkPanel);
         Controls.Add(bottomPanel);
         AcceptButton = closeBtn;

@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "全部从当前数组移除",
   "account.consistency_remove_from": "移除",
   "account.consistency_stale_entry": "在{2}中但未在存档中兑换。",
+  "account.consistency_warning": "如果您在此看到列出的物品，请不要担心！此列表供高级用户使用，仅供参考，展示在奖励数组中状态不一致的物品。这并不代表存在问题。",
   "account.file_found": "✓ 找到文件",
   "account.file_not_found": "✗ 未找到文件",
   "account.filter": "筛选：",

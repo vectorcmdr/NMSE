@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Alle aus aktuellen Arrays entfernen",
   "account.consistency_remove_from": "Entfernen",
   "account.consistency_stale_entry": "In {2}, aber nicht im Spielstand eingelöst.",
+  "account.consistency_warning": "Wenn hier Einträge aufgelistet sind, keine Sorge! Diese Liste richtet sich an fortgeschrittene Nutzer und zeigt Elemente, die keinen gemeinsamen Status in allen Belohnungs-Arrays haben – nur zur Information. Sie weist auf kein Problem hin.",
   "account.file_found": "✓ Datei gefunden",
   "account.file_not_found": "✗ Datei nicht gefunden",
   "account.filter": "Filter:",

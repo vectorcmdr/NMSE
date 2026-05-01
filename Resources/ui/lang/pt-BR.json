@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Remover tudo dos arrays atuais",
   "account.consistency_remove_from": "Remover",
   "account.consistency_stale_entry": "Em {2} mas não resgatado no save.",
+  "account.consistency_warning": "Se você vir itens listados aqui, não se preocupe! Esta lista é para usuários avançados e mostra os itens que não compartilham um estado comum entre os arrays de recompensas, apenas para informação. Não indica um problema.",
   "account.file_found": "✓ Arquivo encontrado",
   "account.file_not_found": "✗ Arquivo não encontrado",
   "account.filter": "Filtro:",

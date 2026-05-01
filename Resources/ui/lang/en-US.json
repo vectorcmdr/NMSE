@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Remove All from Current Arrays",
   "account.consistency_remove_from": "Remove",
   "account.consistency_stale_entry": "In {2} but not redeemed in save.",
+  "account.consistency_warning": "If you see items listed here, do not worry! This list is for advanced users and offers a breakdown of items that don't share a common state across reward arrays for information only. It does not indicate a problem.",
   "account.file_found": "✓ File found",
   "account.file_not_found": "✗ File not found",
   "account.filter": "Filter:",

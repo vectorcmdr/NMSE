@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Alles verwijderen uit huidige arrays",
   "account.consistency_remove_from": "Verwijderen",
   "account.consistency_stale_entry": "In {2} maar niet ingewisseld in opslag.",
+  "account.consistency_warning": "Als u hier items ziet, maakt u zich dan geen zorgen! Deze lijst is voor gevorderde gebruikers en biedt een overzicht van items die geen gemeenschappelijke status hebben in alle beloningsarrays, uitsluitend ter informatie. Het duidt niet op een probleem.",
   "account.file_found": "✓ Bestand gevonden",
   "account.file_not_found": "✗ Bestand niet gevonden",
   "account.filter": "Filteren:",

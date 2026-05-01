@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "全て現在の配列から削除",
   "account.consistency_remove_from": "削除",
   "account.consistency_stale_entry": "{2}にあるがセーブで交換されていない。",
+  "account.consistency_warning": "ここに項目が表示されていても、心配しないでください！このリストは上級ユーザー向けで、報酬配列間で共通の状態を持たないアイテムの内訳を参考情報として表示しています。問題があることを示すものではありません。",
   "account.file_found": "✓ ファイルが見つかりました",
   "account.file_not_found": "✗ ファイルが見つかりません",
   "account.filter": "フィルター:",

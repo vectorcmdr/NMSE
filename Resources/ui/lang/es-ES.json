@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Eliminar todo de los arrays actuales",
   "account.consistency_remove_from": "Eliminar",
   "account.consistency_stale_entry": "En {2} pero no canjeado en la partida.",
+  "account.consistency_warning": "Si ve elementos listados aquí, ¡no se preocupe! Esta lista es para usuarios avanzados y muestra los elementos que no comparten un estado común entre los conjuntos de recompensas, solo con fines informativos. No indica ningún problema.",
   "account.file_found": "✓ Archivo encontrado",
   "account.file_not_found": "✗ Archivo no encontrado",
   "account.filter": "Filtro:",

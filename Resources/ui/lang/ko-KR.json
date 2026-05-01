@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "모두 현재 배열에서 제거",
   "account.consistency_remove_from": "제거하다",
   "account.consistency_stale_entry": "{2}에 있지만 세이브에서 교환되지 않음.",
+  "account.consistency_warning": "여기에 항목이 표시되더라도 걱정하지 마세요! 이 목록은 고급 사용자를 위한 것으로, 보상 배열 간 공통 상태를 공유하지 않는 항목을 참고용으로 보여줍니다. 문제가 있음을 나타내지 않습니다.",
   "account.file_found": "✓ 파일을 찾았습니다",
   "account.file_not_found": "✗ 파일을 찾을 수 없습니다",
   "account.filter": "필터:",

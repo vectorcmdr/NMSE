@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Usun wszystko z biezacych tablic",
   "account.consistency_remove_from": "Usun",
   "account.consistency_stale_entry": "W {2}, ale nie odebrane w zapisie.",
+  "account.consistency_warning": "Jeśli widzisz tutaj wymienione elementy, nie martw się! Ta lista jest przeznaczona dla zaawansowanych użytkowników i zawiera zestawienie elementów, które nie mają wspólnego stanu w tablicach nagród – tylko w celach informacyjnych. Nie wskazuje na żaden problem.",
   "account.file_found": "✓ Plik znaleziony",
   "account.file_not_found": "✗ Nie znaleziono pliku",
   "account.filter": "Filtr:",

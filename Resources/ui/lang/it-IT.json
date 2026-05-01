@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Rimuovi tutto dagli array attuali",
   "account.consistency_remove_from": "Rimuovi",
   "account.consistency_stale_entry": "In {2} ma non riscattato nel salvataggio.",
+  "account.consistency_warning": "Se vedete elementi elencati qui, non preoccupatevi! Questo elenco è per utenti avanzati e mostra gli elementi che non condividono uno stato comune negli array di ricompense, solo a scopo informativo. Non indica un problema.",
   "account.file_found": "✓ File trovato",
   "account.file_not_found": "✗ File non trovato",
   "account.filter": "Filtro:",

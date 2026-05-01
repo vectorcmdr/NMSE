@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "Tout retirer des tableaux actuels",
   "account.consistency_remove_from": "Retirer",
   "account.consistency_stale_entry": "Dans {2} mais non échangé dans la sauvegarde.",
+  "account.consistency_warning": "Si des éléments sont listés ici, ne vous inquiétez pas ! Cette liste est destinée aux utilisateurs avancés et présente les éléments dont l'état n'est pas cohérent entre les tableaux de récompenses, à titre informatif uniquement. Cela n'indique pas un problème.",
   "account.file_found": "✓ Fichier trouvé",
   "account.file_not_found": "✗ Fichier non trouvé",
   "account.filter": "Filtre :",

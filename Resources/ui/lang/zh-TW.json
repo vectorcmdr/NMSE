@@ -22,6 +22,7 @@
   "account.consistency_remove_all": "全部從目前陣列移除",
   "account.consistency_remove_from": "移除",
   "account.consistency_stale_entry": "在{2}中但未在存檔中兌換。",
+  "account.consistency_warning": "如果您在此看到列出的物品，請不要擔心！此列表供進階使用者參考，展示在獎勵陣列中狀態不一致的物品，僅供資訊用途。這並不代表存在問題。",
   "account.file_found": "✓ 找到檔案",
   "account.file_not_found": "✗ 找不到檔案",
   "account.filter": "篩選：",
