@@ -948,10 +948,13 @@ public partial class MainFormResources : Form
                         _xboxFileIdentifiers.Add(slotIdentifiers);
                         _platformSlotIdentifiers.Add(slotNum.ToString(CultureInfo.InvariantCulture));
 
-                        // Detect save name and difficulty from the first available data file
+                        // Detect save name and difficulty from the manual save first (last in
+                        // sorted order), falling back to the auto save.  User-assigned names
+                        // are written to the manual save, so reading from the auto save would
+                        // show a stale name when the player has renamed their slot.
                         string saveName = "";
                         string difficulty = "";
-                        foreach (var (_, info) in entries)
+                        foreach (var (_, info) in Enumerable.Reverse(entries))
                         {
                             if (info.DataFilePath != null && File.Exists(info.DataFilePath))
                             {
@@ -1030,8 +1033,13 @@ public partial class MainFormResources : Form
                     if (hasManual) slotFiles.Add(manualPath);
 
                     saveFiles.Add(slotFiles);
-                    string difficulty = DetectDifficulty(slotFiles[0]);
-                    string saveName = DetectSaveName(slotFiles[0]);
+                    // Prefer the manual save (last entry) for the slot label because
+                    // user-assigned names are written there.  The auto save retains
+                    // the name from when the game last auto-saved, which may be stale.
+                    // slotFiles is guaranteed non-empty by the hasAuto || hasManual guard above.
+                    string labelFile = slotFiles[^1];
+                    string difficulty = DetectDifficulty(labelFile);
+                    string saveName = DetectSaveName(labelFile);
                     string label = BuildSlotLabel($"Slot {i + 1}", saveName, difficulty);
                     _saveSlotCombo.Items.Add(label);
                 }
@@ -1207,6 +1215,41 @@ public partial class MainFormResources : Form
         if (!string.IsNullOrEmpty(saveName)) parts.Add(saveName);
         if (!string.IsNullOrEmpty(difficulty)) parts.Add(difficulty);
         return string.Join(" - ", parts);
+    }
+
+    /// <summary>
+    /// Updates the currently selected slot's label in the Save Slot dropdown to reflect
+    /// the latest save name.  Called after a successful save so the label stays in sync
+    /// without requiring the user to reload the directory.
+    /// </summary>
+    private void UpdateCurrentSlotLabel()
+    {
+        int slotIdx = _saveSlotCombo.SelectedIndex;
+        if (slotIdx < 0 || _currentSaveData == null) return;
+
+        // Extract the save name directly from the in-memory JSON (already synced
+        // by SyncAllPanelData() before the write).
+        string saveName = "";
+        try
+        {
+            saveName = _currentSaveData.GetObject("CommonStateData")?.GetString("SaveName") ?? "";
+        }
+        catch { }
+
+        // Derive the slot prefix from the existing label (everything before the first " - ")
+        // so we don't have to reconstruct platform/slot-number logic here.
+        string existingLabel = _saveSlotCombo.Items[slotIdx]?.ToString() ?? "";
+        string prefix = existingLabel.Contains(" - ")
+            ? existingLabel[..existingLabel.IndexOf(" - ", StringComparison.Ordinal)]
+            : existingLabel;
+
+        // Re-detect difficulty from the current file (cheap fast scan).
+        string difficulty = _currentFilePath != null ? DetectDifficulty(_currentFilePath) : "";
+
+        string newLabel = BuildSlotLabel(prefix, saveName, difficulty);
+
+        // Swap the item without triggering a SelectedIndexChanged repopulation.
+        _saveSlotCombo.Items[slotIdx] = newLabel;
     }
 
     /// <summary>
@@ -1681,6 +1724,7 @@ public partial class MainFormResources : Form
                     SaveFileManager.SaveXboxAccountData(_xboxContainersIndexPath, _accountPanel.AccountData);
                 }
 
+                UpdateCurrentSlotLabel();
                 _statusLabel.Text = UiStrings.Format("status.save_written", Path.GetFileName(_xboxContainersIndexPath));
                 _hasUnsavedChanges = false;
                 MessageBox.Show(this, UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
@@ -1705,6 +1749,7 @@ public partial class MainFormResources : Form
 
             _statusLabel.Text = UiStrings.Format("status.save_written", Path.GetFileName(_currentFilePath));
             _hasUnsavedChanges = false;
+            UpdateCurrentSlotLabel();
             MessageBox.Show(this, UiStrings.Get("dialog.save_success"), UiStrings.Get("dialog.success"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
