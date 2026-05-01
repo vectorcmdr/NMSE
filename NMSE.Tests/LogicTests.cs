@@ -11720,8 +11720,9 @@ public class LogicTests
     /// <summary>
     /// Verifies that IsNonTechReward correctly identifies ship, egg, frigate,
     /// weapon, firework, and pet reward IDs as non-tech (should NOT go in KnownTech),
-    /// while trails, staffs, bobbleheads, mech parts, and corvette parts are tech
-    /// (should go in KnownTech).
+    /// and also correctly identifies trails, staffs, bobbleheads, lasers, spec redeemables,
+    /// and all corvette parts as non-tech. Only unknown reward types (e.g. mech parts
+    /// whose rewards use no recognised keyword) remain classified as tech.
     /// Empty GiveRewardOnSpecialPurchase means the item is cosmetic-only (no tech reward)
     /// and should therefore also NOT go in KnownTech (returns true = is non-tech).
     /// </summary>
@@ -11746,25 +11747,44 @@ public class LogicTests
         // (Our Extractor leaves this field empty for all purely decorative rewards.)
         Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "" }));
 
-        // Tech rewards -- non-empty reward IDs that are not non-tech keywords (DO go in KnownTech)
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S6_TRAIL" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S12_STAFF" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S2_SPEC" }));
+        // Starship trail cosmetics (RS_SX_TRAIL) - game does not add to KnownTech.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S6_TRAIL" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S7_TRAIL" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S19_TRAIL" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_TRAIL" }));
+
+        // Staff-type multitools (RS_SX_STAFF) - game does not add to KnownTech.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S12_STAFF" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S17_STAFF" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S18_STAFF" }));
+
+        // Bobblehead / figurine cosmetics (R_BOBBLE_*) - game does not add to KnownTech.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_BOBBLE_OCTO" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_BOBBLE_ATLAS" }));
+
+        // Laser tool attachments (RS_S15_FSHLASER) - game does not add to KnownTech.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S15_FSHLASER" }));
+
+        // Special/exclusive redeemables (RS_S2_SPEC, e.g. SSV Normandy) - game does not add to KnownTech.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S2_SPEC" }));
+
+        // Corvette parts detected via ItemType - game does not add to KnownTech regardless of reward suffix.
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_ENGINE" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_SHIELD" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_TRIM" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_WING" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S19_TURRET" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_DECO" }));
+        Assert.True(AccountLogic.IsNonTechReward(new GameItem { ItemType = "Corvette", GiveRewardOnSpecialPurchase = "RS_S20_STR" }));
+
+        // Reward type with no matching keyword and non-Corvette ItemType still returns false.
         Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_S14_MECH_ARML" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "R_BOBBLE_OCTO" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_ENGINE" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_SHIELD" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_TRIM" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_WING" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S19_TURRET" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_DECO" }));
-        Assert.False(AccountLogic.IsNonTechReward(new GameItem { GiveRewardOnSpecialPurchase = "RS_S20_STR" }));
     }
 
     /// <summary>
     /// Verifies that SyncKnownArraysForChangedRewards uses the database
     /// GiveRewardOnSpecialPurchase field to correctly skip KnownTech for
-    /// non-tech rewards (ships, eggs) while adding tech rewards (trails, staffs).
+    /// non-tech rewards (ships, trails) as neither should be added to KnownTech.
     /// </summary>
     [Fact]
     public void SyncKnownArraysForChangedRewards_UsesGiveRewardField_SkipsNonTechItems()
@@ -11777,8 +11797,8 @@ public class LogicTests
         ps.Set("KnownSpecials", new JsonArray());
 
         // Build a minimal database with two items:
-        // 1. A ship reward (non-tech) -- should NOT be added to KnownTech
-        // 2. A trail reward (tech) -- SHOULD be added to KnownTech
+        // 1. A ship reward (non-tech) should NOT be added to KnownTech
+        // 2. A trail reward (non-tech) should also NOT be added to KnownTech
         var db = new GameItemDatabase();
         db.InjectTestItem(new GameItem
         {
@@ -11806,8 +11826,8 @@ public class LogicTests
 
         // Ship reward should NOT be in KnownTech
         Assert.DoesNotContain("^EXPD_SHIP13", knownTech);
-        // Trail reward SHOULD be in KnownTech
-        Assert.Contains("^SHIP_PIRATE", knownTech);
+        // Trail reward should also NOT be in KnownTech (trails are non-tech)
+        Assert.DoesNotContain("^SHIP_PIRATE", knownTech);
 
         // Both should be in KnownSpecials (both are SpecialShop)
         Assert.Contains("^EXPD_SHIP13", knownSpecials);

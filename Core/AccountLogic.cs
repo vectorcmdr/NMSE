@@ -12,14 +12,24 @@ internal static class AccountLogic
     /// <summary>
     /// Keyword fragments that, when found in a <c>GiveRewardOnSpecialPurchase</c> reward
     /// table ID (e.g. "RS_S13_SHIP", "R_TWIT_GUN01"), indicate the reward is
-    /// a non-technology item (ship, frigate, egg, weapon, firework, pet) that
-    /// should NOT be added to <c>KnownTech</c>.
+    /// a non-technology item (ship, frigate, egg, weapon, firework, pet, trail, bobble,
+    /// staff, laser attachment, or special redeemable) that should NOT be added to
+    /// <c>KnownTech</c>.
+    ///
+    /// Corvette parts are handled separately via an <c>ItemType</c> check in
+    /// <see cref="IsNonTechReward"/> rather than keywords, because their reward table
+    /// IDs use many varied suffixes (ENGINE, TURRET, SHIELD, WING, DECO, TRIM, STR, etc.).
     ///
     /// Our database stores the raw MBIN reward table IDs, so we use keyword matching on those IDs.
     /// </summary>
     private static readonly string[] NonTechRewardKeywords =
     {
-        "SHIP", "EGG", "FRIG", "FIREW", "FIREWORK", "GUN", "PET"
+        "SHIP", "EGG", "FRIG", "FIREW", "FIREWORK", "GUN", "PET",
+        "TRAIL",   // starship exhaust trail cosmetics  (RS_S6_TRAIL, RS_S7_TRAIL, RS_S19_TRAIL, RS_S20_TRAIL)
+        "BOBBLE",  // bobblehead / figurine cosmetics   (R_BOBBLE_ATLAS, R_BOBBLE_OCTO, etc.)
+        "STAFF",   // staff-type multitools             (RS_S12_STAFF, RS_S17_STAFF, RS_S18_STAFF)
+        "LASER",   // laser-type tool attachments       (RS_S15_FSHLASER)
+        "SPEC",    // exclusive special redeemables     (RS_S2_SPEC e.g. Normandy frigate)
     };
 
     /// <summary>
@@ -357,8 +367,7 @@ internal static class AccountLogic
             var item = database?.GetItem(lookupId);
 
             // Determine which Known* arrays this reward should appear in.
-            bool isSpecial = item != null
-                && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
+            bool isSpecial = item != null && IsKnownSpecialsItem(item);
 
             if (isSpecial)
                 SyncJsonArrayEntry(playerState, "KnownSpecials", saveId, redeemed);
@@ -402,14 +411,19 @@ internal static class AccountLogic
 
     /// <summary>
     /// Determines whether an item should NOT be added to <c>KnownTech</c> when redeemed.
-    /// Returns <c>true</c> (non-tech) for cosmetic-only items and items whose reward is
-    /// a ship, egg, frigate, weapon, firework, or pet.
-    /// Returns <c>false</c> (tech) only for items with a real technology reward ID
-    /// (e.g. a jetpack trail, staff weapon, or corvette upgrade).
+    /// Returns <c>true</c> (non-tech) for:
+    /// <list type="bullet">
+    ///   <item>Cosmetic-only items (empty <c>GiveRewardOnSpecialPurchase</c>).</item>
+    ///   <item>Corvette parts (wings, turrets, shields, decorations, etc.) - detected via
+    ///         <c>ItemType == "Corvette"</c> because their reward IDs use many varied suffixes.</item>
+    ///   <item>Items whose reward table ID contains a non-tech keyword
+    ///         (ship, egg, frigate, weapon, firework, pet, trail, bobble, staff, laser, spec).</item>
+    /// </list>
+    /// Returns <c>false</c> only when the item has a non-empty reward ID that does not
+    /// match any known non-tech keyword or item type.
     /// <para>
     /// An empty <c>GiveRewardOnSpecialPurchase</c> means the item is cosmetic-only
-    /// (our Extractor leaves it empty for all purely decorative rewards).
-    /// Encodes "no technology reward; do NOT add to KnownTech."
+    /// (the Extractor leaves it empty for all purely decorative rewards).
     /// </para>
     /// <para>
     /// When <c>GiveRewardOnSpecialPurchase</c> is non-empty, we keyword-match against
@@ -419,6 +433,13 @@ internal static class AccountLogic
     /// </summary>
     internal static bool IsNonTechReward(GameItem item)
     {
+        // Corvette parts (B_WNG_*, B_TUR_*, B_SHL_*, B_STR_*, B_DECO_*, etc.) are never
+        // added to KnownTech - they are tracked through the corvette part system.
+        // Their reward IDs use many varied suffixes (ENGINE, TURRET, SHIELD, WING, DECO,
+        // TRIM, STR, etc.), so we detect them via ItemType rather than keyword matching.
+        if (item.ItemType.Equals("Corvette", StringComparison.OrdinalIgnoreCase))
+            return true;
+
         string reward = item.GiveRewardOnSpecialPurchase;
         if (string.IsNullOrEmpty(reward))
             return true; // No reward specified -> cosmetic item; do NOT add to KnownTech
@@ -430,6 +451,16 @@ internal static class AccountLogic
         }
         return false;
     }
+
+    /// <summary>
+    /// Returns <c>true</c> when a redeemed <paramref name="item"/> should be tracked in
+    /// <c>KnownSpecials</c>. All <c>SpecialShop</c> products are tracked there, with the
+    /// exception of Exocraft cosmetic customisation parts (cabin, body, wheels, paint)
+    /// which use the vehicle visual system and are not stored in <c>KnownSpecials</c>.
+    /// </summary>
+    private static bool IsKnownSpecialsItem(GameItem item) =>
+        string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase)
+        && !item.Subtitle.Contains("Exocraft Customisation", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Adds or removes a single string entry in a JSON array (e.g. KnownSpecials,
@@ -573,8 +604,7 @@ internal static class AccountLogic
             var (lookupId, saveId) = ResolveProductId(id, productIdMap);
             var item = database?.GetItem(lookupId);
 
-            bool isSpecial = item != null
-                && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
+            bool isSpecial = item != null && IsKnownSpecialsItem(item);
 
             // Remove from KnownSpecials if present.
             if (isSpecial)
@@ -753,8 +783,7 @@ internal static class AccountLogic
             var item = database?.GetItem(lookupId);
             string name = item?.Name ?? productId;
 
-            bool isSpecial = item != null
-                && string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase);
+            bool isSpecial = item != null && IsKnownSpecialsItem(item);
 
             if (isSpecial && !knownSpecials.Contains(productId))
             {
