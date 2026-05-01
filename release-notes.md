@@ -1,8 +1,21 @@
-## NMSE — No Man's Save Editor v1.1.49 (preview)
+## NMSE — No Man's Save Editor v1.1.52 (preview)
 
 > This is a preview build. Please practice safe backup practices and expect some bugs.
 
 ### Changelog
+
+#### Bug Fixes:
+
+- The "Check Consistency" button in Account Rewards has had the comparison list tightened based on further analysis of the `Known*`, etc. arrays. It will now show substantially less potential items for manual syncing across state arrays. More changes may come soon to further tighten this list. (Per Issue #64)
+- The "Check Consistency" dialog box now shows a basic warning message. (Per Issue #64)
+- Advanced save utility has had it's slot management logic updated to fix incorrect slots/files being managed when moving/swapping/copying/deleting. (Per Issue #63)
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Changelog 1.1.49 (preview)
 
 #### Features:
 
@@ -13,9 +26,6 @@
 - Fix for importing to empty slot for NMS Model IO Tool exported corvettes by adding a base data structure rebuilder for the base JSON node (these files don't include full base data - only object data). In theory this fix will also allow other malformed corvette imports with varying degrees of success - your mileage may vary importing malformed data.
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Changelog 1.1.48 (preview) - hotfix
 
