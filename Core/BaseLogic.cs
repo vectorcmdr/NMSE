@@ -234,6 +234,33 @@ internal static class BaseLogic
     };
 
     /// <summary>
+    /// Swaps two entries in the <c>PersistentPlayerBases</c> array by their raw array indices.
+    /// Uses remove-then-insert so that <see cref="JsonArray"/> parent tracking remains
+    /// consistent.  The higher-indexed element is processed first so that removal does not
+    /// shift the lower index.
+    /// </summary>
+    /// <param name="bases">The <c>PersistentPlayerBases</c> JSON array.</param>
+    /// <param name="indexA">Raw array index of the first element.</param>
+    /// <param name="indexB">Raw array index of the second element.</param>
+    internal static void SwapPlayerBases(JsonArray bases, int indexA, int indexB)
+    {
+        if (indexA == indexB) return;
+        if (indexA < 0 || indexB < 0 || indexA >= bases.Length || indexB >= bases.Length) return;
+
+        int lo = Math.Min(indexA, indexB);
+        int hi = Math.Max(indexA, indexB);
+
+        var loVal = bases.Get(lo);
+        var hiVal = bases.Get(hi);
+
+        // Remove the higher index first so lo's index is not affected.
+        bases.RemoveAt(hi);
+        bases.Insert(hi, loVal);
+        bases.RemoveAt(lo);
+        bases.Insert(lo, hiVal);
+    }
+
+    /// <summary>
     /// The default internal name for unnamed storage containers in NMS save data.
     /// When a chest has this name, the player has not assigned a custom name.
     /// </summary>

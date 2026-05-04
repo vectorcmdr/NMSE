@@ -3186,6 +3186,83 @@ public class LogicTests
         Assert.Equal(0.0, dot, precision: 10);
     }
 
+    // --- BaseLogic: SwapPlayerBases ----------------------------------
+
+    [Fact]
+    public void BaseLogic_SwapPlayerBases_SwapsElementsCorrectly()
+    {
+        var bases = JsonArray.Parse(@"[
+            { ""Name"": ""Alpha"" },
+            { ""Name"": ""Beta"" },
+            { ""Name"": ""Gamma"" }
+        ]");
+
+        BaseLogic.SwapPlayerBases(bases, 0, 2);
+
+        Assert.Equal("Gamma", bases.GetObject(0).GetString("Name"));
+        Assert.Equal("Beta",  bases.GetObject(1).GetString("Name"));
+        Assert.Equal("Alpha", bases.GetObject(2).GetString("Name"));
+    }
+
+    [Fact]
+    public void BaseLogic_SwapPlayerBases_AdjacentElements()
+    {
+        var bases = JsonArray.Parse(@"[
+            { ""Name"": ""A"" },
+            { ""Name"": ""B"" }
+        ]");
+
+        BaseLogic.SwapPlayerBases(bases, 0, 1);
+
+        Assert.Equal("B", bases.GetObject(0).GetString("Name"));
+        Assert.Equal("A", bases.GetObject(1).GetString("Name"));
+    }
+
+    [Fact]
+    public void BaseLogic_SwapPlayerBases_SameIndex_NoChange()
+    {
+        var bases = JsonArray.Parse(@"[
+            { ""Name"": ""A"" },
+            { ""Name"": ""B"" }
+        ]");
+
+        BaseLogic.SwapPlayerBases(bases, 1, 1);
+
+        Assert.Equal("A", bases.GetObject(0).GetString("Name"));
+        Assert.Equal("B", bases.GetObject(1).GetString("Name"));
+    }
+
+    [Fact]
+    public void BaseLogic_SwapPlayerBases_OutOfBounds_NoChange()
+    {
+        var bases = JsonArray.Parse(@"[{ ""Name"": ""A"" }]");
+
+        BaseLogic.SwapPlayerBases(bases, 0, 5);  // out of bounds
+        BaseLogic.SwapPlayerBases(bases, -1, 0); // negative index
+
+        Assert.Equal("A", bases.GetObject(0).GetString("Name"));
+        Assert.Equal(1, bases.Length);
+    }
+
+    [Fact]
+    public void BaseLogic_SwapPlayerBases_PreservesNonSwappedElements()
+    {
+        var bases = JsonArray.Parse(@"[
+            { ""Name"": ""A"" },
+            { ""Name"": ""ShipBase"" },
+            { ""Name"": ""B"" },
+            { ""Name"": ""C"" }
+        ]");
+
+        // Swap indices 0 and 2 (skipping the ship base at 1)
+        BaseLogic.SwapPlayerBases(bases, 0, 2);
+
+        Assert.Equal("B",       bases.GetObject(0).GetString("Name"));
+        Assert.Equal("ShipBase",bases.GetObject(1).GetString("Name")); // untouched
+        Assert.Equal("A",       bases.GetObject(2).GetString("Name"));
+        Assert.Equal("C",       bases.GetObject(3).GetString("Name")); // untouched
+    }
+
     // --- MathHelper: Vec3 and CoordSystem helpers ----------------------
 
     [Fact]

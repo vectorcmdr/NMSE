@@ -139,7 +139,7 @@ internal static class NpcRaceLocKeys
 }
 
 /// <summary>
-/// Bases sub-panel: base selector, name, items count, NPC management,
+/// Bases sub-panel: base list with reorder support, name, items count, NPC management,
 /// and export/import/move base computer buttons.
 /// </summary>
 internal class BasesSubPanel : UserControl
@@ -150,8 +150,16 @@ internal class BasesSubPanel : UserControl
     private readonly TextBox _npcSeed;
     private readonly Button _generateNpcSeedBtn;
 
-    // Base Info section
-    private readonly ComboBox _baseSelector;
+    // Base list (left column)
+    private readonly ListBox _baseList;
+    private readonly Button _toTopBtn;
+    private readonly Button _moveUpBtn;
+    private readonly Button _moveDownBtn;
+    private readonly Button _toBottomBtn;
+    private readonly Label _baseListTitle;
+    private readonly Label _moveOrderLabel;
+
+    // Base Info section (right column)
     private readonly TextBox _baseName;
     private readonly TextBox _baseItems;
     private string? _pendingBaseName;
@@ -171,7 +179,6 @@ internal class BasesSubPanel : UserControl
     private Label? _npcLabel;
     private Label? _raceLabel;
     private Label? _seedLabel;
-    private Label? _baseLabel;
     private Label? _nameLabel;
     private Label? _itemsLabel;
 
@@ -186,19 +193,120 @@ internal class BasesSubPanel : UserControl
         DoubleBuffered = true;
         SuspendLayout();
 
-        var layout = new TableLayoutPanel
+        // --- Outer two-column layout ---
+        var outerLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(10)
+        };
+        outerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));       // left: base list
+        outerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));   // right: NPC + info
+        outerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        // --- Left column: base list + reorder arrows ---
+        var leftLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 2,
+            Padding = new Padding(0, 0, 12, 0),
+            MinimumSize = new Size(417, 0)
+        };
+        leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));    // list
+        leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));        // arrows
+        leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));              // title
+        leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));          // list + arrows
+
+        _baseListTitle = new Label
+        {
+            Text = UiStrings.Get("base.base_list_title"),
+            AutoSize = true,
+            Padding = new Padding(0, 0, 0, 4)
+        };
+        FontManager.ApplyHeadingFont(_baseListTitle, 11);
+        leftLayout.Controls.Add(_baseListTitle, 0, 0);
+        leftLayout.SetColumnSpan(_baseListTitle, 2);
+
+        _baseList = new ListBox
+        {
+            Dock = DockStyle.Fill,
+            SelectionMode = SelectionMode.One,
+            IntegralHeight = false
+        };
+        _baseList.SelectedIndexChanged += OnBaseSelected;
+        leftLayout.Controls.Add(_baseList, 0, 1);
+
+        var arrowPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.TopDown,
+            AutoSize = true,
+            WrapContents = false,
+            Padding = new Padding(4, 0, 0, 0)
+        };
+        _moveOrderLabel = new Label
+        {
+            Text = UiStrings.Get("base.move_base_in_list"),
+            AutoSize = true,
+            Padding = new Padding(0, 0, 0, 4)
+        };
+        _toTopBtn = new Button
+        {
+            Text = UiStrings.Get("base.move_base_to_top"),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Enabled = false
+        };
+        _moveUpBtn = new Button
+        {
+            Text = UiStrings.Get("base.move_base_up"),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Enabled = false
+        };
+        _moveDownBtn = new Button
+        {
+            Text = UiStrings.Get("base.move_base_down"),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Enabled = false
+        };
+        _toBottomBtn = new Button
+        {
+            Text = UiStrings.Get("base.move_base_to_bottom"),
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Enabled = false
+        };
+        _toTopBtn.Click += OnMoveBaseToTop;
+        _moveUpBtn.Click += OnMoveBaseUp;
+        _moveDownBtn.Click += OnMoveBaseDown;
+        _toBottomBtn.Click += OnMoveBaseToBottom;
+        arrowPanel.Controls.Add(_moveOrderLabel);
+        arrowPanel.Controls.Add(_toTopBtn);
+        arrowPanel.Controls.Add(_moveUpBtn);
+        arrowPanel.Controls.Add(_moveDownBtn);
+        arrowPanel.Controls.Add(_toBottomBtn);
+        leftLayout.Controls.Add(arrowPanel, 1, 1);
+
+        outerLayout.Controls.Add(leftLayout, 0, 0);
+
+        // --- Right column: NPC section + Base Info section ---
+        var rightLayout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             ColumnCount = 3,
-            RowCount = 12,
-            Padding = new Padding(10)
+            RowCount = 11,
+            Padding = new Padding(0)
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        for (int i = 0; i < 11; i++)
-            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        rightLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        rightLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        rightLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        for (int i = 0; i < 10; i++)
+            rightLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         int row = 0;
 
@@ -210,18 +318,18 @@ internal class BasesSubPanel : UserControl
             Padding = new Padding(0, 0, 0, 4)
         };
         FontManager.ApplyHeadingFont(_npcTitle, 11);
-        layout.Controls.Add(_npcTitle, 0, row);
-        layout.SetColumnSpan(_npcTitle, 3);
+        rightLayout.Controls.Add(_npcTitle, 0, row);
+        rightLayout.SetColumnSpan(_npcTitle, 3);
         row++;
 
         _npcSelector = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
         _npcSelector.SelectedIndexChanged += OnNpcSelected;
-        _npcLabel = AddRow(layout, UiStrings.Get("base.npc_label"), _npcSelector, row); row++;
+        _npcLabel = AddRow(rightLayout, UiStrings.Get("base.npc_label"), _npcSelector, row); row++;
 
         _npcRaceCombo = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
         _npcRaceCombo.Items.AddRange(NpcRace.GetRaceItems());
         _npcRaceCombo.SelectedIndexChanged += OnNpcRaceChanged;
-        _raceLabel = AddRow(layout, UiStrings.Get("base.npc_race_label"), _npcRaceCombo, row); row++;
+        _raceLabel = AddRow(rightLayout, UiStrings.Get("base.npc_race_label"), _npcRaceCombo, row); row++;
 
         var seedPanel = new Panel { Dock = DockStyle.Fill, Height = 26 };
         _npcSeed = new TextBox { Dock = DockStyle.Fill };
@@ -229,18 +337,18 @@ internal class BasesSubPanel : UserControl
         _generateNpcSeedBtn.Click += OnGenerateNpcSeed;
         seedPanel.Controls.Add(_npcSeed);
         seedPanel.Controls.Add(_generateNpcSeedBtn);
-        _seedLabel = AddRow(layout, UiStrings.Get("base.npc_seed_label"), seedPanel, row); row++;
+        _seedLabel = AddRow(rightLayout, UiStrings.Get("base.npc_seed_label"), seedPanel, row); row++;
 
         // Summon NPC worker to selected base
         _summonWorkerBtn = new Button { Text = UiStrings.Get("base.summon_npc"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Enabled = false };
         _summonWorkerBtn.Click += OnSummonWorkerToBase;
-        layout.Controls.Add(_summonWorkerBtn, 1, row);
+        rightLayout.Controls.Add(_summonWorkerBtn, 1, row);
         row++;
 
         // Separator
         var sep1 = new Label { AutoSize = false, Height = 8 };
-        layout.Controls.Add(sep1, 0, row);
-        layout.SetColumnSpan(sep1, 3);
+        rightLayout.Controls.Add(sep1, 0, row);
+        rightLayout.SetColumnSpan(sep1, 3);
         row++;
 
         // --- Base Info Section ---
@@ -251,20 +359,16 @@ internal class BasesSubPanel : UserControl
             Padding = new Padding(0, 0, 0, 4)
         };
         FontManager.ApplyHeadingFont(_baseTitle, 11);
-        layout.Controls.Add(_baseTitle, 0, row);
-        layout.SetColumnSpan(_baseTitle, 3);
+        rightLayout.Controls.Add(_baseTitle, 0, row);
+        rightLayout.SetColumnSpan(_baseTitle, 3);
         row++;
-
-        _baseSelector = new ComboBox { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-        _baseSelector.SelectedIndexChanged += OnBaseSelected;
-        _baseLabel = AddRow(layout, UiStrings.Get("base.base_label"), _baseSelector, row); row++;
 
         _baseName = new TextBox { Dock = DockStyle.Fill };
         _baseName.Leave += OnBaseNameChanged;
-        _nameLabel = AddRow(layout, UiStrings.Get("base.name_label"), _baseName, row); row++;
+        _nameLabel = AddRow(rightLayout, UiStrings.Get("base.name_label"), _baseName, row); row++;
 
         _baseItems = new TextBox { Dock = DockStyle.Fill, ReadOnly = true };
-        _itemsLabel = AddRow(layout, UiStrings.Get("base.items_label"), _baseItems, row); row++;
+        _itemsLabel = AddRow(rightLayout, UiStrings.Get("base.items_label"), _baseItems, row); row++;
 
         // Buttons panel
         var buttonPanel = new FlowLayoutPanel
@@ -286,11 +390,12 @@ internal class BasesSubPanel : UserControl
         buttonPanel.Controls.Add(_importBtn);
         buttonPanel.Controls.Add(_moveBaseComputerBtn);
         buttonPanel.Controls.Add(_clearTerrainEditsBtn);
-        layout.Controls.Add(buttonPanel, 0, row);
-        layout.SetColumnSpan(buttonPanel, 3);
-        row++;
+        rightLayout.Controls.Add(buttonPanel, 0, row);
+        rightLayout.SetColumnSpan(buttonPanel, 3);
 
-        Controls.Add(layout);
+        outerLayout.Controls.Add(rightLayout, 1, 0);
+
+        Controls.Add(outerLayout);
         ResumeLayout(false);
         PerformLayout();
     }
@@ -299,12 +404,12 @@ internal class BasesSubPanel : UserControl
     {
         SuspendLayout();
         _npcSelector.BeginUpdate();
-        _baseSelector.BeginUpdate();
+        _baseList.BeginUpdate();
         try
         {
         _npcSelector.Items.Clear();
         _npcWorkers.Clear();
-        _baseSelector.Items.Clear();
+        _baseList.Items.Clear();
         _baseInfoItems.Clear();
         _npcSeed.Text = "";
         _baseName.Text = "";
@@ -371,7 +476,7 @@ internal class BasesSubPanel : UserControl
 
                             var item = new BaseInfoItem(name, baseObj, i, objectCount);
                             _baseInfoItems.Add(item);
-                            _baseSelector.Items.Add(item);
+                            _baseList.Items.Add(item);
                         }
                     }
                     catch { }
@@ -380,14 +485,14 @@ internal class BasesSubPanel : UserControl
 
             if (_npcSelector.Items.Count > 0)
                 _npcSelector.SelectedIndex = 0;
-            if (_baseSelector.Items.Count > 0)
-                _baseSelector.SelectedIndex = 0;
+            if (_baseList.Items.Count > 0)
+                _baseList.SelectedIndex = 0;
         }
         catch { }
         }
         finally
         {
-            _baseSelector.EndUpdate();
+            _baseList.EndUpdate();
             _npcSelector.EndUpdate();
             ResumeLayout(true);
         }
@@ -432,20 +537,20 @@ internal class BasesSubPanel : UserControl
         try
         {
             // Apply pending base name change
-            if (_baseSelector.SelectedItem is BaseInfoItem item && !string.IsNullOrEmpty(_pendingBaseName))
+            if (_baseList.SelectedItem is BaseInfoItem item && !string.IsNullOrEmpty(_pendingBaseName))
             {
                 string currentName = item.Data.GetString("Name") ?? "";
                 if (_pendingBaseName != currentName)
                 {
                     item.Data.Set("Name", _pendingBaseName);
                     item.DisplayName = _pendingBaseName;
-                    // Update combo box display
-                    int idx = _baseSelector.SelectedIndex;
-                    _baseSelector.SelectedIndexChanged -= OnBaseSelected;
-                    _baseSelector.Items.RemoveAt(idx);
-                    _baseSelector.Items.Insert(idx, item);
-                    _baseSelector.SelectedIndex = idx;
-                    _baseSelector.SelectedIndexChanged += OnBaseSelected;
+                    // Refresh list display
+                    int idx = _baseList.SelectedIndex;
+                    _baseList.SelectedIndexChanged -= OnBaseSelected;
+                    _baseList.Items.RemoveAt(idx);
+                    _baseList.Items.Insert(idx, item);
+                    _baseList.SelectedIndex = idx;
+                    _baseList.SelectedIndexChanged += OnBaseSelected;
                 }
             }
         }
@@ -530,7 +635,7 @@ internal class BasesSubPanel : UserControl
     private void OnSummonWorkerToBase(object? sender, EventArgs e)
     {
         if (_npcSelector.SelectedItem is not NpcWorkerItem npcItem) return;
-        if (_baseSelector.SelectedItem is not BaseInfoItem baseItem) return;
+        if (_baseList.SelectedItem is not BaseInfoItem baseItem) return;
 
         var result = MessageBox.Show(this, 
             UiStrings.Format("base.summon_worker_confirm", npcItem.ToString(), baseItem.DisplayName),
@@ -582,7 +687,7 @@ internal class BasesSubPanel : UserControl
 
     private void OnBaseSelected(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item)
+        if (_baseList.SelectedItem is not BaseInfoItem item)
         {
             _baseName.Text = "";
             _baseName.Enabled = false;
@@ -593,6 +698,7 @@ internal class BasesSubPanel : UserControl
             _clearTerrainEditsBtn.Enabled = false;
             _pendingBaseName = null;
             UpdateSummonButtonState();
+            UpdateMoveButtonStates();
             return;
         }
 
@@ -613,12 +719,13 @@ internal class BasesSubPanel : UserControl
         _moveBaseComputerBtn.Enabled = true;
         _clearTerrainEditsBtn.Enabled = true;
         UpdateSummonButtonState();
+        UpdateMoveButtonStates();
     }
 
     private void UpdateSummonButtonState()
     {
         _summonWorkerBtn.Enabled = _npcSelector.SelectedItem is NpcWorkerItem
-                                   && _baseSelector.SelectedItem is BaseInfoItem;
+                                   && _baseList.SelectedItem is BaseInfoItem;
     }
 
     private void SelectRaceByInternalName(string raceName)
@@ -646,24 +753,24 @@ internal class BasesSubPanel : UserControl
 
     private void OnBaseNameChanged(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_baseList.SelectedItem is not BaseInfoItem item) return;
         _pendingBaseName = _baseName.Text.Trim();
-        // Update combo box display immediately
+        // Update list display immediately
         if (!string.IsNullOrEmpty(_pendingBaseName))
         {
             item.DisplayName = _pendingBaseName;
-            int idx = _baseSelector.SelectedIndex;
-            _baseSelector.SelectedIndexChanged -= OnBaseSelected;
-            _baseSelector.Items.RemoveAt(idx);
-            _baseSelector.Items.Insert(idx, item);
-            _baseSelector.SelectedIndex = idx;
-            _baseSelector.SelectedIndexChanged += OnBaseSelected;
+            int idx = _baseList.SelectedIndex;
+            _baseList.SelectedIndexChanged -= OnBaseSelected;
+            _baseList.Items.RemoveAt(idx);
+            _baseList.Items.Insert(idx, item);
+            _baseList.SelectedIndex = idx;
+            _baseList.SelectedIndexChanged += OnBaseSelected;
         }
     }
 
     private void OnExport(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_baseList.SelectedItem is not BaseInfoItem item) return;
         try
         {
             string defaultName = item.Data.GetString("Name") ?? "Base";
@@ -697,7 +804,7 @@ internal class BasesSubPanel : UserControl
 
     private void OnImport(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_baseList.SelectedItem is not BaseInfoItem item) return;
         try
         {
             var config = ExportConfig.Instance;
@@ -751,7 +858,7 @@ internal class BasesSubPanel : UserControl
     /// </summary>
     private void OnMoveBaseComputer(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_baseList.SelectedItem is not BaseInfoItem item) return;
         try
         {
             var objects = item.Data.GetArray("Objects");
@@ -850,7 +957,7 @@ internal class BasesSubPanel : UserControl
 
     private void OnClearTerrainEdits(object? sender, EventArgs e)
     {
-        if (_baseSelector.SelectedItem is not BaseInfoItem item) return;
+        if (_baseList.SelectedItem is not BaseInfoItem item) return;
         if (_playerState == null) return;
 
         var result = MessageBox.Show(this,
@@ -898,10 +1005,10 @@ internal class BasesSubPanel : UserControl
     {
         _npcTitle.Text = UiStrings.Get("base.npc_header");
         _baseTitle.Text = UiStrings.Get("base.base_header");
+        _baseListTitle.Text = UiStrings.Get("base.base_list_title");
         if (_npcLabel != null) _npcLabel.Text = UiStrings.Get("base.npc_label");
         if (_raceLabel != null) _raceLabel.Text = UiStrings.Get("base.npc_race_label");
         if (_seedLabel != null) _seedLabel.Text = UiStrings.Get("base.npc_seed_label");
-        if (_baseLabel != null) _baseLabel.Text = UiStrings.Get("base.base_label");
         if (_nameLabel != null) _nameLabel.Text = UiStrings.Get("base.name_label");
         if (_itemsLabel != null) _itemsLabel.Text = UiStrings.Get("base.items_label");
         _generateNpcSeedBtn.Text = UiStrings.Get("common.generate");
@@ -910,6 +1017,11 @@ internal class BasesSubPanel : UserControl
         _importBtn.Text = UiStrings.Get("base.import");
         _moveBaseComputerBtn.Text = UiStrings.Get("base.move_basecomp");
         _clearTerrainEditsBtn.Text = UiStrings.Get("base.clear_terrain");
+        _moveUpBtn.Text = UiStrings.Get("base.move_base_up");
+        _moveDownBtn.Text = UiStrings.Get("base.move_base_down");
+        _toTopBtn.Text = UiStrings.Get("base.move_base_to_top");
+        _toBottomBtn.Text = UiStrings.Get("base.move_base_to_bottom");
+        _moveOrderLabel.Text = UiStrings.Get("base.move_base_in_list");
 
         // Refresh NPC race combo with localised display names
         RefreshNpcRaceCombo();
@@ -927,6 +1039,168 @@ internal class BasesSubPanel : UserControl
                 _npcSelector.SelectedIndex = selIdx;
             _npcSelector.EndUpdate();
         }
+    }
+
+    /// <summary>
+    /// Moves the selected player base one position up (toward lower array index),
+    /// swapping it with the nearest preceding HomePlanetBase in the list.
+    /// Other base types (ship bases, corvettes, etc.) are not disturbed.
+    /// </summary>
+    private void OnMoveBaseUp(object? sender, EventArgs e)
+    {
+        if (_baseList.SelectedItem is not BaseInfoItem selected) return;
+        if (_playerState == null) return;
+
+        var sorted = _baseInfoItems.OrderBy(x => x.DataIndex).ToList();
+        int pos = sorted.IndexOf(selected);
+        if (pos <= 0) return;
+
+        var previous = sorted[pos - 1];
+        var bases = _playerState.GetArray("PersistentPlayerBases");
+        if (bases == null) return;
+
+        BaseLogic.SwapPlayerBases(bases, selected.DataIndex, previous.DataIndex);
+
+        int oldSelected = selected.DataIndex;
+        selected.DataIndex = previous.DataIndex;
+        previous.DataIndex = oldSelected;
+
+        RefreshBaseList(selected);
+    }
+
+    /// <summary>
+    /// Moves the selected player base one position down (toward higher array index),
+    /// swapping it with the nearest following HomePlanetBase in the list.
+    /// Other base types (ship bases, corvettes, etc.) are not disturbed.
+    /// </summary>
+    private void OnMoveBaseDown(object? sender, EventArgs e)
+    {
+        if (_baseList.SelectedItem is not BaseInfoItem selected) return;
+        if (_playerState == null) return;
+
+        var sorted = _baseInfoItems.OrderBy(x => x.DataIndex).ToList();
+        int pos = sorted.IndexOf(selected);
+        if (pos >= sorted.Count - 1) return;
+
+        var next = sorted[pos + 1];
+        var bases = _playerState.GetArray("PersistentPlayerBases");
+        if (bases == null) return;
+
+        BaseLogic.SwapPlayerBases(bases, selected.DataIndex, next.DataIndex);
+
+        int oldSelected = selected.DataIndex;
+        selected.DataIndex = next.DataIndex;
+        next.DataIndex = oldSelected;
+
+        RefreshBaseList(selected);
+    }
+
+    /// <summary>
+    /// Moves the selected player base to the topmost array slot among all HomePlanetBases.
+    /// </summary>
+    private void OnMoveBaseToTop(object? sender, EventArgs e)
+    {
+        if (_baseList.SelectedItem is not BaseInfoItem selected) return;
+        if (_playerState == null) return;
+
+        var sorted = _baseInfoItems.OrderBy(x => x.DataIndex).ToList();
+        int pos = sorted.IndexOf(selected);
+        if (pos <= 0) return;
+
+        var bases = _playerState.GetArray("PersistentPlayerBases");
+        if (bases == null) return;
+
+        while (pos > 0)
+        {
+            var previous = sorted[pos - 1];
+            BaseLogic.SwapPlayerBases(bases, selected.DataIndex, previous.DataIndex);
+            int oldIdx = selected.DataIndex;
+            selected.DataIndex = previous.DataIndex;
+            previous.DataIndex = oldIdx;
+            sorted.RemoveAt(pos);
+            sorted.Insert(pos - 1, selected);
+            pos--;
+        }
+
+        RefreshBaseList(selected);
+    }
+
+    /// <summary>
+    /// Moves the selected player base to the bottommost array slot among all HomePlanetBases.
+    /// </summary>
+    private void OnMoveBaseToBottom(object? sender, EventArgs e)
+    {
+        if (_baseList.SelectedItem is not BaseInfoItem selected) return;
+        if (_playerState == null) return;
+
+        var sorted = _baseInfoItems.OrderBy(x => x.DataIndex).ToList();
+        int pos = sorted.IndexOf(selected);
+        if (pos >= sorted.Count - 1) return;
+
+        var bases = _playerState.GetArray("PersistentPlayerBases");
+        if (bases == null) return;
+
+        while (pos < sorted.Count - 1)
+        {
+            var next = sorted[pos + 1];
+            BaseLogic.SwapPlayerBases(bases, selected.DataIndex, next.DataIndex);
+            int oldIdx = selected.DataIndex;
+            selected.DataIndex = next.DataIndex;
+            next.DataIndex = oldIdx;
+            sorted.RemoveAt(pos);
+            sorted.Insert(pos + 1, selected);
+            pos++;
+        }
+
+        RefreshBaseList(selected);
+    }
+
+    /// <summary>
+    /// Repopulates the base list box, sorted by array index, and re-selects the given item.
+    /// Also updates the enabled state of the reorder buttons.
+    /// </summary>
+    private void RefreshBaseList(BaseInfoItem? keepSelected = null)
+    {
+        _baseList.SelectedIndexChanged -= OnBaseSelected;
+        _baseList.BeginUpdate();
+        try
+        {
+            _baseList.Items.Clear();
+            foreach (var item in _baseInfoItems.OrderBy(x => x.DataIndex))
+                _baseList.Items.Add(item);
+
+            if (keepSelected != null)
+            {
+                int idx = _baseList.Items.IndexOf(keepSelected);
+                if (idx >= 0)
+                    _baseList.SelectedIndex = idx;
+            }
+        }
+        finally
+        {
+            _baseList.EndUpdate();
+            _baseList.SelectedIndexChanged += OnBaseSelected;
+            UpdateMoveButtonStates();
+        }
+    }
+
+    private void UpdateMoveButtonStates()
+    {
+        if (_baseList.SelectedItem is not BaseInfoItem selected)
+        {
+            _toTopBtn.Enabled = false;
+            _moveUpBtn.Enabled = false;
+            _moveDownBtn.Enabled = false;
+            _toBottomBtn.Enabled = false;
+            return;
+        }
+
+        var sorted = _baseInfoItems.OrderBy(x => x.DataIndex).ToList();
+        int pos = sorted.IndexOf(selected);
+        _toTopBtn.Enabled = pos > 0;
+        _moveUpBtn.Enabled = pos > 0;
+        _moveDownBtn.Enabled = pos < sorted.Count - 1;
+        _toBottomBtn.Enabled = pos < sorted.Count - 1;
     }
 
     private sealed class NpcWorkerItem
@@ -947,8 +1221,21 @@ internal class BasesSubPanel : UserControl
     {
         public string DisplayName { get; set; }
         public JsonObject Data { get; }
-        public int DataIndex { get; }
         public int ObjectCount { get; }
+
+        // Tracks the entry's position in the PersistentPlayerBases array.
+        // Updated in tandem with SwapPlayerBases calls so the list always reflects
+        // the true array position. Only modified by BasesSubPanel's reorder methods.
+        private int _dataIndex;
+        public int DataIndex
+        {
+            get => _dataIndex;
+            set
+            {
+                if (value < 0) throw new ArgumentOutOfRangeException(nameof(value));
+                _dataIndex = value;
+            }
+        }
 
         public BaseInfoItem(string displayName, JsonObject data, int dataIndex, int objectCount)
         {
@@ -958,7 +1245,9 @@ internal class BasesSubPanel : UserControl
             ObjectCount = objectCount;
         }
 
-        public override string ToString() => DisplayName;
+        // The display includes the raw array index (e.g. "[7] My Cool Base Name") so
+        // players can identify a base's position in PersistentPlayerBases while reordering.
+        public override string ToString() => $"[{DataIndex}] {DisplayName}";
     }
 
     private sealed class BaseObjectItem
