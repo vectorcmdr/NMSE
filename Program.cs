@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using NMSE.Core;
 using NMSE.UI;
 
 namespace NMSE;
@@ -11,6 +12,9 @@ static class Program
     [STAThread]
     static void Main()
     {
+        // Remove the stale .old executable left by a previous self-update.
+        UpdateService.CleanupOldExeIfPresent();
+
         // Wire up global exception handlers for crash logging
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         Application.ThreadException += OnThreadException;

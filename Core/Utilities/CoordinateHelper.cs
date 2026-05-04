@@ -210,7 +210,17 @@ public static class CoordinateHelper
         string path = Path.Combine(_glyphBasePath, $"UI-GLYPH{index}.PNG");
         if (!File.Exists(path)) return null;
 
-        try { return Image.FromFile(path); }
+        // Load via MemoryStream so GDI+ does NOT hold a lock on the file.
+        // Image.FromFile() keeps the file locked for the lifetime of the Image
+        // object.  Because these images are stored in the static _glyphCache
+        // they would remain locked for the entire process lifetime, preventing
+        // the self-updater from overwriting them.
+        try
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            using var ms = new MemoryStream(bytes);
+            return new Bitmap(ms);
+        }
         catch { return null; }
     }
 

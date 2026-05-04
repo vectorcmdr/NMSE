@@ -17,6 +17,7 @@ public partial class MainFormResources : Form
     // VerMajor, VerMinor, VerPatch and SuppGameRel are generated from version.json into BuildInfo.g.cs
     public const string IconPath = "Resources/app/NMSE.ico";
     public const string GitHubUrl = "https://github.com/vectorcmdr/NMSE";
+    public const string ReleaseNotesUrl = "https://github.com/vectorcmdr/NMSE/releases/latest";
     public const string SponsorUrl = "https://github.com/sponsors/vectorcmdr";
     public const string GitHubCreatorUrl = "https://github.com/vectorcmdr";
 
@@ -33,6 +34,7 @@ public partial class MainFormResources : Form
     private ToolStripMenuItem _helpGitHubItem = null!;
     private ToolStripMenuItem _helpSponsorItem = null!;
     private ToolStripMenuItem _helpCheckUpdatesItem = null!;
+    private ToolStripMenuItem _helpReleaseNotesItem = null!;
     private ToolStripMenuItem _helpAboutItem = null!;
     private readonly ToolStripStatusLabel _statusLabel;
     private readonly ToolStripStatusLabel _itemCountLabel;
@@ -360,12 +362,14 @@ public partial class MainFormResources : Form
         _helpGitHubItem = new ToolStripMenuItem("&GitHub Page", null, OnGitHub);
         _helpSponsorItem = new ToolStripMenuItem("&Sponsor Development", null, OnSponsor);
         _helpCheckUpdatesItem = new ToolStripMenuItem("Check for &Updates...", null, OnCheckForUpdates);
+        _helpReleaseNotesItem = new ToolStripMenuItem("&Release Notes", null, OnReleaseNotes);
         _helpAboutItem = new ToolStripMenuItem("&About", null, OnAbout);
         _helpMenu.DropDownItems.Add(_helpGitHubItem);
         _helpMenu.DropDownItems.Add(new ToolStripSeparator());
         _helpMenu.DropDownItems.Add(_helpSponsorItem);
         _helpMenu.DropDownItems.Add(new ToolStripSeparator());
         _helpMenu.DropDownItems.Add(_helpCheckUpdatesItem);
+        _helpMenu.DropDownItems.Add(_helpReleaseNotesItem);
         _helpMenu.DropDownItems.Add(new ToolStripSeparator());
         _helpMenu.DropDownItems.Add(_helpAboutItem);
         _menuStrip.Items.Add(_helpMenu);
@@ -2081,6 +2085,9 @@ public partial class MainFormResources : Form
         if (_loadedTabIndices.Contains(14)) _rawJsonPanel.NotifyDataChanged();
     }
 
+    /// <summary>
+    /// Opens the project GitHub page in the default browser.
+    /// </summary>
     private void OnGitHub(object? sender, EventArgs e)
     {
         try
@@ -2344,6 +2351,7 @@ public partial class MainFormResources : Form
             _helpGitHubItem.Text = UiStrings.Get("menu.help.github");
             _helpSponsorItem.Text = UiStrings.Get("menu.help.sponsor");
             _helpCheckUpdatesItem.Text = UiStrings.Get("menu.help.check_updates");
+            _helpReleaseNotesItem.Text = UiStrings.Get("menu.help.release_notes");
             _helpAboutItem.Text = UiStrings.Get("menu.help.about");
         }
 
@@ -2399,6 +2407,9 @@ public partial class MainFormResources : Form
         _shipPanel.ApplyUiLocalisation();
     }
 
+    /// <summary>
+    /// Opens the project sponsor page in the default browser.
+    /// </summary>
     private void OnSponsor(object? sender, EventArgs e)
     {
         try
@@ -2412,8 +2423,31 @@ public partial class MainFormResources : Form
         catch { }
     }
 
+    /// <summary>
+    /// Opens the latest GitHub release page in the default browser so the
+    /// user can read the release notes for the currently installed version
+    /// and any earlier releases.
+    /// </summary>
+    private void OnReleaseNotes(object? sender, EventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ReleaseNotesUrl,
+                UseShellExecute = true
+            });
+        }
+        catch { }
+    }
+
     // ---- Update functionality ----
 
+    /// <summary>
+    /// The version of the currently running application, assembled from the
+    /// compile-time constants <see cref="VerMajor"/>, <see cref="VerMinor"/>,
+    /// and <see cref="VerPatch"/>.
+    /// </summary>
     private static Version CurrentAppVersion =>
         new(int.Parse(VerMajor, System.Globalization.CultureInfo.InvariantCulture), int.Parse(VerMinor, System.Globalization.CultureInfo.InvariantCulture), int.Parse(VerPatch, System.Globalization.CultureInfo.InvariantCulture));
 
@@ -2477,67 +2511,228 @@ public partial class MainFormResources : Form
 
     /// <summary>
     /// Shows a dialog offering the user to download and install an update.
+    /// Displays the release notes for the incoming version in a scrollable panel.
     /// On acceptance, downloads the zip, applies the update, and exits.
     /// </summary>
     private async void PromptUserForUpdate(UpdateInfo update)
     {
-        var result = MessageBox.Show(this,
-            UiStrings.Format("update.available_msg",
-                $"{VerMajor}.{VerMinor}.{VerPatch}",
-                update.RemoteVersion.ToString(3)),
-            UiStrings.Get("update.available"),
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Information);
+        DialogResult result;
+        using (var dialog = new Form
+        {
+            Text            = UiStrings.Get("update.available"),
+            FormBorderStyle = FormBorderStyle.Sizable,
+            StartPosition   = FormStartPosition.CenterParent,
+            Size            = new Size(540, 440),
+            MinimumSize     = new Size(400, 300),
+            MaximizeBox     = true,
+            MinimizeBox     = false,
+        })
+        {
+            // Header label height: tall enough for the update.available_msg text
+            // (version info + install prompt on ~4 lines at default font size).
+            const int HeaderLabelHeight = 88;
+
+            // Header label with version info and install prompt
+            var headerLabel = new Label
+            {
+                Text      = UiStrings.Format("update.available_msg",
+                                $"{VerMajor}.{VerMinor}.{VerPatch}",
+                                update.RemoteVersion.ToString(3)),
+                Dock      = DockStyle.Top,
+                AutoSize  = false,
+                Height    = HeaderLabelHeight,
+                Padding   = new Padding(10, 10, 10, 4),
+            };
+
+            // Scrollable release notes panel.
+            // RichTextBox is used instead of TextBox because Rich Edit supports RTF
+            // hyperlink fields, which lets us display #N issue references as short
+            // clickable labels (e.g. "#64") while storing the full GitHub URL in the
+            // hidden \fldinst instruction.
+            var notesFont = new System.Drawing.Font("Segoe UI", 9f, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            // Dispose the font when the dialog is disposed, after the RichTextBox is done with it.
+            dialog.Disposed += (_, _) => notesFont.Dispose();
+            string notesText = UpdateService.MarkdownToPlainText(update.ReleaseNotes);
+            var notesBox = new RichTextBox
+            {
+                Multiline   = true,
+                ReadOnly    = true,
+                ScrollBars  = RichTextBoxScrollBars.Vertical,
+                WordWrap    = true,
+                Dock        = DockStyle.Fill,
+                BackColor   = SystemColors.Window,
+                Font        = notesFont,
+                DetectUrls  = true,
+                BorderStyle = BorderStyle.None,
+            };
+            if (notesText.Length > 0)
+            {
+                // Use RTF so #N tokens display as short labels but navigate to the full URL.
+                // The RTF font spec in BuildRtfWithIssueLinks takes precedence over notesBox.Font
+                // for RTF content; notesFont above still applies for the fallback plain-text path.
+                notesBox.Rtf = UpdateService.BuildRtfWithIssueLinks(notesText);
+            }
+            else
+            {
+                notesBox.Text = UiStrings.Get("update.no_release_notes");
+            }
+            // Open clicked hyperlinks in the default browser.
+            // RTF \field hyperlinks fire LinkClicked with e.LinkText = the displayed label
+            // (e.g. "#64"), not the hidden destination URL, so #N patterns are resolved here.
+            notesBox.LinkClicked += (s, e) =>
+            {
+                string linkText = e.LinkText ?? string.Empty;
+                string url      = linkText;
+
+                // Resolve #N shorthand that RTF fields surface as their display label.
+                var issueMatch = System.Text.RegularExpressions.Regex.Match(
+                    linkText, @"^#(\d+)$");
+                if (issueMatch.Success)
+                    url = $"https://github.com/{UpdateService.GitHubOwner}/{UpdateService.GitHubRepo}/issues/{issueMatch.Groups[1].Value}";
+
+                if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                    || url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                {
+                    try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+                    catch { /* best-effort */ }
+                }
+            };
+
+            // Yes / No button row, right-aligned
+            var buttonPanel = new FlowLayoutPanel
+            {
+                FlowDirection   = FlowDirection.RightToLeft,
+                AutoSize        = true,
+                AutoSizeMode    = AutoSizeMode.GrowAndShrink,
+                Dock            = DockStyle.Bottom,
+                WrapContents    = false,
+                Padding         = new Padding(8, 6, 8, 6),
+            };
+            var noButton = new Button
+            {
+                Text          = UiStrings.Get("update.prompt_no"),
+                DialogResult  = DialogResult.No,
+                MinimumSize   = new Size(80, 26),
+                AutoSize      = true,
+            };
+            var yesButton = new Button
+            {
+                Text          = UiStrings.Get("update.prompt_yes"),
+                DialogResult  = DialogResult.Yes,
+                MinimumSize   = new Size(80, 26),
+                AutoSize      = true,
+            };
+            // RightToLeft flow: first added is rightmost; No on right, Yes left of it
+            buttonPanel.Controls.Add(noButton);
+            buttonPanel.Controls.Add(yesButton);
+
+            dialog.Controls.Add(notesBox);
+            dialog.Controls.Add(headerLabel);
+            dialog.Controls.Add(buttonPanel);
+            dialog.AcceptButton = yesButton;
+            dialog.CancelButton = noButton;
+            // Move focus to the Yes button so the RichTextBox is not focused on open
+            // (a focused read-only RichTextBox auto-selects all its text).
+            dialog.Shown += (s, e) => yesButton.Focus();
+
+            result = dialog.ShowDialog(this);
+        }
 
         if (result != DialogResult.Yes)
             return;
 
         string zipPath = Path.Combine(Path.GetTempPath(),
             $"NMSE-update-{update.RemoteVersion.ToString(3)}.zip");
-        try
+
+        // Show a modal, non-closable progress dialog so the user cannot interact
+        // with the editor while the download and apply steps are running.
+        using var progressDialog = new Form
         {
-            _statusLabel.Text = UiStrings.Get("update.downloading");
+            Text            = UiStrings.Get("update.title"),
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            StartPosition   = FormStartPosition.CenterParent,
+            ClientSize      = new Size(380, 90),
+            MaximizeBox     = false,
+            MinimizeBox     = false,
+            ControlBox      = false,
+        };
+        var dlgStatusLabel = new Label
+        {
+            Text      = UiStrings.Get("update.downloading"),
+            Bounds    = new System.Drawing.Rectangle(12, 12, 356, 22),
+            TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+        };
+        var dlgProgressBar = new ProgressBar
+        {
+            Bounds  = new System.Drawing.Rectangle(12, 46, 356, 22),
+            Minimum = 0,
+            Maximum = 100,
+            Value   = 0,
+            Style   = ProgressBarStyle.Continuous,
+        };
+        progressDialog.Controls.Add(dlgStatusLabel);
+        progressDialog.Controls.Add(dlgProgressBar);
 
-            var progress = new Progress<(long received, long? total)>(p =>
+        progressDialog.Shown += async (_, _) =>
+        {
+            try
             {
-                if (p.total > 0)
+                var progress = new Progress<(long received, long? total)>(p =>
                 {
-                    int pct = (int)(p.received * 100 / p.total.Value);
-                    _statusLabel.Text = UiStrings.Format("update.downloading_progress", pct);
+                    if (p.total > 0)
+                    {
+                        int pct = (int)(p.received * 100 / p.total.Value);
+                        dlgStatusLabel.Text  = UiStrings.Format("update.downloading_progress", pct);
+                        dlgProgressBar.Style = ProgressBarStyle.Continuous;
+                        dlgProgressBar.Value = pct;
+                    }
+                    else
+                    {
+                        // Unknown content-length: show indeterminate progress.
+                        dlgProgressBar.Style = ProgressBarStyle.Marquee;
+                    }
+                });
+
+                await UpdateService.DownloadFileAsync(update.DownloadUrl, zipPath, progress)
+                                   .ConfigureAwait(true);
+
+                dlgStatusLabel.Text  = UiStrings.Get("update.applying");
+                dlgProgressBar.Style = ProgressBarStyle.Continuous;
+                dlgProgressBar.Value = 100;
+
+                // Yield briefly so the UI repaints the final label before the
+                // synchronous apply step blocks the message pump.
+                await Task.Delay(50).ConfigureAwait(true);
+
+                bool launched = UpdateService.ApplyUpdateAndRelaunch(zipPath);
+                progressDialog.Close();
+                if (launched)
+                {
+                    Application.Exit();
                 }
-            });
-
-            await UpdateService.DownloadFileAsync(update.DownloadUrl, zipPath, progress)
-                               .ConfigureAwait(true);
-
-            _statusLabel.Text = UiStrings.Get("update.applying");
-
-            bool launched = UpdateService.ApplyUpdateAndRelaunch(zipPath);
-            if (launched)
-            {
-                Application.Exit();
+                else
+                {
+                    MessageBox.Show(this,
+                        UiStrings.Get("update.apply_failed_msg"),
+                        UiStrings.Get("update.title"),
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _statusLabel.Text = UiStrings.Get("update.apply_failed");
+                progressDialog.Close();
                 MessageBox.Show(this,
-                    UiStrings.Get("update.apply_failed_msg"),
+                    UiStrings.Format("update.download_failed_msg", ex.Message),
                     UiStrings.Get("update.title"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+                // Clean up partial download.
+                try { if (File.Exists(zipPath)) File.Delete(zipPath); } catch { }
             }
-        }
-        catch (Exception ex)
-        {
-            _statusLabel.Text = UiStrings.Get("update.download_failed");
-            MessageBox.Show(this,
-                UiStrings.Format("update.download_failed_msg", ex.Message),
-                UiStrings.Get("update.title"),
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            // Clean up partial download
-            try { if (File.Exists(zipPath)) File.Delete(zipPath); } catch { }
-        }
+        };
+
+        progressDialog.ShowDialog(this);
     }
 
     private void OnAbout(object? sender, EventArgs e)

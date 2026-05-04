@@ -955,6 +955,7 @@
   "menu.help.about": "このアプリについて(&A)",
   "menu.help.check_updates": "更新の確認(&U)...",
   "menu.help.github": "&GitHubページ",
+  "menu.help.release_notes": "リリースノート(&R)",
   "menu.help.sponsor": "開発を支援(&S)",
   "menu.language": "言語(&L)",
   "menu.tools": "ツール(&T)",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "アップデートのダウンロードに失敗しました:\n{0}",
   "update.downloading": "アップデートをダウンロード中...",
   "update.downloading_progress": "アップデートをダウンロード中... {0}%",
+  "update.no_release_notes": "(リリースノートはありません。)",
+  "update.prompt_no": "いいえ",
+  "update.prompt_yes": "はい",
   "update.title": "NMSEアップデート",
   "update.up_to_date": "NMSEは最新です。",
   "update.up_to_date_msg": "最新バージョンを使用しています ({0})。"

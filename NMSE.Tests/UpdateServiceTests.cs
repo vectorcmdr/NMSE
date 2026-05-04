@@ -1,5 +1,5 @@
+using System.Text.Json;
 using NMSE.Core;
-using NMSE.Models;
 
 namespace NMSE.Tests;
 
@@ -96,10 +96,8 @@ public class UpdateServiceTests
             ]
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        string? url = UpdateService.FindAssetDownloadUrl(release);
+        using var doc = JsonDocument.Parse(json);
+        string? url = UpdateService.FindAssetDownloadUrl(doc.RootElement);
         Assert.Equal(
             "https://github.com/vectorcmdr/NMSE/releases/download/v1.1.140/NMSE-1.1.140-Release.zip",
             url);
@@ -120,10 +118,8 @@ public class UpdateServiceTests
             ]
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Null(UpdateService.FindAssetDownloadUrl(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.FindAssetDownloadUrl(doc.RootElement));
     }
 
     [Fact]
@@ -136,10 +132,8 @@ public class UpdateServiceTests
             "assets": []
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Null(UpdateService.FindAssetDownloadUrl(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.FindAssetDownloadUrl(doc.RootElement));
     }
 
     [Fact]
@@ -151,10 +145,8 @@ public class UpdateServiceTests
             "name": "NMSE v1.1.140"
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Null(UpdateService.FindAssetDownloadUrl(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.FindAssetDownloadUrl(doc.RootElement));
     }
 
     [Fact]
@@ -179,11 +171,9 @@ public class UpdateServiceTests
             ]
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
+        using var doc = JsonDocument.Parse(json);
         Assert.Equal("https://example.com/NMSE-2.0.0-Release.zip",
-            UpdateService.FindAssetDownloadUrl(release));
+            UpdateService.FindAssetDownloadUrl(doc.RootElement));
     }
 
     // FindReleaseVersion
@@ -197,10 +187,8 @@ public class UpdateServiceTests
             "name": "NMSE v1.1.140"
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Equal("NMSE v1.1.140", UpdateService.FindReleaseVersion(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("NMSE v1.1.140", UpdateService.FindReleaseVersion(doc.RootElement));
     }
 
     [Fact]
@@ -212,10 +200,8 @@ public class UpdateServiceTests
             "name": ""
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Equal("v1.1.140", UpdateService.FindReleaseVersion(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("v1.1.140", UpdateService.FindReleaseVersion(doc.RootElement));
     }
 
     // FindReleaseNotes
@@ -228,10 +214,8 @@ public class UpdateServiceTests
             "body": "Bug fixes and improvements."
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Equal("Bug fixes and improvements.", UpdateService.FindReleaseNotes(release));
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("Bug fixes and improvements.", UpdateService.FindReleaseNotes(doc.RootElement));
     }
 
     [Fact]
@@ -242,46 +226,84 @@ public class UpdateServiceTests
             "tag_name": "v1.1.140"
         }
         """;
-        var release = JsonObject.Parse(json);
-        Assert.NotNull(release);
-
-        Assert.Null(UpdateService.FindReleaseNotes(release));
-    }
-
-    // GenerateUpdaterScript
-
-    [Fact]
-    public void GenerateUpdaterScript_ContainsProcessId()
-    {
-        string script = UpdateService.GenerateUpdaterScript(
-            12345, @"C:\temp\extract", @"C:\app", "NMSE.exe");
-        // Verify the PID is used in the correct tasklist filter context, not just
-        // that the number appears somewhere in the script.
-        Assert.Contains("tasklist /fi \"PID eq 12345\"", script);
+        using var doc = JsonDocument.Parse(json);
+        Assert.Null(UpdateService.FindReleaseNotes(doc.RootElement));
     }
 
     [Fact]
-    public void GenerateUpdaterScript_RemovesResourcesFolder()
+    public void FindReleaseNotes_BodyWithUnicodeChars_ReturnsString()
     {
-        string script = UpdateService.GenerateUpdaterScript(
-            1, @"C:\temp\extract", @"C:\app", "NMSE.exe");
-        Assert.Contains(@"rmdir /s /q ""C:\app\Resources""", script);
+        // System.Text.Json handles all Unicode correctly (emoji, accented letters,
+        // en/em dashes, etc.) without any workarounds.
+        string json = "{\"body\": \"Fix f\\u00FCr B\\u00FCg: includes \\u00E9l\\u00E9ment \\uD83D\\uDE80\"}";
+        using var doc = JsonDocument.Parse(json);
+        string? notes = UpdateService.FindReleaseNotes(doc.RootElement);
+        Assert.NotNull(notes);
+        Assert.Contains("f\u00FCr B\u00FCg", notes);
+        Assert.Contains("\u00E9l\u00E9ment", notes);
+        Assert.Contains("\U0001F680", notes); // 🚀 rocket emoji (SMP codepoint)
+    }
+
+    // CleanupOldExeIfPresent
+
+    [Fact]
+    public void CleanupOldExeIfPresent_StaleOldFileExists_DeletesIt()
+    {
+        string dir     = Path.Combine(Path.GetTempPath(), $"nmse-test-{Guid.NewGuid():N}");
+        string oldFile = UpdateService.GetOldExePath(dir);
+        try
+        {
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(oldFile, "fake old exe");
+
+            UpdateService.CleanupOldExeIfPresent(dir);
+
+            Assert.False(File.Exists(oldFile));
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        }
     }
 
     [Fact]
-    public void GenerateUpdaterScript_CopiesNewFiles()
+    public void CleanupOldExeIfPresent_NoStaleFile_DoesNotThrow()
     {
-        string script = UpdateService.GenerateUpdaterScript(
-            1, @"C:\temp\extract", @"C:\app", "NMSE.exe");
-        Assert.Contains(@"xcopy /e /y /q ""C:\temp\extract\*"" ""C:\app\""", script);
+        string dir = Path.Combine(Path.GetTempPath(), $"nmse-test-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(dir);
+            // Should not throw even when there is no .old file.
+            UpdateService.CleanupOldExeIfPresent(dir);
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        }
     }
 
     [Fact]
-    public void GenerateUpdaterScript_RelaunchesExe()
+    public void CleanupOldExeIfPresent_OtherFilesUntouched()
     {
-        string script = UpdateService.GenerateUpdaterScript(
-            1, @"C:\temp\extract", @"C:\app", "MyApp.exe");
-        Assert.Contains(@"start """" ""C:\app\MyApp.exe""", script);
+        string dir       = Path.Combine(Path.GetTempPath(), $"nmse-test-{Guid.NewGuid():N}");
+        string oldFile   = UpdateService.GetOldExePath(dir);
+        // Create a sibling file that must NOT be deleted.
+        string otherFile = oldFile.Replace(".old", ".keep", StringComparison.Ordinal);
+        try
+        {
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(otherFile, "should stay");
+            File.WriteAllText(oldFile,   "stale old exe");
+
+            UpdateService.CleanupOldExeIfPresent(dir);
+
+            Assert.False(File.Exists(oldFile));
+            Assert.True(File.Exists(otherFile));
+        }
+        finally
+        {
+            if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        }
     }
 
     // ReleasesApiUrl
@@ -305,5 +327,312 @@ public class UpdateServiceTests
         // These are the values that would be changed for the final release repo.
         Assert.False(string.IsNullOrEmpty(UpdateService.GitHubOwner));
         Assert.False(string.IsNullOrEmpty(UpdateService.GitHubRepo));
+    }
+
+    // MarkdownToPlainText
+
+    [Fact]
+    public void MarkdownToPlainText_NullOrEmpty_ReturnsEmpty()
+    {
+        Assert.Equal(string.Empty, UpdateService.MarkdownToPlainText(null));
+        Assert.Equal(string.Empty, UpdateService.MarkdownToPlainText(""));
+        Assert.Equal(string.Empty, UpdateService.MarkdownToPlainText("   "));
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_H1Heading_UsesEqualsUnderline()
+    {
+        string result = UpdateService.MarkdownToPlainText("# My Heading");
+        Assert.Contains("My Heading", result);
+        Assert.Contains("==========", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_H2Heading_UsesDashUnderline()
+    {
+        string result = UpdateService.MarkdownToPlainText("## Section");
+        Assert.Contains("Section", result);
+        Assert.Contains("-------", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_H3Heading_UsesDashUnderline()
+    {
+        string result = UpdateService.MarkdownToPlainText("### Subsection");
+        Assert.Contains("Subsection", result);
+        Assert.Contains("----------", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_UnorderedListDash_UsesBullet()
+    {
+        string result = UpdateService.MarkdownToPlainText("- Item one\n- Item two");
+        Assert.Contains("• Item one", result);
+        Assert.Contains("• Item two", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_UnorderedListAsterisk_UsesBullet()
+    {
+        string result = UpdateService.MarkdownToPlainText("* Item");
+        Assert.Contains("• Item", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Blockquote_Indented()
+    {
+        string result = UpdateService.MarkdownToPlainText("> Note text");
+        Assert.Contains("  Note text", result);
+        Assert.DoesNotContain("> ", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_BoldText_Stripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("Some **bold** text");
+        Assert.Contains("Some bold text", result);
+        Assert.DoesNotContain("**", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_ItalicText_Stripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("Some *italic* text");
+        Assert.Contains("Some italic text", result);
+        Assert.DoesNotContain("*italic*", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_InlineCode_Stripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("Run `dotnet build`");
+        Assert.Contains("Run dotnet build", result);
+        Assert.DoesNotContain("`", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Link_KeepsTextAndUrl()
+    {
+        string result = UpdateService.MarkdownToPlainText("[GitHub](https://github.com)");
+        Assert.Contains("GitHub", result);
+        Assert.Contains("https://github.com", result);
+        Assert.DoesNotContain("](", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Link_UrlNotWrappedInParentheses()
+    {
+        // Win32 Rich Edit DetectUrls requires a bare URL - a leading '(' prevents detection.
+        // The URL must appear as a plain token, not "(https://...)".
+        string result = UpdateService.MarkdownToPlainText("[See issue](https://github.com/owner/repo/issues/1)");
+        // The URL must appear without a leading '(' immediately before it.
+        int urlIndex = result.IndexOf("https://", StringComparison.Ordinal);
+        Assert.True(urlIndex >= 0);
+        Assert.True(urlIndex == 0 || result[urlIndex - 1] != '(');
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Link_LabelSameAsUrl_EmitsOnlyUrl()
+    {
+        // Auto-links where label == URL should not duplicate the URL.
+        const string url = "https://github.com";
+        string result = UpdateService.MarkdownToPlainText($"[{url}]({url})");
+        Assert.Equal(url, result.Trim());
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Image_KeepsAltOnly()
+    {
+        string result = UpdateService.MarkdownToPlainText("![logo](https://example.com/img.png)");
+        Assert.Contains("logo", result);
+        Assert.DoesNotContain("https://", result);
+        Assert.DoesNotContain("](", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_BrTag_BecomesNewline()
+    {
+        string result = UpdateService.MarkdownToPlainText("Line one<br />Line two");
+        Assert.Contains("Line one", result);
+        Assert.Contains("Line two", result);
+        Assert.DoesNotContain("<br", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_DetailsBlock_IsStripped()
+    {
+        string input = "Before\n<details>\n<summary>Old notes</summary>\nSecret content\n</details>\nAfter";
+        string result = UpdateService.MarkdownToPlainText(input);
+        Assert.Contains("Before", result);
+        Assert.Contains("After", result);
+        Assert.DoesNotContain("Secret content", result);
+        Assert.DoesNotContain("<details>", result);
+        Assert.DoesNotContain("<summary>", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_GettingStartedSection_IsStripped()
+    {
+        string input = "## Changelog\n- Fix\n\n### Getting Started\nBoilerplate text here.";
+        string result = UpdateService.MarkdownToPlainText(input);
+        Assert.DoesNotContain("Boilerplate text here", result);
+        Assert.DoesNotContain("Getting Started", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_GettingStartedSection_KeepsContentBefore()
+    {
+        string input = "## Changelog\n- Fix important bug\n\n### Getting Started\nBoilerplate.";
+        string result = UpdateService.MarkdownToPlainText(input);
+        Assert.Contains("Fix important bug", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_HtmlTags_AreStripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("Text <b>bold</b> and <em>italic</em> here.");
+        Assert.Contains("Text bold and italic here.", result);
+        Assert.DoesNotContain("<b>", result);
+        Assert.DoesNotContain("<em>", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_HtmlComment_Stripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("Before\n<!-- hidden -->\nAfter");
+        Assert.Contains("Before", result);
+        Assert.Contains("After", result);
+        Assert.DoesNotContain("hidden", result);
+        Assert.DoesNotContain("<!--", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_MultilineHtmlComment_Stripped()
+    {
+        string input = "Line1\n<!--\nThis is\nhidden\n-->\nLine2";
+        string result = UpdateService.MarkdownToPlainText(input);
+        Assert.Contains("Line1", result);
+        Assert.Contains("Line2", result);
+        Assert.DoesNotContain("hidden", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_ConsecutiveBlanks_Collapsed()
+    {
+        string input = "A\n\n\n\nB";
+        string result = UpdateService.MarkdownToPlainText(input);
+        // Should not contain more than one consecutive blank line
+        Assert.DoesNotContain("\n\n\n", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Strikethrough_Stripped()
+    {
+        string result = UpdateService.MarkdownToPlainText("~~old text~~");
+        Assert.Contains("old text", result);
+        Assert.DoesNotContain("~~", result);
+    }
+
+    [Fact]
+    public void MarkdownToPlainText_Trimmed_NoLeadingOrTrailingNewlines()
+    {
+        string result = UpdateService.MarkdownToPlainText("\n\n## Heading\n\n");
+        Assert.False(result.StartsWith('\n'));
+        Assert.False(result.EndsWith('\n'));
+    }
+}
+
+public class BuildRtfWithIssueLinksTests
+{
+    private static string IssueUrl(int n)
+        => $"https://github.com/{UpdateService.GitHubOwner}/{UpdateService.GitHubRepo}/issues/{n}";
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_EmptyInput_ReturnsStub()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks(string.Empty);
+        Assert.Contains("rtf1", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_NoReferences_ContainsOriginalText()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks("No issue references here.");
+        Assert.Contains("No issue references here.", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_IssueReference_ContainsDisplayLabel()
+    {
+        // The displayed label (#64) must appear in the \fldrslt part.
+        string result = UpdateService.BuildRtfWithIssueLinks("Fixed bug (Per Issue #64)");
+        Assert.Contains("#64", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_IssueReference_ContainsFullUrl()
+    {
+        // The full URL must appear in the \fldinst HYPERLINK instruction.
+        string result = UpdateService.BuildRtfWithIssueLinks("Fixed bug (Per Issue #64)");
+        Assert.Contains(IssueUrl(64), result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_IssueReference_ContainsHyperlinkField()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks("See #1");
+        Assert.Contains(@"\field", result);
+        Assert.Contains("HYPERLINK", result);
+        Assert.Contains(IssueUrl(1), result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_MultipleReferences_AllPresent()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks("See #1 and #2");
+        Assert.Contains(IssueUrl(1), result);
+        Assert.Contains(IssueUrl(2), result);
+        Assert.Contains("#1", result);
+        Assert.Contains("#2", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_HashInMiddleOfWord_NotTreatedAsRef()
+    {
+        // "#1test" - word-char after digits — must not produce a hyperlink field.
+        string result = UpdateService.BuildRtfWithIssueLinks("tag v#1test");
+        Assert.DoesNotContain("HYPERLINK", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_RtfSpecialChars_AreEscaped()
+    {
+        // Backslash and braces in plain text must be RTF-escaped.
+        string result = UpdateService.BuildRtfWithIssueLinks(@"path\to\file {note}");
+        Assert.Contains(@"\\", result);
+        Assert.Contains(@"\{", result);
+        Assert.Contains(@"\}", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_NonAsciiChar_IsUnicodeEscaped()
+    {
+        // Bullet U+2022 (8226) should be emitted as \u8226?
+        string result = UpdateService.BuildRtfWithIssueLinks("• item");
+        Assert.Contains(@"\u8226?", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_Newline_BecomesParBreak()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks("Line1\nLine2");
+        Assert.Contains(@"\par", result);
+    }
+
+    [Fact]
+    public void BuildRtfWithIssueLinks_Output_StartsWithRtfHeader()
+    {
+        string result = UpdateService.BuildRtfWithIssueLinks("hello");
+        Assert.StartsWith(@"{\rtf1", result);
     }
 }

@@ -955,6 +955,7 @@
   "menu.help.about": "&Informazioni",
   "menu.help.check_updates": "Cerca &aggiornamenti...",
   "menu.help.github": "Pagina &GitHub",
+  "menu.help.release_notes": "&Note di rilascio",
   "menu.help.sponsor": "&Supporta lo sviluppo",
   "menu.language": "&Lingua",
   "menu.tools": "&Strumenti",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "Impossibile scaricare l'aggiornamento:\n{0}",
   "update.downloading": "Download dell'aggiornamento...",
   "update.downloading_progress": "Download dell'aggiornamento... {0}%",
+  "update.no_release_notes": "(Nessuna nota di rilascio disponibile.)",
+  "update.prompt_no": "No",
+  "update.prompt_yes": "Sì",
   "update.title": "Aggiornamento NMSE",
   "update.up_to_date": "NMSE è aggiornato.",
   "update.up_to_date_msg": "Stai utilizzando l'ultima versione ({0})."

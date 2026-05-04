@@ -955,6 +955,7 @@
   "menu.help.about": "정보(&A)",
   "menu.help.check_updates": "업데이트 확인(&U)...",
   "menu.help.github": "&GitHub 페이지",
+  "menu.help.release_notes": "릴리스 노트(&R)",
   "menu.help.sponsor": "개발 후원(&S)",
   "menu.language": "언어(&L)",
   "menu.tools": "도구(&T)",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "업데이트를 다운로드하지 못했습니다:\n{0}",
   "update.downloading": "업데이트 다운로드 중...",
   "update.downloading_progress": "업데이트 다운로드 중... {0}%",
+  "update.no_release_notes": "(릴리스 노트가 없습니다.)",
+  "update.prompt_no": "아니요",
+  "update.prompt_yes": "예",
   "update.title": "NMSE 업데이트",
   "update.up_to_date": "NMSE가 최신 상태입니다.",
   "update.up_to_date_msg": "최신 버전을 사용 중입니다 ({0})."

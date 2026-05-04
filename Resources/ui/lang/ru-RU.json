@@ -955,6 +955,7 @@
   "menu.help.about": "&О программе",
   "menu.help.check_updates": "Проверить о&бновления...",
   "menu.help.github": "Страница &GitHub",
+  "menu.help.release_notes": "&Примечания к выпуску",
   "menu.help.sponsor": "&Поддержать разработку",
   "menu.language": "&Язык",
   "menu.tools": "&Инструменты",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "Не удалось загрузить обновление:\n{0}",
   "update.downloading": "Загрузка обновления...",
   "update.downloading_progress": "Загрузка обновления... {0}%",
+  "update.no_release_notes": "(Нет примечаний к выпуску.)",
+  "update.prompt_no": "Нет",
+  "update.prompt_yes": "Да",
   "update.title": "Обновление NMSE",
   "update.up_to_date": "NMSE обновлён.",
   "update.up_to_date_msg": "Вы используете последнюю версию ({0})."

@@ -955,6 +955,7 @@
   "menu.help.about": "關於(&A)",
   "menu.help.check_updates": "檢查更新(&U)...",
   "menu.help.github": "&GitHub頁面",
+  "menu.help.release_notes": "版本說明(&R)",
   "menu.help.sponsor": "贊助開發(&S)",
   "menu.language": "語言(&L)",
   "menu.tools": "工具(&T)",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "下載更新失敗：\n{0}",
   "update.downloading": "正在下載更新...",
   "update.downloading_progress": "正在下載更新... {0}%",
+  "update.no_release_notes": "(沒有可用的版本說明。)",
+  "update.prompt_no": "否",
+  "update.prompt_yes": "是",
   "update.title": "NMSE更新",
   "update.up_to_date": "NMSE已是最新版本。",
   "update.up_to_date_msg": "您正在使用最新版本 ({0})。"

@@ -955,6 +955,7 @@
   "menu.help.about": "&Over",
   "menu.help.check_updates": "Controleren op &updates...",
   "menu.help.github": "&GitHub-pagina",
+  "menu.help.release_notes": "&Releasenotes",
   "menu.help.sponsor": "&Sponsorontwikkeling",
   "menu.language": "&Taal",
   "menu.tools": "&Hulpmiddelen",
@@ -1847,6 +1848,9 @@
   "update.download_failed_msg": "Kan de update niet downloaden:\n{0}",
   "update.downloading": "Update downloaden...",
   "update.downloading_progress": "Update downloaden... {0}%",
+  "update.no_release_notes": "(Geen releasenotes beschikbaar.)",
+  "update.prompt_no": "Nee",
+  "update.prompt_yes": "Ja",
   "update.title": "NMSE-update",
   "update.up_to_date": "NMSE is up-to-date.",
   "update.up_to_date_msg": "U gebruikt de nieuwste versie ({0})."
