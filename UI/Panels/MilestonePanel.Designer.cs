@@ -22,17 +22,71 @@ partial class MilestonePanel
 
         _tabControl = new DoubleBufferedTabControl { Dock = DockStyle.Fill };
 
-        // === Tab 1: Main Stats (Milestones | Kills | Alien Factions | Guilds) ===
+        // === Tab 1: Main Stats ===
+        // Layout: 3 outer columns
+        //   Col 0 (300px): Milestones  +  Alien Factions (below)
+        //   Col 1 (300px): Kills
+        //   Col 2 (600px): Guilds - two side-by-side 3-sub-col panels with shared heading
         var tab1 = new TabPage("Main Stats");
         var scroll1 = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
 
-        var section1 = CreateFourColumnSection();
-        var s1c1 = GetColumnPanel(section1, 0);
-        var s1c2 = GetColumnPanel(section1, 1);
-        var s1c3 = GetColumnPanel(section1, 2);
-        var s1c4 = GetColumnPanel(section1, 3);
+        var section1 = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            AutoScroll = true,
+            Dock = DockStyle.Top,
+            ColumnCount = 3,
+            RowCount = 1,
+            Margin = new Padding(0, 0, 0, 8),
+            Padding = new Padding(0),
+        };
+        section1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
+        section1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
+        section1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 600));
+        section1.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
-        // Column 1: Milestones
+        // Helper: create a standard 2-sub-col inner panel (160px label + 120px value)
+        static TableLayoutPanel MakeStdCol()
+        {
+            var col = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
+                Dock = DockStyle.Top,
+                ColumnCount = 2,
+                RowCount = 0,
+                Padding = new Padding(4),
+                Margin = new Padding(0),
+            };
+            col.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160));
+            col.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+            return col;
+        }
+
+        // Helper: create a 3-sub-col guild inner panel (130 label + 76 value + 86 rank)
+        static TableLayoutPanel MakeGuildCol()
+        {
+            var col = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowOnly,
+                Dock = DockStyle.Top,
+                ColumnCount = 3,
+                RowCount = 0,
+                Padding = new Padding(4),
+                Margin = new Padding(0),
+            };
+            col.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
+            col.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 76));
+            col.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
+            return col;
+        }
+
+        // --- Column 0: Milestones then Alien Factions ---
+        var s1c1 = MakeStdCol();
+        section1.Controls.Add(s1c1, 0, 0);
+
         AddSectionTitle(s1c1, "Milestones", "milestone.section_milestones");
         AddField(s1c1, "milestone.on_foot_exploration", "^DIST_WALKED");
         AddField(s1c1, "milestone.alien_encounters", "^ALIENS_MET");
@@ -43,17 +97,40 @@ partial class MilestonePanel
         AddField(s1c1, "milestone.space_exploration", "^DIST_WARP");
         AddField(s1c1, "milestone.planet_zoology_scanned", "^DISC_ALL_CREATU");
 
-        // Column 2: Kills
+        AddVerticalSpacer(s1c1);
+        AddSectionTitle(s1c1, "Alien Factions", "milestone.section_alien_factions");
+        AddSectionTitle(s1c1, "Gek", "milestone.gek");
+        AddField(s1c1, "milestone.standing", "^TRA_STANDING");
+        AddField(s1c1, "milestone.missions", "^TDONE_MISSIONS");
+        AddField(s1c1, "milestone.systems_visited", "^TSEEN_SYSTEMS");
+        AddField(s1c1, "milestone.gek_met", "^TRA_MET");
+        AddSectionTitle(s1c1, "Vy'keen", "milestone.vykeen");
+        AddField(s1c1, "milestone.standing", "^WAR_STANDING");
+        AddField(s1c1, "milestone.missions", "^WDONE_MISSIONS");
+        AddField(s1c1, "milestone.systems_visited", "^WSEEN_SYSTEMS");
+        AddField(s1c1, "milestone.vykeen_met", "^WAR_MET");
+        AddSectionTitle(s1c1, "Korvax", "milestone.korvax");
+        AddField(s1c1, "milestone.standing", "^EXP_STANDING");
+        AddField(s1c1, "milestone.missions", "^EDONE_MISSIONS");
+        AddField(s1c1, "milestone.systems_visited", "^ESEEN_SYSTEMS");
+        AddField(s1c1, "milestone.korvax_met", "^EXP_MET");
+        AddSectionTitle(s1c1, "Autophage", "milestone.autophage");
+        AddField(s1c1, "milestone.standing", "^BUI_STANDING");
+        AddField(s1c1, "milestone.missions", "^BDONE_MISSIONS");
+        AddField(s1c1, "milestone.autophage_met", "^BUI_MET");
+
+        // --- Column 1: Kills ---
+        var s1c2 = MakeStdCol();
+        section1.Controls.Add(s1c2, 1, 0);
+
         AddSectionTitle(s1c2, "Kills", "milestone.section_kills");
         AddField(s1c2, "milestone.ammo_fired", "^AMMO_FIRED");
         AddField(s1c2, "milestone.predators", "^PREDS_KILLED");
         AddField(s1c2, "milestone.sentinel_drones", "^DRONES_KILLED");
         AddField(s1c2, "milestone.sentinel_quads", "^QUADS_KILLED");
         AddField(s1c2, "milestone.sentinel_walkers", "^WALKERS_KILLED");
-        AddField(s1c2, "milestone.pirates", "^PIRATES_KILLED");
         AddField(s1c2, "milestone.police", "^POLICE_KILLED");
         AddField(s1c2, "milestone.civilian_freighters", "^CIV_FREI_KILLS");
-        AddField(s1c2, "milestone.fiends", "^FIENDS_KILLED");
         AddField(s1c2, "milestone.fish_killed", "^FISH_KILLS");
         AddField(s1c2, "milestone.flora_killed", "^FLORA_KILLED");
         AddField(s1c2, "milestone.grubs", "^GRUBS_KILLED");
@@ -71,58 +148,68 @@ partial class MilestonePanel
         AddField(s1c2, "milestone.spookfiend_juice", "^SPOOK_JUICE");
         AddField(s1c2, "milestone.spookfiends", "^SPOOK_KILLS");
         AddField(s1c2, "milestone.stone_guardians", "^STONE_KILLS");
-        AddField(s1c2, "milestone.traders_killed", "^TRADERS_KILLED");
 
-        // Column 3: Alien Factions
-        AddSectionTitle(s1c3, "Alien Factions", "milestone.section_alien_factions");
-        AddSectionTitle(s1c3, "Gek", "milestone.gek");
-        AddField(s1c3, "milestone.standing", "^TRA_STANDING");
-        AddField(s1c3, "milestone.missions", "^TDONE_MISSIONS");
-        AddField(s1c3, "milestone.systems_visited", "^TSEEN_SYSTEMS");
-        AddField(s1c3, "milestone.gek_met", "^TRA_MET");
-        AddSectionTitle(s1c3, "Vy'keen", "milestone.vykeen");
-        AddField(s1c3, "milestone.standing", "^WAR_STANDING");
-        AddField(s1c3, "milestone.missions", "^WDONE_MISSIONS");
-        AddField(s1c3, "milestone.systems_visited", "^WSEEN_SYSTEMS");
-        AddField(s1c3, "milestone.vykeen_met", "^WAR_MET");
-        AddSectionTitle(s1c3, "Korvax", "milestone.korvax");
-        AddField(s1c3, "milestone.standing", "^EXP_STANDING");
-        AddField(s1c3, "milestone.missions", "^EDONE_MISSIONS");
-        AddField(s1c3, "milestone.systems_visited", "^ESEEN_SYSTEMS");
-        AddField(s1c3, "milestone.korvax_met", "^EXP_MET");
-        AddSectionTitle(s1c3, "Autophage", "milestone.autophage");
-        AddField(s1c3, "milestone.standing", "^BUI_STANDING");
-        AddField(s1c3, "milestone.missions", "^BDONE_MISSIONS");
-        AddField(s1c3, "milestone.autophage_met", "^BUI_MET");
+        // --- Column 2: Guilds — 2 side-by-side 3-sub-col panels ---
+        var guildArea = new TableLayoutPanel
+        {
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowOnly,
+            Dock = DockStyle.Top,
+            ColumnCount = 2,
+            RowCount = 0,
+            Padding = new Padding(0),
+            Margin = new Padding(0),
+        };
+        guildArea.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
+        guildArea.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
+        section1.Controls.Add(guildArea, 2, 0);
 
-        // Column 4: Guilds
-        AddSectionTitle(s1c4, "Guilds", "milestone.section_guilds");
-        AddSectionTitle(s1c4, "Traders", "milestone.traders");
-        AddField(s1c4, "milestone.standing", "^TGUILD_STAND");
-        AddField(s1c4, "milestone.missions", "^TGDONE_MISSIONS");
-        AddField(s1c4, "milestone.plants_farmed", "^PLANTS_PLANTED");
-        AddSectionTitle(s1c4, "Warriors", "milestone.warriors");
-        AddField(s1c4, "milestone.standing", "^WGUILD_STAND");
-        AddField(s1c4, "milestone.missions", "^WGDONE_MISSIONS");
-        AddSectionTitle(s1c4, "Explorers", "milestone.explorers");
-        AddField(s1c4, "milestone.standing", "^EGUILD_STAND");
-        AddField(s1c4, "milestone.missions", "^EGDONE_MISSIONS");
-        AddField(s1c4, "milestone.rare_creatures", "^RARE_SCANNED");
-        AddSectionTitle(s1c4, "Pirate", "milestone.pirate");
-        AddField(s1c4, "milestone.standing", "^PIRATE_STAND");
-        AddField(s1c4, "milestone.missions", "^PDONE_MISSIONS");
-        AddField(s1c4, "milestone.systems_visited", "^PIRATE_SYSTEMS");
-        AddField(s1c4, "milestone.pirate_missions_req", "^MISSION_PIRATES");
-        AddField(s1c4, "milestone.pirate_missions", "^PIRATE_MISSIONS");
-        AddField(s1c4, "milestone.pirate_mysteries", "^PIRATE_MYSTERY");
-        AddField(s1c4, "milestone.pirate_freighters_seen", "^PIR_FREI_SEEN");
-        AddField(s1c4, "milestone.smuggled_value", "^SMUGGLE_VALUE");
+        // "Guilds" main heading - spans both sub-columns
+        AddSectionTitle(guildArea, "Guilds", "milestone.section_guilds");
+
+        int guildContentRow = guildArea.RowCount++;
+        guildArea.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var guildLeft = MakeGuildCol();
+        guildArea.Controls.Add(guildLeft, 0, guildContentRow);
+
+        var guildRight = MakeGuildCol();
+        guildArea.Controls.Add(guildRight, 1, guildContentRow);
+
+        // Left: Merchants Guild then Mercenaries Guild
+        AddSectionTitle(guildLeft, "Merchants Guild", "milestone.merchants_guild");
+        AddGuildField(guildLeft, "milestone.standing", "^TGUILD_STAND");
+        AddGuildField(guildLeft, "milestone.missions_completed", "^TGDONE_MISSIONS");
+        AddGuildField(guildLeft, "milestone.plants_farmed", "^PLANTS_PLANTED");
+        AddGuildField(guildLeft, "milestone.proc_prods", "^PROC_PRODS");
+
+        AddVerticalSpacer(guildLeft);
+        AddSectionTitle(guildLeft, "Mercenaries Guild", "milestone.mercenaries_guild");
+        AddGuildField(guildLeft, "milestone.standing", "^WGUILD_STAND");
+        AddGuildField(guildLeft, "milestone.missions_completed", "^WGDONE_MISSIONS");
+        AddGuildField(guildLeft, "milestone.pirates", "^PIRATES_KILLED");
+        AddGuildField(guildLeft, "milestone.fiends", "^FIENDS_KILLED");
+
+        // Right: Explorers Guild then Outlaws
+        AddSectionTitle(guildRight, "Explorers Guild", "milestone.explorers_guild");
+        AddGuildField(guildRight, "milestone.standing", "^EGUILD_STAND");
+        AddGuildField(guildRight, "milestone.missions_completed", "^EGDONE_MISSIONS");
+        AddGuildField(guildRight, "milestone.rare_creatures", "^RARE_SCANNED");
+        AddGuildField(guildRight, "milestone.flora_discovered", "^DISC_FLORA");
+
+        AddVerticalSpacer(guildRight);
+        AddSectionTitle(guildRight, "Outlaws", "milestone.outlaws");
+        AddGuildField(guildRight, "milestone.standing", "^PIRATE_STAND");
+        AddGuildField(guildRight, "milestone.missions_completed", "^PIRATE_MISSIONS");
+        AddGuildField(guildRight, "milestone.bounties", "^BOUNTIES");
+        AddGuildField(guildRight, "milestone.traders_killed", "^TRADERS_KILLED");
+        AddGuildField(guildRight, "milestone.smuggled_value", "^SMUGGLE_VALUE");
 
         scroll1.Controls.Add(section1);
         tab1.Controls.Add(scroll1);
         _tabControl.TabPages.Add(tab1);
 
-        // === Tab 2: Other Stats ===
+        // --- Tab 2: Other Stats ---
         var tab2 = new TabPage("Other Stats");
         var scroll2 = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
 
@@ -135,14 +222,14 @@ partial class MilestonePanel
             Padding = new Padding(0),
         };
 
-        // Row 1: Other Milestones/Stats — all 95 fields distributed evenly (24/24/24/23)
+        // Row 1: Other Milestones/Stats — 98 fields evenly distributed (25/24/25/24)
         var section2 = CreateFourColumnSection();
         var s2c1 = GetColumnPanel(section2, 0);
         var s2c2 = GetColumnPanel(section2, 1);
         var s2c3 = GetColumnPanel(section2, 2);
         var s2c4 = GetColumnPanel(section2, 3);
 
-        // Column 1 (24 fields)
+        // Column 1 (25 fields)
         AddSectionTitle(s2c1, "Other Milestones / Stats", "milestone.section_other");
         AddField(s2c1, "milestone.total_play_time", "^TIME");
         AddField(s2c1, "milestone.play_sessions", "^PLAY_SESSIONS");
@@ -161,13 +248,14 @@ partial class MilestonePanel
         AddField(s2c1, "milestone.planets_discovered", "^DISC_PLANETS");
         AddField(s2c1, "milestone.systems_discovered", "^DISC_SYSTEMS");
         AddField(s2c1, "milestone.creatures_discovered", "^DISC_CREATURES");
-        AddField(s2c1, "milestone.flora_discovered", "^DISC_FLORA");
         AddField(s2c1, "milestone.minerals_discovered", "^DISC_MINERALS");
         AddField(s2c1, "milestone.waypoints_discovered", "^DISC_WAYPOINTS");
         AddField(s2c1, "milestone.planets_visited", "^VISIT_PLANETS");
         AddField(s2c1, "milestone.creatures_fed", "^CREATURES_FED");
         AddField(s2c1, "milestone.creatures_killed", "^CREATURES_KILL");
         AddField(s2c1, "milestone.extreme_survival", "^EXTREME_WALK");
+        AddField(s2c1, "milestone.pirate_missions_done", "^PDONE_MISSIONS");
+        AddField(s2c1, "milestone.pirate_systems_visited", "^PIRATE_SYSTEMS");
 
         // Column 2 (24 fields)
         AddSectionTitle(s2c2, "");
@@ -181,7 +269,6 @@ partial class MilestonePanel
         AddField(s2c2, "milestone.fossils_made", "^FOS_MADE");
         AddField(s2c2, "milestone.salvage_looted", "^SALVAGE_LOOTED");
         AddField(s2c2, "milestone.ruins_looted", "^RUINS_LOOTED");
-        AddField(s2c2, "milestone.bounties", "^BOUNTIES");
         AddField(s2c2, "milestone.gifts_given", "^GIFTS_GIVEN");
         AddField(s2c2, "milestone.parts_placed", "^PARTS_PLACED");
         AddField(s2c2, "milestone.base_parts_got", "^BASEPARTS_GOT");
@@ -195,8 +282,9 @@ partial class MilestonePanel
         AddField(s2c2, "milestone.app_sessions", "^APP_SESSIONS");
         AddField(s2c2, "milestone.artifact_hints", "^ARTIFACT_HINTS");
         AddField(s2c2, "milestone.asteroids_destroyed", "^ASTEROIDS");
+        AddField(s2c2, "milestone.pirate_missions_req", "^MISSION_PIRATES");
 
-        // Column 3 (24 fields)
+        // Column 3 (25 fields)
         AddSectionTitle(s2c3, "");
         AddField(s2c3, "milestone.atlas_loops", "^ATLAS_LOOPS");
         AddField(s2c3, "milestone.basecamp_lore", "^BASECOMP_LORE");
@@ -222,8 +310,9 @@ partial class MilestonePanel
         AddField(s2c3, "milestone.gravitino_balls", "^GRAVBALLS");
         AddField(s2c3, "milestone.gravity_grabs", "^GRAV_GRAB");
         AddField(s2c3, "milestone.gravity_pushes", "^GRAV_PUSH");
+        AddField(s2c3, "milestone.pirate_mysteries", "^PIRATE_MYSTERY");
 
-        // Column 4 (23 fields)
+        // Column 4 (24 fields)
         AddSectionTitle(s2c4, "");
         AddField(s2c4, "milestone.grav_throws", "^GRAV_THROW");
         AddField(s2c4, "milestone.weapon_repairs", "^GUNSLOTREPAIRS");
@@ -248,6 +337,7 @@ partial class MilestonePanel
         AddField(s2c4, "milestone.vr_grabs", "^VR_GRABS");
         AddField(s2c4, "milestone.vr_inits", "^VR_INIT");
         AddField(s2c4, "milestone.vr_snapturns", "^VR_SNAPTURNS");
+        AddField(s2c4, "milestone.pirate_freighters_seen", "^PIR_FREI_SEEN");
 
         otherStacker.Controls.Add(section2);
 

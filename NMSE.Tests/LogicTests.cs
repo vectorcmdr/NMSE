@@ -3761,6 +3761,65 @@ public class LogicTests
         Assert.Null(MilestoneLogic.FindGlobalStats(json));
     }
 
+
+    [Theory]
+    [InlineData("^TGUILD_STAND", -5, 0)]   // at first threshold
+    [InlineData("^TGUILD_STAND", -6, 0)]   // below first threshold -> still rank 0
+    [InlineData("^TGUILD_STAND", 0, 2)]    // exactly at level 2 threshold
+    [InlineData("^TGUILD_STAND", 30, 7)]   // between level 7 (30) and level 8 (40)
+    [InlineData("^TGUILD_STAND", 100, 10)] // at max threshold -> rank 10
+    [InlineData("TGUILD_STAND", 100, 10)]  // no ^ prefix also works
+    public void MilestoneLogic_GetGuildRank_ReturnsCorrectRank(string statId, int value, int expected)
+    {
+        Assert.Equal(expected, MilestoneLogic.GetGuildRank(statId, value));
+    }
+
+    [Fact]
+    public void MilestoneLogic_GetGuildRank_UnknownStat_ReturnsZero()
+    {
+        Assert.Equal(0, MilestoneLogic.GetGuildRank("^UNKNOWN_STAT", 9999));
+    }
+
+    [Theory]
+    [InlineData("^TGUILD_STAND", 10)]  // 11 levels -> max rank 10
+    [InlineData("^PROC_PRODS", 10)]    // 11 levels -> max rank 10
+    [InlineData("^BOUNTIES", 10)]      // 11 levels -> max rank 10
+    public void MilestoneLogic_GetGuildMaxRank_ReturnsCorrectMax(string statId, int expected)
+    {
+        Assert.Equal(expected, MilestoneLogic.GetGuildMaxRank(statId));
+    }
+
+    [Fact]
+    public void MilestoneLogic_GetGuildMaxRank_UnknownStat_ReturnsZero()
+    {
+        Assert.Equal(0, MilestoneLogic.GetGuildMaxRank("^UNKNOWN_STAT"));
+    }
+
+    [Theory]
+    [InlineData("^TGUILD_STAND", 100, -1)]  // at max -> -1
+    [InlineData("^TGUILD_STAND", 101, -1)]  // beyond max -> -1
+    [InlineData("^TGUILD_STAND", 30, 10)]   // rank 7 (>=30), next is 40 -> need 10 more
+    [InlineData("^TGUILD_STAND", -10, 5)]   // below rank 0 threshold (-5), need -5-(-10)=5
+    public void MilestoneLogic_GetGuildNextRankIn_ReturnsCorrectAmount(string statId, int value, int expected)
+    {
+        Assert.Equal(expected, MilestoneLogic.GetGuildNextRankIn(statId, value));
+    }
+
+    [Fact]
+    public void MilestoneLogic_GetGuildNextRankIn_UnknownStat_ReturnsZero()
+    {
+        Assert.Equal(0, MilestoneLogic.GetGuildNextRankIn("^UNKNOWN_STAT", 999));
+    }
+
+    [Fact]
+    public void MilestoneLogic_SectionIconMap_HasNewGuildNames()
+    {
+        Assert.True(MilestoneLogic.SectionIconMap.ContainsKey("Merchants Guild"));
+        Assert.True(MilestoneLogic.SectionIconMap.ContainsKey("Mercenaries Guild"));
+        Assert.True(MilestoneLogic.SectionIconMap.ContainsKey("Explorers Guild"));
+        Assert.True(MilestoneLogic.SectionIconMap.ContainsKey("Outlaws"));
+    }
+
     // --- SaveFileManager ---------------------------------------------
 
     [Theory]
