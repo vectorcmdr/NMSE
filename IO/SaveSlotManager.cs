@@ -233,7 +233,7 @@ public static class SaveSlotManager
 
     /// <summary>
     /// Copy all files in a save slot (auto save + manual save) to another slot within the
-    /// same save directory.  Creates a <c>.backup</c> of each destination file that exists.
+    /// same save directory.
     /// For Steam/GOG, the companion meta file is re-keyed to the destination storage slot
     /// so that the game can decrypt it correctly.
     /// </summary>
@@ -261,10 +261,6 @@ public static class SaveSlotManager
 
             if (src.DataFile == null || !File.Exists(src.DataFile))
                 continue;
-
-            // Backup destination data file if it exists
-            if (dst.DataFile != null && File.Exists(dst.DataFile))
-                File.Copy(dst.DataFile, dst.DataFile + ".backup", true);
 
             // Copy data file
             File.Copy(src.DataFile, dst.DataFile!, true);

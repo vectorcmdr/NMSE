@@ -280,13 +280,6 @@ public class SaveFileManager
         Buffer.BlockCopy(jsonBytes, 0, dataBytes, 0, jsonBytes.Length);
         // dataBytes[jsonBytes.Length] is already 0 (null terminator)
 
-        // Create backup
-        if (File.Exists(filePath))
-        {
-            string backupPath = filePath + ".backup";
-            File.Copy(filePath, backupPath, true);
-        }
-
         byte[]? compressedBytes = null;
         if (compress)
         {
