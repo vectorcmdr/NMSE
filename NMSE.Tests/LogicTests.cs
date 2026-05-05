@@ -3591,6 +3591,83 @@ public class LogicTests
         Assert.Equal(0, playerState.GetObject("TerrainEditData")!.GetArray("Edits")!.Length);
     }
 
+    // --- BaseLogic: ClearAllTerrainEdits ------------------------------
+
+    [Fact]
+    public void BaseLogic_ClearAllTerrainEdits_ClearsAllArrays()
+    {
+        var playerState = JsonObject.Parse(@"{
+            ""TerrainEditData"": {
+                ""GalacticAddresses"": [""0xAABBCC"", ""0x112233""],
+                ""BufferSizes"": [2, 3],
+                ""BufferAges"": [10, 20],
+                ""BufferAnchors"": [""a1"", ""a2""],
+                ""BufferProtected"": [true, false],
+                ""Edits"": [""e1"", ""e2"", ""e3"", ""e4"", ""e5""]
+            }
+        }");
+
+        int removed = BaseLogic.ClearAllTerrainEdits(playerState);
+
+        Assert.Equal(2, removed);
+
+        var ted = playerState.GetObject("TerrainEditData")!;
+        Assert.Equal(0, ted.GetArray("GalacticAddresses")!.Length);
+        Assert.Equal(0, ted.GetArray("BufferSizes")!.Length);
+        Assert.Equal(0, ted.GetArray("BufferAges")!.Length);
+        Assert.Equal(0, ted.GetArray("BufferAnchors")!.Length);
+        Assert.Equal(0, ted.GetArray("BufferProtected")!.Length);
+        Assert.Equal(0, ted.GetArray("Edits")!.Length);
+    }
+
+    [Fact]
+    public void BaseLogic_ClearAllTerrainEdits_ReturnsZero_WhenNoTerrainData()
+    {
+        var playerState = JsonObject.Parse(@"{}");
+
+        int removed = BaseLogic.ClearAllTerrainEdits(playerState);
+
+        Assert.Equal(0, removed);
+    }
+
+    [Fact]
+    public void BaseLogic_ClearAllTerrainEdits_ReturnsZero_WhenAlreadyEmpty()
+    {
+        var playerState = JsonObject.Parse(@"{
+            ""TerrainEditData"": {
+                ""GalacticAddresses"": [],
+                ""BufferSizes"": [],
+                ""Edits"": []
+            }
+        }");
+
+        int removed = BaseLogic.ClearAllTerrainEdits(playerState);
+
+        Assert.Equal(0, removed);
+    }
+
+    [Fact]
+    public void BaseLogic_ClearAllTerrainEdits_HandlesMissingOptionalArrays()
+    {
+        // No BufferAges, BufferAnchors, or BufferProtected - should still clear required arrays
+        var playerState = JsonObject.Parse(@"{
+            ""TerrainEditData"": {
+                ""GalacticAddresses"": [""0xAABBCC""],
+                ""BufferSizes"": [1],
+                ""Edits"": [""e1""]
+            }
+        }");
+
+        int removed = BaseLogic.ClearAllTerrainEdits(playerState);
+
+        Assert.Equal(1, removed);
+
+        var ted = playerState.GetObject("TerrainEditData")!;
+        Assert.Equal(0, ted.GetArray("GalacticAddresses")!.Length);
+        Assert.Equal(0, ted.GetArray("BufferSizes")!.Length);
+        Assert.Equal(0, ted.GetArray("Edits")!.Length);
+    }
+
     // --- MilestoneLogic ----------------------------------------------
 
     [Fact]

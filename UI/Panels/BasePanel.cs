@@ -172,6 +172,7 @@ internal class BasesSubPanel : UserControl
     private readonly Button _importBtn;
     private readonly Button _moveBaseComputerBtn;
     private readonly Button _clearTerrainEditsBtn;
+    private readonly Button _clearAllTerrainEditsBtn;
 
     // Labels for localisation
     private readonly Label _npcTitle;
@@ -386,10 +387,13 @@ internal class BasesSubPanel : UserControl
         _moveBaseComputerBtn.Click += OnMoveBaseComputer;
         _clearTerrainEditsBtn = new Button { Text = UiStrings.Get("base.clear_terrain"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(140, 0), Enabled = false };
         _clearTerrainEditsBtn.Click += OnClearTerrainEdits;
+        _clearAllTerrainEditsBtn = new Button { Text = UiStrings.Get("base.clear_all_terrain"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(140, 0), Enabled = false };
+        _clearAllTerrainEditsBtn.Click += OnClearAllTerrainEdits;
         buttonPanel.Controls.Add(_exportBtn);
         buttonPanel.Controls.Add(_importBtn);
         buttonPanel.Controls.Add(_moveBaseComputerBtn);
         buttonPanel.Controls.Add(_clearTerrainEditsBtn);
+        buttonPanel.Controls.Add(_clearAllTerrainEditsBtn);
         rightLayout.Controls.Add(buttonPanel, 0, row);
         rightLayout.SetColumnSpan(buttonPanel, 3);
 
@@ -418,11 +422,14 @@ internal class BasesSubPanel : UserControl
         _importBtn.Enabled = false;
         _moveBaseComputerBtn.Enabled = false;
         _clearTerrainEditsBtn.Enabled = false;
+        _clearAllTerrainEditsBtn.Enabled = false;
 
         try
         {
             _playerState = saveData.GetObject("PlayerStateData");
             if (_playerState == null) return;
+
+            _clearAllTerrainEditsBtn.Enabled = true;
 
             // Load NPCWorkers (up to 5: Armorer, Farmer, Overseer, Technician, Scientist)
             var npcWorkers = _playerState.GetArray("NPCWorkers");
@@ -993,6 +1000,43 @@ internal class BasesSubPanel : UserControl
         }
     }
 
+    private void OnClearAllTerrainEdits(object? sender, EventArgs e)
+    {
+        if (_playerState == null) return;
+
+        var result = MessageBox.Show(this,
+            UiStrings.Get("base.clear_all_terrain_confirm"),
+            UiStrings.Get("base.clear_all_terrain_title"),
+            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        if (result != DialogResult.Yes) return;
+
+        try
+        {
+            int removed = BaseLogic.ClearAllTerrainEdits(_playerState);
+            if (removed > 0)
+            {
+                MessageBox.Show(this,
+                    UiStrings.Format("base.clear_all_terrain_success", removed),
+                    UiStrings.Get("base.clear_all_terrain_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(this,
+                    UiStrings.Get("base.clear_all_terrain_none"),
+                    UiStrings.Get("base.clear_all_terrain_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this,
+                UiStrings.Format("base.clear_all_terrain_failed", ex.Message),
+                UiStrings.Get("common.error"),
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     private static Label AddRow(TableLayoutPanel layout, string label, Control field, int row)
     {
         var lbl = new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left, Padding = new Padding(0, 5, 10, 0) };
@@ -1017,6 +1061,7 @@ internal class BasesSubPanel : UserControl
         _importBtn.Text = UiStrings.Get("base.import");
         _moveBaseComputerBtn.Text = UiStrings.Get("base.move_basecomp");
         _clearTerrainEditsBtn.Text = UiStrings.Get("base.clear_terrain");
+        _clearAllTerrainEditsBtn.Text = UiStrings.Get("base.clear_all_terrain");
         _moveUpBtn.Text = UiStrings.Get("base.move_base_up");
         _moveDownBtn.Text = UiStrings.Get("base.move_base_down");
         _toTopBtn.Text = UiStrings.Get("base.move_base_to_top");

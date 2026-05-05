@@ -210,6 +210,39 @@ internal static class BaseLogic
     }
 
     /// <summary>
+    /// Clears all terrain edits from the save, regardless of which base they belong to.
+    /// All entries are removed from every parallel array in <c>PlayerStateData.TerrainEditData</c>:
+    /// GalacticAddresses, BufferSizes, BufferAges, BufferAnchors, BufferProtected, and Edits.
+    /// </summary>
+    /// <param name="playerState">The PlayerStateData JSON object.</param>
+    /// <returns>The total number of terrain edit buffers removed, or 0 if none were found.</returns>
+    internal static int ClearAllTerrainEdits(JsonObject playerState)
+    {
+        var terrainData = playerState.GetObject("TerrainEditData");
+        if (terrainData == null)
+            return 0;
+
+        var galacticAddresses = terrainData.GetArray("GalacticAddresses");
+        var bufferSizes = terrainData.GetArray("BufferSizes");
+        var edits = terrainData.GetArray("Edits");
+        if (galacticAddresses == null || bufferSizes == null || edits == null)
+            return 0;
+
+        int removed = galacticAddresses.Length;
+        if (removed == 0)
+            return 0;
+
+        edits.Clear();
+        galacticAddresses.Clear();
+        bufferSizes.Clear();
+        terrainData.GetArray("BufferAges")?.Clear();
+        terrainData.GetArray("BufferAnchors")?.Clear();
+        terrainData.GetArray("BufferProtected")?.Clear();
+
+        return removed;
+    }
+
+    /// <summary>
     /// JSON keys for the 10 standard storage container chest inventories.
     /// </summary>
     internal static readonly string[] ChestInventoryKeys =
