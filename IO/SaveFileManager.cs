@@ -1159,6 +1159,15 @@ using var outFs = new FileStream(filePath, FileMode.Create, FileAccess.Write, Fi
             if (result <= 0) result = ScanKeyForGameMode(text, "\"pwt\"");
             if (result > 0) return result;
 
+            // Modern saves store the mode as an integer on the context GameMode field
+            // (BaseContext/ExpeditionContext).  Obfuscated saves use the key "idA";
+            // plain-text saves use "GameMode".  Both keys are also used as container
+            // objects (e.g. "idA":{"pwt":"Unspecified"}), so scan past those.
+            if (result <= 0) result = ScanKeyForGameModeAll(text, "\"idA\"");
+            if (result > 0) return result;
+            if (result <= 0) result = ScanKeyForGameModeAll(text, "\"GameMode\"");
+            if (result > 0) return result;
+
             // PresetGameMode may be "Unspecified" - try DifficultyState.Preset.DifficultyPresetType
             // Obfuscated: "LyC" = DifficultyState, "7ND" = DifficultyPresetType
             int dsIdx = text.IndexOf("\"DifficultyState\"", StringComparison.Ordinal);
@@ -1215,6 +1224,16 @@ using var outFs = new FileStream(filePath, FileMode.Create, FileAccess.Write, Fi
         int result = ScanKeyForGameMode(json, "\"PresetGameMode\"");
         if (result <= 0) result = ScanKeyForGameMode(json, "\"pwt\"");
         if (result > 0) return result;
+
+        // Modern saves store the mode as an integer on the context GameMode field
+        // (BaseContext/ExpeditionContext).  Obfuscated saves use the key "idA";
+        // plain-text saves use "GameMode".  Both keys are also used as container
+        // objects (e.g. "idA":{"pwt":"Unspecified"}), so scan past those.
+        if (result <= 0) result = ScanKeyForGameModeAll(json, "\"idA\"");
+        if (result > 0) return result;
+        if (result <= 0) result = ScanKeyForGameModeAll(json, "\"GameMode\"");
+        if (result > 0) return result;
+
         int dsIdx = json.IndexOf("\"DifficultyState\"", StringComparison.Ordinal);
         if (dsIdx < 0) dsIdx = json.IndexOf("\"LyC\"", StringComparison.Ordinal);
         if (dsIdx >= 0)
@@ -1461,6 +1480,25 @@ using var outFs = new FileStream(filePath, FileMode.Create, FileAccess.Write, Fi
         int idx = startFrom > 0 ? startFrom : text.IndexOf(key, StringComparison.Ordinal);
         if (idx < 0) return 0;
         return ScanValueForGameMode(text, idx + key.Length);
+    }
+
+    /// <summary>
+    /// Scans every occurrence of a JSON key and returns the first usable game mode
+    /// integer value.  Modern saves use the GameMode key both as an integer field
+    /// (e.g. "idA":1 on the context) and as a container key (e.g. "idA":{"pwt":
+    /// "Unspecified"}), so a single first-occurrence scan can hit the container and
+    /// miss the real mode.  Containers always yield 0, so the loop skips them.
+    /// </summary>
+    private static int ScanKeyForGameModeAll(string text, string key)
+    {
+        int idx = 0;
+        while ((idx = text.IndexOf(key, idx, StringComparison.Ordinal)) >= 0)
+        {
+            int result = ScanValueForGameMode(text, idx + key.Length);
+            if (result > 0) return result;
+            idx += key.Length;
+        }
+        return 0;
     }
 
     /// <summary>

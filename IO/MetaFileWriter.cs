@@ -707,14 +707,35 @@ public static class MetaFileWriter
             }
         }
 
-        // Detect game mode from PresetGameMode or DifficultyState
-        var pgm = saveData.GetValue("PlayerStateData.PresetGameMode");
-        if (pgm != null)
+        // Detect game mode: modern saves store it as an integer on the active context
+        // (BaseContext.GameMode for regular saves, ExpeditionContext.GameMode for
+        // expeditions).  Older saves store a string on PlayerStateData.PresetGameMode.
+        // Only fall back to the difficulty preset when neither exists.
+        int contextMode = 0;
+        if (string.Equals(saveData.Get("ActiveContext") as string, "Season", StringComparison.Ordinal))
         {
-            if (pgm is string modeStr && modeStr != "Unspecified")
-                info.GameMode = GameModeStringToInt(modeStr);
-            else if (pgm is long ml) info.GameMode = (int)ml;
-            else if (pgm is int mi) info.GameMode = mi;
+            var expeditionContext = saveData.GetObject("ExpeditionContext");
+            if (expeditionContext != null) contextMode = ReadGameModeInt(expeditionContext.Get("GameMode"));
+        }
+        if (contextMode <= 0)
+        {
+            var baseContext = saveData.GetObject("BaseContext");
+            if (baseContext != null) contextMode = ReadGameModeInt(baseContext.Get("GameMode"));
+        }
+        if (contextMode > 0)
+        {
+            info.GameMode = contextMode;
+        }
+        else
+        {
+            var pgm = saveData.GetValue("PlayerStateData.PresetGameMode");
+            if (pgm != null)
+            {
+                if (pgm is string modeStr && modeStr != "Unspecified")
+                    info.GameMode = GameModeStringToInt(modeStr);
+                else if (pgm is long ml) info.GameMode = (int)ml;
+                else if (pgm is int mi) info.GameMode = mi;
+            }
         }
 
         // Fallback: derive game mode from DifficultyState.Preset.DifficultyPresetType
@@ -726,6 +747,19 @@ public static class MetaFileWriter
 
         return info;
     }
+
+    /// <summary>
+    /// Reads a game mode integer from the value of a context GameMode field.
+    /// Returns 0 when the field is absent or holds no usable number.
+    /// </summary>
+    private static int ReadGameModeInt(object? value) => value switch
+    {
+        int i => i,
+        long l => (int)l,
+        Models.RawDouble rd => (int)rd.Value,
+        double d => (int)d,
+        _ => 0,
+    };
 
     /// <summary>
     /// Maps a DifficultyPreset integer to the corresponding GameMode integer.

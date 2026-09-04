@@ -117,6 +117,54 @@ internal static class MainStatsLogic
     }
 
     /// <summary>
+    /// Maps a difficulty preset string to the corresponding game mode integer used
+    /// by the save's context GameMode field.
+    /// 1=Normal, 2=Survival, 3=Permadeath, 4=Creative, 5=Custom, 7=Relaxed.
+    /// Returns 0 for presets with no game mode equivalent ("Invalid", unknown).
+    /// </summary>
+    internal static int PresetToGameMode(string? preset) => preset switch
+    {
+        "Normal" => 1,
+        "Survival" => 2,
+        "Permadeath" => 3,
+        "Creative" => 4,
+        "Custom" => 5,
+        "Relaxed" => 7,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Updates the save's game mode to match the given difficulty preset.
+    /// Modern saves store the mode as an integer on BaseContext.GameMode; legacy
+    /// pre-context saves store a string on PlayerStateData.PresetGameMode.  Only
+    /// existing fields are updated so untouched saves keep their original values.
+    /// </summary>
+    /// <param name="saveData">The save root object.</param>
+    /// <param name="preset">The difficulty preset string (e.g. "Creative").</param>
+    /// <returns>True when the game mode field was written.</returns>
+    internal static bool ApplyGameModeForPreset(JsonObject saveData, string? preset)
+    {
+        int mode = PresetToGameMode(preset);
+        if (mode <= 0) return false;
+
+        var baseContext = saveData.GetObject("BaseContext");
+        if (baseContext != null && baseContext.Get("GameMode") != null)
+        {
+            baseContext.Set("GameMode", mode);
+            return true;
+        }
+
+        var playerState = saveData.GetObject("PlayerStateData");
+        if (playerState != null && playerState.Get("PresetGameMode") != null)
+        {
+            playerState.Set("PresetGameMode", preset);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Writes a stat value only if the user actually changed it from its clamped display value.
     /// When <paramref name="rawValues"/> is null or does not contain the key, the value is always written.
     /// </summary>

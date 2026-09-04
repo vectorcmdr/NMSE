@@ -42,6 +42,11 @@ public partial class MainStatsPanel : UserControl
 
     private bool _loading;
 
+    /// <summary>Difficulty preset index read from the save at load time, so the game
+    /// mode is only rewritten when the user actually changes the preset (untouched
+    /// saves keep their original mode even when the preset differs from it).</summary>
+    private int _originalCurrentPresetIndex = -1;
+
     /// <summary>Raised whenever the user modifies a player stat or game-state field.</summary>
     public event EventHandler? DataModified;
 
@@ -287,6 +292,7 @@ public partial class MainStatsPanel : UserControl
                     try { SelectPreset(_currentPresetCombo, diffState.GetObject("Preset")?.GetString("DifficultyPresetType")); } catch { _currentPresetCombo.SelectedIndex = -1; }
                     try { SelectPreset(_easiestPresetCombo, diffState.GetObject("EasiestUsedPreset")?.GetString("DifficultyPresetType")); } catch { _easiestPresetCombo.SelectedIndex = -1; }
                     try { SelectPreset(_hardestPresetCombo, diffState.GetObject("HardestUsedPreset")?.GetString("DifficultyPresetType")); } catch { _hardestPresetCombo.SelectedIndex = -1; }
+                    _originalCurrentPresetIndex = _currentPresetCombo.SelectedIndex;
                 }
             }
             catch { }
@@ -706,6 +712,16 @@ public partial class MainStatsPanel : UserControl
                         try { diffState.GetObject("EasiestUsedPreset")?.Set("DifficultyPresetType", DifficultyPresets[_easiestPresetCombo.SelectedIndex]); } catch { }
                     if (_hardestPresetCombo.SelectedIndex >= 0)
                         try { diffState.GetObject("HardestUsedPreset")?.Set("DifficultyPresetType", DifficultyPresets[_hardestPresetCombo.SelectedIndex]); } catch { }
+
+                    // The game keeps the mode (BaseContext.GameMode) separate from the
+                    // difficulty preset, so a preset change alone leaves the save labelled
+                    // with its original mode.  Only rewrite the mode when the user actually
+                    // changed the preset (e.g. Permadeath -> Creative).
+                    if (_currentPresetCombo.SelectedIndex >= 0
+                        && _currentPresetCombo.SelectedIndex != _originalCurrentPresetIndex)
+                    {
+                        MainStatsLogic.ApplyGameModeForPreset(saveData, DifficultyPresets[_currentPresetCombo.SelectedIndex]);
+                    }
                 }
             }
             catch { }
