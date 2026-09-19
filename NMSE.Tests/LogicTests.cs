@@ -12727,10 +12727,23 @@ public class LogicTests
     private static GameItemDatabase BuildTestDatabase()
     {
         var db = new GameItemDatabase();
-        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Data", "json");
+        var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "Resources", "json");
         if (Directory.Exists(dbPath))
             db.LoadItemsFromJsonDirectory(dbPath);
         return db;
+    }
+
+    /// <summary>
+    /// BuildTestDatabase's path is relative to the test binary's output directory and silently
+    /// resolves to nothing if that layout ever changes - every test using
+    /// `if (db.Items.Count == 0) return;` would then quietly skip its real assertions instead of
+    /// failing. This test has no such guard, so a broken path fails loudly here instead.
+    /// </summary>
+    [Fact]
+    public void BuildTestDatabase_ResolvesToRealItemData()
+    {
+        var db = BuildTestDatabase();
+        Assert.True(db.Items.Count > 0, "BuildTestDatabase() loaded 0 items - its relative path to Resources/json is broken, and every DB-dependent test using the 'skip if empty' guard is silently not testing anything.");
     }
 
     [Fact]
