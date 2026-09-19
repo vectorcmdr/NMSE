@@ -58,9 +58,14 @@ internal static class InventorySlotHelper
             newSlot.Add("Type", typeObj);
         }
 
-        // Copy Id
+        // Copy Id. Nested-object IDs ("Id": { "Id": "^ITEM" }) must be deep-cloned rather
+        // than shared by reference - callers such as InventoryBulkActions.SortAllChests
+        // duplicate the same source slot multiple times when splitting a merged stack, and
+        // sharing one JsonObject instance across several parents corrupts its Parent chain.
         var idVal = sourceSlot.Get("Id");
-        if (idVal != null)
+        if (idVal is JsonObject idObj)
+            newSlot.Add("Id", idObj.DeepClone());
+        else if (idVal != null)
             newSlot.Add("Id", idVal);
 
         // Copy numeric fields
