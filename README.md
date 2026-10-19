@@ -291,3 +291,5 @@ Made with ❤️ by [**vectorcmdr**][github-owner]
 [kofi]: https://ko-fi.com/vector_cmdr
 [discord]: https://discord.gg/WbDQKKP3us
 [website]: https://nmse.vectorcmdr.xyz
+
+<!-- verified: #140 -->
