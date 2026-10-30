@@ -1,4 +1,4 @@
-## NMSE - No Man's Save Editor v1.5.11
+## NMSE - No Man's Save Editor v1.5.12
 
 ### Changelog
 
