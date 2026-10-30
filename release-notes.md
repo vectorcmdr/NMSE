@@ -1,6 +1,31 @@
-## NMSE - No Man's Save Editor v1.4.29
+## NMSE - No Man's Save Editor v1.5.11
 
 ### Changelog
+
+Forsaken update? Happy spooky season! 🎃🦇
+
+#### Features:
+
+- **DB and mappings updated for Game Update 7.11 (Forsaken)**
+- Added Larva Cannon to the multi-tool list.
+- Improved the metadata for the Linux AppImage. (per AppImage team listing requirements)
+- Improved the Bases list to show types, have better sort selection and allow legacy and temporary bases. (per Issue / FR #146)
+- Improved Base export/import to include extra information for terrain and positionals. (per Discord FR)
+- Improved the Companion list by splitting pets and eggs, and adding sort options. (per FR #145)
+- Improved Milestone panel categorisation. (per #140)
+- Added JSON bookmarking allowing users to bookmark favourite/common keys/nodes. (per Discord FR)
+
+#### Bug Fixes:
+
+- Fixed hotkey labels. (per Issue #141)
+- Fixes for Catalogue Wonders. (per Issue #137)
+
+<br />
+
+<details>
+<summary>Previous Changelogs</summary>
+
+### Changelog v1.4.29
 
 #### Features:
 
@@ -17,9 +42,6 @@
 - Fix for extra 'unknowable' game items in the Known Technologies list. (Per Issue #136)
 
 <br />
-
-<details>
-<summary>Previous Changelogs</summary>
 
 ### Changelog v1.4.22
 

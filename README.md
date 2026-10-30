@@ -19,7 +19,7 @@ It boasts the most complete set of editable features among editors and supports 
 
 > *The user guide may lag behind builds.*
 
-> **Latest Supported Game Version:** 7.05 _**Cosmos**_
+> **Latest Supported Game Version:** 7.11 _**Forsaken**_
 
 </div>
 
