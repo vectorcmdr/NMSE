@@ -191,4 +191,42 @@ public class ResolveSaveInventoryTypeTests
         };
         Assert.False(InventoryStackDatabase.CanAddItemToInventory(item, isTechOnly: false, isCargo: true));
     }
+
+    [Fact]
+    public void ResolveInventoryTypeForItem_ProductSourceTableWithCharge_ResolvesAsProduct()
+    {
+        // SUBFUEL is a product fuel cell. Its ChargeValue is gameplay data, not
+        // evidence that it is a technology item.
+        var item = new GameItem
+        {
+            Id = "SUBFUEL",
+            ItemType = "Exocraft",
+            SourceTable = "Product",
+            ChargeValue = 400,
+            MaxStackSize = 4,
+            ProductCategory = "Consumable"
+        };
+
+        Assert.Equal("Product", InventoryStackDatabase.ResolveInventoryTypeForItem(item));
+        Assert.Equal("Product", InventoryStackDatabase.ResolveInventoryTypeForItem(item, isTechInventory: true));
+        Assert.True(InventoryStackDatabase.CanAddItemToInventory(item, isTechOnly: false, isCargo: true));
+        Assert.False(InventoryStackDatabase.CanAddItemToInventory(item, isTechOnly: true, isCargo: false));
+        Assert.Equal(40, InventoryStackDatabase.GetMaxAmount(item, "Product", "Vehicle"));
+    }
+
+    [Fact]
+    public void ResolveInventoryTypeForItem_ProductSourceTableInTechnologyJson_ResolvesAsProduct()
+    {
+        // Products can live in Technology.json (e.g. BIGGS_POI_LOC).  SourceTable
+        // must win over the JSON file's ItemType.
+        var item = new GameItem
+        {
+            Id = "BIGGS_POI_LOC",
+            ItemType = "Technology",
+            SourceTable = "Product"
+        };
+
+        Assert.Equal("Product", InventoryStackDatabase.ResolveInventoryTypeForItem(item));
+        Assert.True(InventoryStackDatabase.CanAddItemToInventory(item, isTechOnly: false, isCargo: true));
+    }
 }

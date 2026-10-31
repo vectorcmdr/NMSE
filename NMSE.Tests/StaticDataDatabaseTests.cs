@@ -607,6 +607,32 @@ public class StaticDataDatabaseTests
         }
     }
 
+    [Fact]
+    public void Database_SubFuelAndProductSourceTable_AreCargoProducts()
+    {
+        var db = new GameItemDatabase();
+        var jsonDir = FindResourceJsonDir();
+        if (jsonDir == null) return; // Skip if resources not found
+        db.LoadItemsFromJsonDirectory(jsonDir);
+
+        var subfuel = db.GetItem("SUBFUEL");
+        Assert.NotNull(subfuel);
+        Assert.Equal("Exocraft", subfuel!.ItemType);
+        Assert.Equal("Product", subfuel.SourceTable);
+        Assert.Equal("Product", InventoryStackDatabase.ResolveInventoryTypeForItem(subfuel));
+        Assert.True(InventoryStackDatabase.CanAddItemToInventory(subfuel, isTechOnly: false, isCargo: true));
+        Assert.False(InventoryStackDatabase.CanAddItemToInventory(subfuel, isTechOnly: true, isCargo: false));
+        Assert.Equal(40, InventoryStackDatabase.GetMaxAmount(subfuel, "Product", "Vehicle"));
+
+        // Every item sourced from the product table must resolve as Product,
+        // regardless of which JSON bucket/extractor category it was placed in.
+        foreach (var item in db.Items.Values.Where(i =>
+                     string.Equals(i.SourceTable, "Product", StringComparison.OrdinalIgnoreCase)))
+        {
+            Assert.Equal("Product", InventoryStackDatabase.ResolveInventoryTypeForItem(item));
+        }
+    }
+
     private static string? FindResourceJsonDir()
     {
         // Walk up from test assembly directory to find Resources/json

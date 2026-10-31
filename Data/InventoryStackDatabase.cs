@@ -227,18 +227,16 @@ public static class InventoryStackDatabase
     /// Resolves the save-file <c>InventoryType</c> for a specific <see cref="GameItem"/>
     /// within the context of the target inventory.
     /// <para>
-    /// Procedural items are always Technology.  Non-procedural items from
-    /// technology-source JSON files ("Technology", "Upgrades",
-    /// "Constructed Technology") are Technology when they carry charge data
-    /// (<c>ChargeValue &gt; 0</c>, populated from the game's <c>ChargeAmount</c>
-    /// field).  Items in those same files without charge data are products
-    /// that happen to live in the technology table (e.g. NAV_DATA_DROP).
+    /// Procedural items are always Technology.  For non-procedural items,
+    /// <c>SourceTable</c> is authoritative: Product and Substance entries stay
+    /// Product/Substance even if they carry <c>ChargeValue</c> (for example the
+    /// product fuel cell SUBFUEL).  Technology-table entries are Technology when
+    /// the target inventory is tech-only, or when they carry charge data.
     /// </para>
     /// <para>
-    /// As a fallback, items whose <c>SourceTable</c> is "Substance" are always
-    /// resolved as Substance (e.g. Corrupted Ichor in Others.json).  Items
-    /// whose SourceTable is "Technology" are resolved as Technology only when
-    /// the target inventory is a tech-only inventory; in cargo they are Product.
+    /// For legacy data without a <c>SourceTable</c>, items from technology-source
+    /// JSON files ("Technology", "Upgrades", "Constructed Technology",
+    /// "Exocraft") with charge data fall back to Technology.
     /// </para>
     /// </summary>
     public static string ResolveInventoryTypeForItem(GameItem item, bool isTechInventory)
@@ -255,25 +253,27 @@ public static class InventoryStackDatabase
         if (item.IsProcedural)
             return "Technology";
 
-        // Items from technology-source JSON files that carry charge data
-        // (ChargeValue > 0, from ChargeAmount in the game data) are real
-        // technology items.  This covers Upgrades (HDRIVEBOOST*, UT_SHIP*,
-        // etc.) and Constructed Technology items that the base
-        // ResolveInventoryType would otherwise misclassify as Product.
-        if (item.ChargeValue > 0 && IsTechnologySourceType(item.ItemType))
-            return "Technology";
-
-        // SourceTable fallback for items in non-standard JSON files (e.g. Others.json).
-        // Substance items are always substances; Technology items are Technology
-        // only in tech inventories (in cargo they are Product).
+        // SourceTable is authoritative for mixed-type JSON files such as
+        // Exocraft.json, Technology.json and Others.json.  Products and
+        // substances may carry ChargeValue for gameplay purposes (for example
+        // SUBFUEL, a product fuel cell) but they are not technology items.
         if (!string.IsNullOrEmpty(item.SourceTable))
         {
+            if (item.SourceTable.Equals("Product", StringComparison.OrdinalIgnoreCase))
+                return "Product";
             if (item.SourceTable.Equals("Substance", StringComparison.OrdinalIgnoreCase))
                 return "Substance";
             if (isTechInventory
                 && item.SourceTable.Equals("Technology", StringComparison.OrdinalIgnoreCase))
                 return "Technology";
         }
+
+        // Items from technology-source JSON files that carry charge data
+        // (ChargeValue > 0, from ChargeAmount in the game data) are real
+        // technology items.  This covers SourceTable Technology entries and
+        // legacy data without a SourceTable (HDRIVEBOOST*, UT_SHIP*, etc.).
+        if (item.ChargeValue > 0 && IsTechnologySourceType(item.ItemType))
+            return "Technology";
 
         return ResolveInventoryType(item.ItemType);
     }
