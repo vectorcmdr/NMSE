@@ -1,3 +1,5 @@
+using NMSE.Config;
+
 namespace NMSE.Core;
 
 /// <summary>
@@ -28,17 +30,34 @@ internal static class ThemeManager
 	/// <summary>
 	/// Sets the theme. No-op if the theme is unchanged.
 	/// </summary>
-	internal static void SetTheme(AppTheme theme)
-	{
-		if (Current == theme)
-			return;
+    internal static void SetTheme(AppTheme theme)
+    {
+        if (Current == theme)
+            return;
 
-		Current = theme;
-		ThemeChanged?.Invoke();
-	}
+        Current = theme;
+        ThemeChanged?.Invoke();
+    }
 
-	/// <summary>
-	/// Detects the OS-level dark/light preference.
+    /// <summary>
+    /// Applies the theme saved in the application configuration. If no valid
+    /// theme has been saved, the existing default (Light) is retained.
+    /// </summary>
+    internal static void ApplySavedTheme()
+    {
+        string? saved = AppConfig.Instance.Theme;
+        if (string.IsNullOrEmpty(saved))
+            return;
+
+        if (Enum.TryParse<AppTheme>(saved, ignoreCase: true, out var theme)
+            && Enum.IsDefined(theme))
+        {
+            SetTheme(theme);
+        }
+    }
+
+    /// <summary>
+    /// Detects the OS-level dark/light preference.
 	/// On Windows reads the registry. On non-Windows defaults to Light
 	/// because WINE does not reliably surface the host OS preference.
 	/// </summary>

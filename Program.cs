@@ -39,14 +39,15 @@ static class Program
         }
 
         ApplicationConfiguration.Initialize();
+        ThemeManager.ApplySavedTheme();
 
         // Show a lightweight splash screen so the user gets immediate
         // visual feedback while the main form performs heavy initialisation
-        // (database loading, icon preloading, panel construction).
-        using var splash = new SplashForm();
-        splash.Show();
-        Application.DoEvents(); // Process WM_SETICON and taskbar updates before heavy startup.
-        splash.Refresh();
+        // (database loading, icon preloading, panel construction). The splash
+        // runs its own message loop on a separate STA thread so it keeps
+        // repainting if a window manager starts after it has been mapped.
+        using var splashHost = new SplashHost();
+        var splash = splashHost.Form;
 
         var mainForm = new MainFormResources();
         mainForm.SetSplash(splash);

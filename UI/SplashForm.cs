@@ -1,3 +1,5 @@
+using NMSE.Core;
+
 namespace NMSE.UI;
 
 /// <summary>
@@ -17,10 +19,13 @@ internal sealed class SplashForm : Form
     {
         SuspendLayout();
 
+        var palette = ThemeColors.Get(
+            ThemeManager.Effective == AppTheme.Dark ? "Dark" : "Light");
+
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterScreen;
         Size = new Size(420, 190);
-        BackColor = Color.FromArgb(30, 30, 30);
+        BackColor = palette.Background;
         ShowInTaskbar = true;
         TopMost = true;
         ShowIcon = true;
@@ -65,7 +70,7 @@ internal sealed class SplashForm : Form
         var titleLabel = new Label
         {
             Text = MainFormResources.AppName,
-            ForeColor = Color.White,
+            ForeColor = palette.ForegroundText,
             Font = _titleFont,
             TextAlign = ContentAlignment.BottomCenter,
             Dock = DockStyle.Top,
@@ -76,7 +81,7 @@ internal sealed class SplashForm : Form
         _loadingLabel = new Label
         {
             Text = "Loading databases...",
-            ForeColor = Color.FromArgb(180, 180, 180),
+            ForeColor = palette.SecondaryText,
             Font = _loadingFont,
             TextAlign = ContentAlignment.TopCenter,
             Dock = DockStyle.Top,
@@ -85,7 +90,7 @@ internal sealed class SplashForm : Form
             Padding = new Padding(0, (int)(8f * dpiScale + 0.5f), 0, 0),
         };
 
-        _progressBar = new GreenProgressBar
+        _progressBar = new GreenProgressBar(palette.GridLineColor, palette.SuccessGreen)
         {
             Minimum = 0,
             Maximum = 100,
@@ -99,6 +104,7 @@ internal sealed class SplashForm : Form
         var barPanel = new Panel
         {
             Dock = DockStyle.Bottom,
+            BackColor = palette.Background,
             Height = (int)(30f * dpiScale + 0.5f),
             Padding = new Padding(
                 (int)(20 * dpiScale + 0.5f), 0,
@@ -121,10 +127,45 @@ internal sealed class SplashForm : Form
     /// </summary>
     internal void SetProgress(int percent, string? statusText = null)
     {
+        if (InvokeRequired)
+        {
+            try
+            {
+                BeginInvoke(new Action(() => SetProgress(percent, statusText)));
+            }
+            catch (InvalidOperationException)
+            {
+                // The splash thread may already have exited during shutdown.
+            }
+            return;
+        }
+
         _progressBar.Value = Math.Clamp(percent, 0, 100);
         if (statusText != null)
             _loadingLabel.Text = statusText;
         Update();
+    }
+
+    /// <summary>
+    /// Closes the splash from the main thread. The form belongs to the splash
+    /// thread, so the close must be marshalled to that thread.
+    /// </summary>
+    internal void CloseFromOwner()
+    {
+        if (InvokeRequired)
+        {
+            try
+            {
+                BeginInvoke(new Action(Close));
+            }
+            catch (InvalidOperationException)
+            {
+                // The splash thread may already have exited during shutdown.
+            }
+            return;
+        }
+
+        Close();
     }
 
     protected override void Dispose(bool disposing)
@@ -138,13 +179,13 @@ internal sealed class SplashForm : Form
     }
 
     /// <summary>
-    /// Owner-drawn progress bar that renders a green fill on a dark track,
-    /// bypassing the Windows visual-styles theme which ignores ForeColor.
+    /// Owner-drawn progress bar that renders a green fill on a theme-coloured
+    /// track, bypassing the Windows visual-styles theme which ignores ForeColor.
     /// </summary>
     private sealed class GreenProgressBar : Control
     {
-        private static readonly Color TrackColor = Color.FromArgb(50, 50, 50);
-        private static readonly Color BarColor = Color.FromArgb(60, 180, 75);
+        private readonly Color _trackColor;
+        private readonly Color _barColor;
 
         private int _minimum;
         private int _maximum = 100;
@@ -167,8 +208,11 @@ internal sealed class SplashForm : Form
             }
         }
 
-        public GreenProgressBar()
+        internal GreenProgressBar(Color trackColor, Color barColor)
         {
+            _trackColor = trackColor;
+            _barColor = barColor;
+
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint
                    | ControlStyles.OptimizedDoubleBuffer, true);
         }
@@ -176,17 +220,16 @@ internal sealed class SplashForm : Form
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
-            // Dark track background
-            using (var trackBrush = new SolidBrush(TrackColor))
+            using (var trackBrush = new SolidBrush(_trackColor))
                 g.FillRectangle(trackBrush, 0, 0, Width, Height);
 
-            // Green fill proportional to value
+            // Fill proportional to value
             int range = _maximum - _minimum;
             if (range > 0 && _value > _minimum)
             {
                 float fraction = (float)(_value - _minimum) / range;
                 int fillWidth = (int)(Width * fraction);
-                using var barBrush = new SolidBrush(BarColor);
+                using var barBrush = new SolidBrush(_barColor);
                 g.FillRectangle(barBrush, 0, 0, fillWidth, Height);
             }
         }

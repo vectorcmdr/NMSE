@@ -148,18 +148,19 @@
 	     BuildInfo.g.cs as a partial MainFormResources class so the
 	     version constants are available at compile time.
 
-	     NOTE: BeforeTargets="CoreCompile" + the explicit <Compile>
-	     Include are both required.  The SDK's implicit **/*.cs glob
+	     The version properties must be set before GenerateAssemblyInfo so
+	     the PE product/file version matches version.json.  The explicit
+	     <Compile> Include is also required: the SDK's implicit **/*.cs glob
 	     is evaluated at project load and before any targets run, so
 	     BuildInfo.g.cs (which is git-ignored and absent on a fresh
-	     checkout / CI clone) is never matched by the glob.  We must
-	     add it to the Compile items dynamically inside the target.
+	     checkout / CI clone) is never matched by the glob.  We must add it
+	     to the Compile items dynamically inside the target.
 
 	     The other half of this fix is the <Compile Remove="BuildInfo.g.cs" />
 	     in the ItemGroup above, which prevents the SDK glob from picking
 	     up stale copies on incremental builds (avoids CS2002 duplicate).
 	     ============================================================= -->
-	<Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile">
+	<Target Name="GenerateBuildInfo" BeforeTargets="GetAssemblyVersion;GenerateAssemblyInfo">
 		<PropertyGroup>
 			<VersionJsonPath>$(MSBuildProjectDirectory)/version.json</VersionJsonPath>
 			<GeneratedFile>$(MSBuildProjectDirectory)/BuildInfo.g.cs</GeneratedFile>
@@ -185,6 +186,12 @@
 			<!-- Assembled version string for zip naming and assembly metadata -->
 			<NmseVersion>$(_VerMajor).$(_VerMinor).$(_VerPatch)</NmseVersion>
 			<Version>$(NmseVersion)</Version>
+			<AssemblyVersion>$(NmseVersion).0</AssemblyVersion>
+			<FileVersion>$(NmseVersion).0</FileVersion>
+			<InformationalVersion>$(NmseVersion)</InformationalVersion>
+			<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+			<Product>NMSE</Product>
+			<Company>NMSE</Company>
 		</PropertyGroup>
 
 		<!-- Write the generated partial class with VerMajor, VerMinor, VerPatch -->

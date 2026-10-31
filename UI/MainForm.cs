@@ -310,7 +310,7 @@ public partial class MainFormResources : Form
             // Disposal is handled by the using statement in Program.Main().
             if (_splashForm != null)
             {
-                _splashForm.Close();
+                _splashForm.CloseFromOwner();
                 _splashForm = null;
             }
 
@@ -3400,14 +3400,7 @@ public partial class MainFormResources : Form
     /// </summary>
     private void ApplySavedTheme()
     {
-        string? saved = AppConfig.Instance.Theme;
-        if (string.IsNullOrEmpty(saved)) return;
-
-        if (Enum.TryParse<AppTheme>(saved, ignoreCase: true, out var theme)
-            && Enum.IsDefined(theme))
-        {
-            ThemeManager.SetTheme(theme);
-        }
+        ThemeManager.ApplySavedTheme();
     }
 
     /// <summary>
