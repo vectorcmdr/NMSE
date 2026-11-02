@@ -1,3 +1,4 @@
+using NMSE.Core;
 using NMSE.Models;
 
 namespace NMSE.Data;
@@ -52,6 +53,9 @@ internal sealed class CatalogueDatabase
 		_jsonDirectory = jsonDirectory;
 	}
 
+	/// <summary>The directory holding the catalogue pack and item data.</summary>
+	internal string JsonDirectory => _jsonDirectory;
+
 	/// <summary>True when the extractor-generated catalogue pack file is present.</summary>
 	internal bool HasDerivedData => File.Exists(Path.Combine(_jsonDirectory, "Catalogue Pack.json"));
 
@@ -68,10 +72,10 @@ internal sealed class CatalogueDatabase
 
 	/// <summary>
 	/// Known product IDs for completion counters and "Add All Missing": the raw
-	/// <see cref="KnownProducts"/> list with substances removed. The game's save loader
-	/// only resolves products, so substance IDs written into <c>KnownProducts</c> are
-	/// silently dropped on load (raw materials complete through the account
-	/// <c>SeenSubstances</c> list instead).
+	/// <see cref="KnownProducts"/> list with substances and non-building SpecialShop
+	/// items removed. The game's save loader only resolves products, so substance IDs
+	/// written into <c>KnownProducts</c> are silently dropped on load. Non-building
+	/// SpecialShop items are tracked in <c>KnownSpecials</c> instead.
 	/// </summary>
 	/// <param name="items">The loaded item database used to resolve the item source table.</param>
 	/// <returns>The filtered list of completion product IDs.</returns>
@@ -82,7 +86,9 @@ internal sealed class CatalogueDatabase
 			var filtered = new List<string>(KnownProducts.Count);
 			foreach (string id in KnownProducts)
 			{
-				if (IsSubstance(items.GetItem(id))) continue;
+				var item = items.GetItem(id);
+				if (IsSubstance(item)) continue;
+				if (ItemUnlockRules.IsSpecialOnlyProduct(item)) continue;
 				filtered.Add(id);
 			}
 			_knownProductsForCompletion = filtered;
@@ -134,10 +140,10 @@ internal sealed class CatalogueDatabase
 
 	/// <summary>
 	/// Known special IDs for completion counters and "Add All Missing": the residual list
-	/// plus every catalogue product whose game trade category is <c>SpecialShop</c>. The
-	/// game tracks specials in <c>KnownSpecials</c> even when they are also catalogue
-	/// products (base decorations and similar), so adding them only to <c>KnownProducts</c>
-	/// leaves them unknown in the in-game catalogue.
+	/// plus every raw product whose game trade category is <c>SpecialShop</c>. This uses
+	/// the raw product list rather than the filtered product completion set so a
+	/// non-building SpecialShop item remains represented after it is removed from
+	/// <c>KnownProducts</c>.
 	/// </summary>
 	/// <param name="items">The loaded item database used to resolve the trade category.</param>
 	/// <returns>The filtered list of completion special IDs.</returns>
@@ -150,7 +156,11 @@ internal sealed class CatalogueDatabase
 			foreach (string id in KnownSpecials)
 				if (seen.Add(id)) result.Add(id);
 
-			foreach (string id in KnownProductsForCompletion(items))
+			// Use the raw product list here, not the product completion set. A
+			// non-building SpecialShop item is not a valid KnownProducts entry, but it
+			// is still a valid KnownSpecials entry and must remain in this completion
+			// set.
+			foreach (string id in KnownProducts)
 			{
 				if (!seen.Add(id)) continue;
 				if (IsSpecialShop(items.GetItem(id))) result.Add(id);

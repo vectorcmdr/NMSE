@@ -25,182 +25,22 @@ partial class CataloguePanel
         _tabControl = new DoubleBufferedTabControl { Dock = DockStyle.Fill };
         _tabControl.SuspendLayout();
 
-        // --- Tab 1: Known Technologies ---
-        var techTab = new TabPage("Known Technologies");
-        var techLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-        };
-        techLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        techLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        techLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        var techFilterPanel = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1 };
-        techFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        techFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        techFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        techFilterPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var techFilterFlow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
-        _techFilterBox = new TextBox { Width = 200, MinimumSize = new Size(0, 25), PlaceholderText = "Filter by name, category or ID..." };
-        _techFilterBox.TextChanged += (s, e) => ApplyFilter(_techGrid!, _techFilterBox.Text);
-        _techFilterClearButton = new Button { Text = "X", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(28, 25) };
-        _techFilterClearButton.Click += (s, e) => { _techFilterBox.Text = ""; };
-        techFilterFlow.Controls.Add(_techFilterBox);
-        techFilterFlow.Controls.Add(_techFilterClearButton);
-        techFilterPanel.Controls.Add(techFilterFlow, 0, 0);
-        techFilterPanel.Controls.Add(CreateGotoButton(["PlayerStateData", "KnownTech"]), 2, 0);
-        techLayout.Controls.Add(techFilterPanel, 0, 0);
-
-        _techGrid = CreateItemGrid();
-        techLayout.Controls.Add(_techGrid, 0, 1);
-
-        var techButtonPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight,
-        };
-        _techCompletionLabel = CreateCompletionLabel();
-        _addMissingTechBtn = CreateAddMissingButton();
-        _addMissingTechBtn.Click += AddAllMissingTech_Click;
-        techButtonPanel.Controls.Add(_techCompletionLabel);
-        techButtonPanel.Controls.Add(_addMissingTechBtn);
-        _addTechButton = new Button { Text = "Add Technology", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _removeTechButton = new Button { Text = "Remove Selected", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _addTechButton.Click += AddTech_Click;
-        _removeTechButton.Click += RemoveTech_Click;
-        _exportTechBtn = new Button { Text = "Export", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _exportTechBtn.Click += (s, e) => ExportDiscoveryList("Known Technologies", _techGrid, "ID");
-        _importTechBtn = new Button { Text = "Import", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _importTechBtn.Click += (s, e) => ImportItemList(_techGrid, "KnownTech");
-        techButtonPanel.Controls.Add(_addTechButton);
-        techButtonPanel.Controls.Add(_removeTechButton);
-        techButtonPanel.Controls.Add(_exportTechBtn);
-        techButtonPanel.Controls.Add(_importTechBtn);
-        techLayout.Controls.Add(techButtonPanel, 0, 2);
-
-        techTab.Controls.Add(techLayout);
+        // --- Tab 1: Technologies ---
+        _techPanel = new CatalogueItemsPanel(CatalogueItemKind.Technology) { Dock = DockStyle.Fill };
+        var techTab = new TabPage(UiStrings.Get("discovery.tab_tech_items"));
+        techTab.Controls.Add(_techPanel);
         _tabControl.TabPages.Add(techTab);
 
-        // --- Tab 2: Known Products ---
-        var productTab = new TabPage("Known Products");
-        var productLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-        };
-        productLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        productLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        productLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        // --- Tab 2: Products ---
+        _productPanel = new CatalogueItemsPanel(CatalogueItemKind.Product) { Dock = DockStyle.Fill };
+        var productTab = new TabPage(UiStrings.Get("discovery.tab_product_items"));
+        productTab.Controls.Add(_productPanel);
+        _tabControl.TabPages.Add(productTab);
 
-        var productFilterPanel = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1 };
-        productFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        productFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        productFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        productFilterPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var productFilterFlow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
-        _productFilterBox = new TextBox { Width = 200, MinimumSize = new Size(0, 25), PlaceholderText = "Filter by name, category or ID..." };
-        _productFilterBox.TextChanged += (s, e) => ApplyFilter(_productGrid!, _productFilterBox.Text);
-        _productFilterClearButton = new Button { Text = "X", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(28, 25) };
-        _productFilterClearButton.Click += (s, e) => { _productFilterBox.Text = ""; };
-        productFilterFlow.Controls.Add(_productFilterBox);
-        productFilterFlow.Controls.Add(_productFilterClearButton);
-        productFilterPanel.Controls.Add(productFilterFlow, 0, 0);
-        productFilterPanel.Controls.Add(CreateGotoButton(["PlayerStateData", "KnownProducts"]), 2, 0);
-        productLayout.Controls.Add(productFilterPanel, 0, 0);
-
-        _productGrid = CreateItemGrid();
-        productLayout.Controls.Add(_productGrid, 0, 1);
-
-        var productButtonPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight,
-        };
-        _productCompletionLabel = CreateCompletionLabel();
-        _addMissingProductsBtn = CreateAddMissingButton();
-        _addMissingProductsBtn.Click += AddAllMissingProducts_Click;
-        productButtonPanel.Controls.Add(_productCompletionLabel);
-        productButtonPanel.Controls.Add(_addMissingProductsBtn);
-        _addProductButton = new Button { Text = "Add Product", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _removeProductButton = new Button { Text = "Remove Selected", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _addProductButton.Click += AddProduct_Click;
-        _removeProductButton.Click += RemoveProduct_Click;
-        _exportProductBtn = new Button { Text = "Export", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _exportProductBtn.Click += (s, e) => ExportDiscoveryList("Known Products", _productGrid, "ID");
-        _importProductBtn = new Button { Text = "Import", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _importProductBtn.Click += (s, e) => ImportItemList(_productGrid, "KnownProducts");
-        productButtonPanel.Controls.Add(_addProductButton);
-        productButtonPanel.Controls.Add(_removeProductButton);
-        productButtonPanel.Controls.Add(_exportProductBtn);
-        productButtonPanel.Controls.Add(_importProductBtn);
-        productLayout.Controls.Add(productButtonPanel, 0, 2);
-
-        productTab.Controls.Add(productLayout);
-		_tabControl.TabPages.Add(productTab);
-
-		// --- Tab 3: Known Specials (Quicksilver/SpecialShop items) ---
-        var specialsTab = new TabPage(UiStrings.Get("discovery.tab_specials"));
-        _specialsTabPage = specialsTab;
-        var specialsLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-        };
-        specialsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        specialsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        specialsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-
-        var specialsFilterPanel = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, ColumnCount = 3, RowCount = 1 };
-        specialsFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        specialsFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        specialsFilterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        specialsFilterPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var specialsFilterFlow = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
-        _specialsFilterBox = new TextBox { Width = 200, MinimumSize = new Size(0, 25), PlaceholderText = UiStrings.Get("discovery.filter_placeholder") };
-        _specialsFilterBox.TextChanged += (s, e) => ApplyFilter(_specialsGrid!, _specialsFilterBox.Text);
-        _specialsFilterClearButton = new Button { Text = "X", AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, MinimumSize = new Size(28, 25) };
-        _specialsFilterClearButton.Click += (s, e) => { _specialsFilterBox.Text = ""; };
-        specialsFilterFlow.Controls.Add(_specialsFilterBox);
-        specialsFilterFlow.Controls.Add(_specialsFilterClearButton);
-        specialsFilterPanel.Controls.Add(specialsFilterFlow, 0, 0);
-        specialsFilterPanel.Controls.Add(CreateGotoButton(["PlayerStateData", "KnownSpecials"]), 2, 0);
-        specialsLayout.Controls.Add(specialsFilterPanel, 0, 0);
-
-        _specialsGrid = CreateItemGrid();
-        specialsLayout.Controls.Add(_specialsGrid, 0, 1);
-
-        var specialsButtonPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            FlowDirection = FlowDirection.LeftToRight,
-        };
-        _specialsCompletionLabel = CreateCompletionLabel();
-        _addMissingSpecialsBtn = CreateAddMissingButton();
-        _addMissingSpecialsBtn.Click += AddAllMissingSpecials_Click;
-        specialsButtonPanel.Controls.Add(_specialsCompletionLabel);
-        specialsButtonPanel.Controls.Add(_addMissingSpecialsBtn);
-        _addSpecialsButton = new Button { Text = UiStrings.Get("discovery.add_special"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _removeSpecialsButton = new Button { Text = UiStrings.Get("common.remove_selected"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _addSpecialsButton.Click += AddSpecials_Click;
-        _removeSpecialsButton.Click += RemoveSpecials_Click;
-        _exportSpecialsBtn = new Button { Text = UiStrings.Get("common.export"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _exportSpecialsBtn.Click += (s, e) => ExportDiscoveryList(UiStrings.Get("discovery.tab_specials"), _specialsGrid, "ID");
-        _importSpecialsBtn = new Button { Text = UiStrings.Get("common.import"), AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
-        _importSpecialsBtn.Click += (s, e) => ImportItemList(_specialsGrid, "KnownSpecials");
-        specialsButtonPanel.Controls.Add(_addSpecialsButton);
-        specialsButtonPanel.Controls.Add(_removeSpecialsButton);
-        specialsButtonPanel.Controls.Add(_exportSpecialsBtn);
-        specialsButtonPanel.Controls.Add(_importSpecialsBtn);
-        specialsLayout.Controls.Add(specialsButtonPanel, 0, 2);
-
-        specialsTab.Controls.Add(specialsLayout);
+        // --- Tab 3: Specials ---
+        _specialsPanel = new CatalogueItemsPanel(CatalogueItemKind.Special) { Dock = DockStyle.Fill };
+        var specialsTab = new TabPage(UiStrings.Get("discovery.tab_special_items"));
+        specialsTab.Controls.Add(_specialsPanel);
         _tabControl.TabPages.Add(specialsTab);
 
         // --- Tab 4: Known Words ---
@@ -775,7 +615,7 @@ partial class CataloguePanel
 
         _curatedNameNoticeLabel = new Label
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             AutoSize = false,
             Height = 24,
             TextAlign = ContentAlignment.MiddleLeft,
@@ -783,8 +623,32 @@ partial class CataloguePanel
             Font = FontManager.CreateFont(9, FontStyle.Italic),
         };
 
+        _completeCatalogueButton = new Button
+        {
+            Text = "Complete Catalogue",
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(8, 2, 8, 2),
+            Margin = new Padding(0, 0, 6, 0),
+        };
+        _completeCatalogueButton.Click += CompleteCatalogue_Click;
+
+        var catalogueHeaderBar = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1,
+            Padding = new Padding(6, 4, 6, 2),
+        };
+        catalogueHeaderBar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        catalogueHeaderBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        catalogueHeaderBar.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        catalogueHeaderBar.Controls.Add(_completeCatalogueButton, 0, 0);
+        catalogueHeaderBar.Controls.Add(_curatedNameNoticeLabel, 1, 0);
+
         this.Controls.Add(_tabControl);
-        this.Controls.Add(_curatedNameNoticeLabel);
+        this.Controls.Add(catalogueHeaderBar);
 
         //
         // CataloguePanel
@@ -796,31 +660,13 @@ partial class CataloguePanel
     }
     #endregion
 
-    // Tab 1: Known Technologies
+    // Tabs 1-3: unified catalogue item lists
     private DoubleBufferedTabControl _tabControl = null!;
     private readonly List<Button> _gotoJsonBtns = [];
-    private DataGridView _techGrid = null!;
-    private Button _addTechButton = null!;
-    private Button _removeTechButton = null!;
-    private TextBox _techFilterBox = null!;
-    private Button _techFilterClearButton = null!;
-
-    // Tab 2: Known Products
-    private DataGridView _productGrid = null!;
-    private Button _addProductButton = null!;
-    private Button _removeProductButton = null!;
-    private TextBox _productFilterBox = null!;
-    private Button _productFilterClearButton = null!;
-
-    // Tab 3: Known Specials (Quicksilver/SpecialShop)
-    private TabPage _specialsTabPage = null!;
-    private DataGridView _specialsGrid = null!;
-    private Button _addSpecialsButton = null!;
-    private Button _removeSpecialsButton = null!;
-    private TextBox _specialsFilterBox = null!;
-    private Button _specialsFilterClearButton = null!;
-    private Button _exportSpecialsBtn = null!;
-    private Button _importSpecialsBtn = null!;
+    private CatalogueItemsPanel _techPanel = null!;
+    private CatalogueItemsPanel _productPanel = null!;
+    private CatalogueItemsPanel _specialsPanel = null!;
+    private Button _completeCatalogueButton = null!;
 
     // Tab 4: Known Words
     private DataGridView _wordGrid = null!;
@@ -860,10 +706,6 @@ partial class CataloguePanel
     private Button _removeFishBtn = null!;
 
     // Export/Import buttons
-    private Button _exportTechBtn = null!;
-    private Button _importTechBtn = null!;
-    private Button _exportProductBtn = null!;
-    private Button _importProductBtn = null!;
     private Button _exportWordsBtn = null!;
     private Button _importWordsBtn = null!;
     private Button _exportGlyphsBtn = null!;
@@ -888,12 +730,6 @@ partial class CataloguePanel
 
     // Catalogue completion controls (verified pack)
     private Label _curatedNameNoticeLabel = null!;
-    private Label _techCompletionLabel = null!;
-    private Button _addMissingTechBtn = null!;
-    private Label _productCompletionLabel = null!;
-    private Button _addMissingProductsBtn = null!;
-    private Label _specialsCompletionLabel = null!;
-    private Button _addMissingSpecialsBtn = null!;
     private Label _wordsCompletionLabel = null!;
     private Button _addMissingWordsBtn = null!;
     private Label _glyphsCompletionLabel = null!;

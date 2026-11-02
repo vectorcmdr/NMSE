@@ -67,6 +67,16 @@ reward arrays in `PlayerStateData`. Also backs the Account Rewards consistency c
 | `CheckConsistencyStructured(...)` | Builds the issue list used by `ConsistencyDialog` |
 | `ResolveConsistencyIssue(...)` | Applies an add/remove fix for one consistency issue |
 
+`AccountPanel.SaveData` refreshes its redeemed-state snapshots after each save.
+Without that, checking and unchecking Redeemed in one session would skip the
+`Known*` cleanup and leave the reward looking redeemed in game.
+
+`CheckConsistencyStructured` maps each Known* reward entry to its correct Redeemed*
+array by reward category, checks season, Twitch and platform redemption, ignores
+entitlement items that have no redeem array, and checks KnownProducts/KnownTech as
+well as KnownSpecials. A known entry that is not redeemed but is unlocked on the
+account is marked ambiguous instead of being treated as definitely stale.
+
 ---
 
 ### BaseLogic
@@ -119,12 +129,58 @@ technology and product item-type sets used to filter catalogue views.
 
 ---
 
+### ItemUnlockRules
+
+| | |
+|---|---|
+| File | `Core/ItemUnlockRules.cs` |
+| Purpose | Canonical item-to-array rules for known and seen catalogue state |
+
+Centralises the game-verified classification so the catalogue UI, completion actions
+and reward code do not diverge:
+
+- Technology uses `KnownTech` and `SeenTechnologies`.
+- Products use `KnownProducts` and `SeenProducts`.
+- SpecialShop items use `KnownSpecials`; buildings also use `KnownProducts`.
+- Non-building SpecialShop items are not product-learnable.
+- Catalogue visibility uses `KnownTech` for technology, and `KnownProducts` or
+  `SeenProducts` for products/specials.
+
+---
+
+### CatalogueItemCatalog
+
+| | |
+|---|---|
+| File | `Core/CatalogueItemCatalog.cs` |
+| Purpose | Unified row model and separate save-known/account-seen state for the three item tabs |
+
+Builds one `CatalogueItemEntry` per valid, completion-list or save-known item, with
+Description and expedition number. Completion membership is derived from
+`CatalogueDatabase.Known*ForCompletion`; expedition numbers come from
+`RewardDatabase.SeasonRewards` (loaded from `Rewards.json` when needed).
+
+`IsKnown`/`IsPartiallyKnown` cover only the save arrays. `IsSeen` covers only the account
+Seen array. `SetKnown` writes the canonical save arrays and, when adding, also marks the
+item seen; unchecking removes only the known arrays. `SetSeen` writes only the account
+Seen array. For Specials, a Known write also adds the account `UnlockedSpecials` entry,
+matching a game special redemption. The Seen column is hidden by default and can be
+shown for the current session only for advanced unsee operations; it is not persisted
+to app settings.
+
+`GetCatalogueCompletion` uses the game's wiki visibility rule through
+`ItemUnlockRules`: `KnownTech` for technology, and `KnownProducts` or `SeenProducts` for
+products and specials. `GetKnownCount` drives `All: a / b`. No product path writes
+`SeenSubstances`; those are handled by the Raw Materials/Complete Catalogue path.
+
+---
+
 ### CatalogueCompletionLogic
 
 | | |
 |---|---|
-| File | `Core/CatalogueCompletionLogic.cs` (+ `.Account`, `.Knowledge`, `.Stats`, `.Wonders` partials) |
-| Purpose | Catalogue completion counters and "add all missing" / "clear all" operations |
+| File | `Core/CatalogueCompletionLogic.cs` (+ `.Account`, `.CatalogueItems`, `.Knowledge`, `.Stats`, `.Wonders` partials) |
+| Purpose | Catalogue completion counters, complete-catalogue compatibility and "clear all" operations |
 
 Computes per-page status and completion counters and applies bulk completion operations
 for the Catalogue tab, Account rewards, Collected Knowledge, Discovery Stats, and
@@ -134,6 +190,7 @@ Wonders.
 
 | Method | Description |
 |--------|-------------|
+| `CountMissingCatalogue(...)` / `CompleteCatalogue(...)` | Count and complete the catalogue using the game-visible known/seen rules, including all compiled `SeenSubstances` |
 | `ApplyKnowledgePage(...)` / `ClearKnowledgePage(...)` | Complete or clear one Collected Knowledge page |
 | `ApplyKnowledgePageProgress(...)` | Set page progress from a UI value |
 | `ApplyKnowledgeCompleters(...)` / `ClearKnowledgeCompleters(...)` | Apply or clear the story completers |

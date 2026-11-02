@@ -65,11 +65,26 @@ public partial class CataloguePanel : UserControl
     {
         InitializeComponent();
 
+        _techPanel.DataModified += (s, e) => OnItemPanelDataModified();
+        _productPanel.DataModified += (s, e) => OnItemPanelDataModified();
+        _specialsPanel.DataModified += (s, e) => OnItemPanelDataModified();
+        _techPanel.GoToJsonRequested += (s, e) => GoToJsonRequested?.Invoke(s, e);
+        _productPanel.GoToJsonRequested += (s, e) => GoToJsonRequested?.Invoke(s, e);
+        _specialsPanel.GoToJsonRequested += (s, e) => GoToJsonRequested?.Invoke(s, e);
+
         _wondersPanel.DataModified += (s, e) => RaiseDataModified();
         _knowledgePanel.DataModified += (s, e) => RaiseDataModified();
         _fossilsPanel.DataModified += (s, e) => RaiseDataModified();
         _rawMaterialsPanel.DataModified += (s, e) => RaiseDataModified();
         _discoveryStatsPanel.DataModified += (s, e) => RaiseDataModified();
+    }
+
+    private void OnItemPanelDataModified()
+    {
+        _techPanel.RefreshFromData();
+        _productPanel.RefreshFromData();
+        _specialsPanel.RefreshFromData();
+        RaiseDataModified();
     }
 
     /// <summary>
@@ -84,8 +99,12 @@ public partial class CataloguePanel : UserControl
     public void SetDatabase(GameItemDatabase? database)
     {
         _database = database;
+        _techPanel.SetDatabase(database);
+        _productPanel.SetDatabase(database);
+        _specialsPanel.SetDatabase(database);
         _fossilsPanel.SetDatabase(database);
         _rawMaterialsPanel.SetDatabase(database);
+        ReloadItemPanels();
     }
 
     /// <summary>Sets the loaded account data for the Account Catalogue sub-tab.</summary>
@@ -95,12 +114,13 @@ public partial class CataloguePanel : UserControl
         _userSettings = accountData?.GetObject("UserSettingsData") ?? accountData;
         _fossilsPanel.SetAccountData(accountData);
         _rawMaterialsPanel.SetAccountData(accountData);
+        ReloadItemPanels();
     }
 
     /// <summary>
-    /// Sets the verified catalogue completion pack used by the per-tab completion
-    /// counters and the "Add All Missing" actions. Called by MainForm once the
-    /// resources path is known.
+    /// Sets the verified catalogue completion pack used by the unified item lists,
+    /// their Catalogue markers and the Complete Catalogue action. Called by MainForm
+    /// once the resources path is known.
     /// </summary>
     /// <param name="pack">The loaded pack, or null when the pack data is unavailable.</param>
     internal void SetCatalogueDatabase(CatalogueDatabase? pack)
@@ -114,7 +134,60 @@ public partial class CataloguePanel : UserControl
             _rawMaterialsPanel.LoadData(_savedSaveData, pack);
             _discoveryStatsPanel.LoadData(_savedSaveData, pack);
         }
+        ReloadItemPanels();
         RefreshCompletionCounters();
+    }
+
+    private void ReloadItemPanels()
+    {
+        if (_savedPlayerState == null || _database == null || _catalogueDatabase == null)
+        {
+            _techPanel.LoadCatalog(null);
+            _productPanel.LoadCatalog(null);
+            _specialsPanel.LoadCatalog(null);
+            return;
+        }
+
+        _techPanel.LoadCatalog(new CatalogueItemCatalog(
+            CatalogueItemKind.Technology, _savedPlayerState, _userSettings, _database, _catalogueDatabase));
+        _productPanel.LoadCatalog(new CatalogueItemCatalog(
+            CatalogueItemKind.Product, _savedPlayerState, _userSettings, _database, _catalogueDatabase));
+        _specialsPanel.LoadCatalog(new CatalogueItemCatalog(
+            CatalogueItemKind.Special, _savedPlayerState, _userSettings, _database, _catalogueDatabase));
+    }
+
+    private void CompleteCatalogue_Click(object? sender, EventArgs e)
+    {
+        if (_savedPlayerState == null || _database == null || _catalogueDatabase == null) return;
+
+        int missing = CatalogueCompletionLogic.CountMissingCatalogue(
+            _savedPlayerState, _userSettings, _database, _catalogueDatabase);
+        if (missing <= 0)
+        {
+            MessageBox.Show(this,
+                UiStrings.Get("discovery.add_all_missing_none"),
+                UiStrings.Get("discovery.add_all_missing_title"),
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (MessageBox.Show(this,
+                UiStrings.Format("discovery.complete_catalogue_confirm", missing),
+                UiStrings.Get("discovery.add_all_missing_title"),
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            return;
+
+        int added = CatalogueCompletionLogic.CompleteCatalogue(
+            _savedPlayerState, _userSettings, _database, _catalogueDatabase);
+        ReloadItemPanels();
+        _rawMaterialsPanel.Reload();
+        RefreshCompletionCounters();
+        RaiseDataModified();
+        if (added > 0)
+            MessageBox.Show(this,
+                UiStrings.Format("discovery.add_all_missing_done", added),
+                UiStrings.Get("discovery.add_all_missing_title"),
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     public void SetRecipeDatabase(RecipeDatabase? recipeDatabase)
@@ -130,6 +203,9 @@ public partial class CataloguePanel : UserControl
     public void SetIconManager(IconManager? iconManager)
     {
         _iconManager = iconManager;
+        _techPanel.SetIconManager(iconManager);
+        _productPanel.SetIconManager(iconManager);
+        _specialsPanel.SetIconManager(iconManager);
         _fossilsPanel.SetIconManager(iconManager);
         _rawMaterialsPanel.SetIconManager(iconManager);
         LoadGlyphIcons();
@@ -198,9 +274,7 @@ public partial class CataloguePanel : UserControl
         if (playerState == null) return;
         _savedPlayerState = playerState;
 
-        LoadKnownItems(playerState, "KnownTech", _techGrid);
-        LoadKnownItems(playerState, "KnownProducts", _productGrid);
-        LoadKnownItems(playerState, "KnownSpecials", _specialsGrid);
+        ReloadItemPanels();
         LoadKnownWords(playerState);
         LoadKnownGlyphs(playerState);
         LoadKnownLocations(playerState);
@@ -229,9 +303,6 @@ public partial class CataloguePanel : UserControl
         // so a tick/untick round trip in the UI leaves no residue.
         _wondersPanel.InjectWonderDependencies(saveData);
 
-        SaveKnownItems(playerState, "KnownTech", _techGrid);
-        SaveKnownItems(playerState, "KnownProducts", _productGrid);
-        SaveKnownItems(playerState, "KnownSpecials", _specialsGrid);
         SaveKnownWords(playerState);
         SaveKnownGlyphs(playerState);
         SaveKnownFish(playerState);
@@ -253,9 +324,9 @@ public partial class CataloguePanel : UserControl
     {
         // Clear all DataGridView row collections. This releases the Image cell values
         // for the icon columns and allows those Bitmap objects to be GC'd.
-        _techGrid.Rows.Clear();
-        _productGrid.Rows.Clear();
-        _specialsGrid.Rows.Clear();
+        _techPanel.PurgeData();
+        _productPanel.PurgeData();
+        _specialsPanel.PurgeData();
         _wordGrid.Rows.Clear();
         _locationsGrid.Rows.Clear();
         _fishGrid.Rows.Clear();
@@ -282,74 +353,6 @@ public partial class CataloguePanel : UserControl
     }
 
     // --- Shared helpers ---
-
-    private static DataGridView CreateItemGrid()
-    {
-        var grid = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            RowHeadersVisible = false,
-            ReadOnly = true,
-        };
-        var iconCol = new DataGridViewImageColumn
-        {
-            Name = "Icon",
-            HeaderText = "⚙️",
-            Width = 36,
-            ImageLayout = DataGridViewImageCellLayout.Zoom,
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-        };
-        iconCol.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        grid.Columns.Add(iconCol);
-        grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Name" });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Category", HeaderText = "Category" });
-        grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "ID", HeaderText = "ID" });
-        grid.RowTemplate.Height = 28;
-        return grid;
-    }
-
-    private void LoadKnownItems(JsonObject playerState, string arrayName, DataGridView grid)
-    {
-        grid.SuspendLayout();
-        try
-        {
-        grid.Rows.Clear();
-        var ids = CatalogueLogic.LoadKnownItemIds(playerState, arrayName);
-
-        var rows = new DataGridViewRow[ids.Count];
-        for (int i = 0; i < ids.Count; i++)
-        {
-            var id = ids[i];
-            var dbItem = _database?.GetItem(id);
-            string name = dbItem?.Name ?? id;
-            string category = dbItem?.ItemType ?? "";
-            Image? icon = GetScaledIcon(id);
-
-            var row = new DataGridViewRow();
-            row.CreateCells(grid, icon ?? (object)PlaceholderIcon, name, category, id);
-            rows[i] = row;
-        }
-        grid.Rows.AddRange(rows);
-        }
-        finally
-        {
-            grid.ResumeLayout(true);
-        }
-    }
-
-    private static void SaveKnownItems(JsonObject playerState, string arrayName, DataGridView grid)
-    {
-        var ids = new List<string>();
-        foreach (DataGridViewRow row in grid.Rows)
-            ids.Add(row.Cells["ID"].Value as string ?? "");
-
-        CatalogueLogic.SaveKnownItemIds(playerState, arrayName, ids);
-    }
 
     private Image? GetScaledIcon(string itemId)
     {
@@ -386,172 +389,6 @@ public partial class CataloguePanel : UserControl
         for (int i = indices.Count - 1; i >= 0; i--)
             grid.Rows.RemoveAt(indices[i]);
     }
-
-    // --- Tab 1: Known Technologies events ---
-
-    private static readonly HashSet<string> TechItemTypes = CatalogueLogic.TechItemTypes;
-
-    private static readonly HashSet<string> ProductItemTypes = CatalogueLogic.ProductItemTypes;
-
-    private void AddTech_Click(object? sender, EventArgs e)
-    {
-        if (_database == null) return;
-
-        List<(Image? icon, string name, string id, string category)>? unknownTechs = null;
-
-        // Show loading dialog while building item list and resolving icons
-        using var loadingDialog = CreateLoadingDialog("Loading Technologies...");
-        loadingDialog.Shown += (s, ev) =>
-        {
-            var knownIds = new HashSet<string>(
-                _techGrid.Rows.Cast<DataGridViewRow>().Select(r => r.Cells["ID"].Value as string ?? ""),
-                StringComparer.OrdinalIgnoreCase);
-
-            var items = _database.Items.Values
-                .Where(item => TechItemTypes.Contains(item.ItemType)
-                            && !knownIds.Contains(item.Id)
-                            && !GameItemDatabase.IsPickerExcluded(item.Id)
-                            && CatalogueLogic.IsLearnableTechnology(item))
-                .OrderBy(item => item.Name)
-                .ToList();
-
-            unknownTechs = new List<(Image? icon, string name, string id, string category)>(items.Count);
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                unknownTechs.Add((GetScaledIcon(item.Id) ?? (Image)PlaceholderIcon, item.Name, item.Id, item.ItemType));
-                if (i % 50 == 0) Application.DoEvents();
-            }
-
-            loadingDialog.Close();
-        };
-        loadingDialog.ShowDialog(this);
-
-        if (unknownTechs == null || unknownTechs.Count == 0) return;
-
-        using var picker = new ItemPickerDialog("Add Technology", unknownTechs);
-        if (picker.ShowDialog(this) == DialogResult.OK && picker.SelectedIds.Count > 0)
-        {
-            foreach (var selectedId in picker.SelectedIds)
-            {
-                var item = _database.GetItem(selectedId);
-                if (item != null)
-                {
-                    _techGrid.Rows.Add(GetScaledIcon(item.Id) ?? (object)PlaceholderIcon, item.Name, item.Subtitle, item.Id);
-                }
-            }
-            RaiseDataModified();
-        }
-    }
-    private void RemoveTech_Click(object? sender, EventArgs e) { RemoveSelectedFromGrid(_techGrid); RaiseDataModified(); }
-
-    // --- Tab 2: Known Products events ---
-
-    private void AddProduct_Click(object? sender, EventArgs e)
-    {
-        if (_database == null) return;
-
-        List<(Image? icon, string name, string id, string category)>? unknownProducts = null;
-
-        // Show loading dialog while building item list and resolving icons
-        using var loadingDialog = CreateLoadingDialog("Loading Products...");
-        loadingDialog.Shown += (s, ev) =>
-        {
-            var knownIds = new HashSet<string>(
-                _productGrid.Rows.Cast<DataGridViewRow>().Select(r => r.Cells["ID"].Value as string ?? ""),
-                StringComparer.OrdinalIgnoreCase);
-
-            var items = _database.Items.Values
-                .Where(item => ProductItemTypes.Contains(item.ItemType)
-                            && !knownIds.Contains(item.Id)
-                            && !GameItemDatabase.IsPickerExcluded(item.Id)
-                            && CatalogueLogic.IsLearnableProduct(item))
-                .OrderBy(item => item.Name)
-                .ToList();
-
-            unknownProducts = new List<(Image? icon, string name, string id, string category)>(items.Count);
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                unknownProducts.Add((GetScaledIcon(item.Id) ?? (Image)PlaceholderIcon, item.Name, item.Id, item.ItemType));
-                if (i % 50 == 0) Application.DoEvents();
-            }
-
-            loadingDialog.Close();
-        };
-        loadingDialog.ShowDialog(this);
-
-        if (unknownProducts == null || unknownProducts.Count == 0) return;
-
-        using var picker = new ItemPickerDialog("Add Product", unknownProducts);
-        if (picker.ShowDialog(this) == DialogResult.OK && picker.SelectedIds.Count > 0)
-        {
-            foreach (var selectedId in picker.SelectedIds)
-            {
-                var item = _database.GetItem(selectedId);
-                if (item != null)
-                {
-                    _productGrid.Rows.Add(GetScaledIcon(item.Id) ?? (object)PlaceholderIcon, item.Name, item.Subtitle, item.Id);
-                }
-            }
-            RaiseDataModified();
-        }
-    }
-    private void RemoveProduct_Click(object? sender, EventArgs e) { RemoveSelectedFromGrid(_productGrid); RaiseDataModified(); }
-
-    // --- Tab 3: Known Specials (Quicksilver/SpecialShop) events ---
-
-    private void AddSpecials_Click(object? sender, EventArgs e)
-    {
-        if (_database == null) return;
-
-        List<(Image? icon, string name, string id, string category)>? unknownSpecials = null;
-
-        using var loadingDialog = CreateLoadingDialog(UiStrings.Get("discovery.loading_specials"));
-        loadingDialog.Shown += (s, ev) =>
-        {
-            var knownIds = new HashSet<string>(
-                _specialsGrid.Rows.Cast<DataGridViewRow>().Select(r => r.Cells["ID"].Value as string ?? ""),
-                StringComparer.OrdinalIgnoreCase);
-
-            // SpecialShop items are products with TradeCategory == "SpecialShop"
-            var items = _database.Items.Values
-                .Where(item => string.Equals(item.TradeCategory, "SpecialShop", StringComparison.OrdinalIgnoreCase)
-                            && !knownIds.Contains(item.Id)
-                            && !GameItemDatabase.IsPickerExcluded(item.Id))
-                .OrderBy(item => item.Name)
-                .ToList();
-
-            unknownSpecials = new List<(Image? icon, string name, string id, string category)>(items.Count);
-            for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                unknownSpecials.Add((GetScaledIcon(item.Id) ?? (Image)PlaceholderIcon, item.Name, item.Id, item.ItemType));
-                if (i % 50 == 0) Application.DoEvents();
-            }
-
-            loadingDialog.Close();
-        };
-        loadingDialog.ShowDialog(this);
-
-        if (unknownSpecials == null || unknownSpecials.Count == 0) return;
-
-        using var picker = new ItemPickerDialog(UiStrings.Get("discovery.add_special"), unknownSpecials);
-        if (picker.ShowDialog(this) == DialogResult.OK && picker.SelectedIds.Count > 0)
-        {
-            foreach (var selectedId in picker.SelectedIds)
-            {
-                var item = _database.GetItem(selectedId);
-                if (item != null)
-                {
-                    _specialsGrid.Rows.Add(GetScaledIcon(item.Id) ?? (object)PlaceholderIcon, item.Name, item.Subtitle, item.Id);
-                }
-            }
-            RaiseDataModified();
-        }
-    }
-
-    private void RemoveSpecials_Click(object? sender, EventArgs e) { RemoveSelectedFromGrid(_specialsGrid); RaiseDataModified(); }
 
     // --- Tab 4: Known Words ---
 
@@ -2026,46 +1863,12 @@ public partial class CataloguePanel : UserControl
     // --- Catalogue completion (verified pack) ---
 
     /// <summary>
-    /// The technology IDs used for the completion counter and "Add All Missing": the verified
-    /// list with damaged/blocked-slot placeholder technologies removed via the game's
-    /// BrokenSlotTech flag. Falls back to the raw list when the item database is unavailable.
-    /// </summary>
-    private IReadOnlyList<string>? CompletionKnownTech =>
-        _catalogueDatabase == null ? null
-        : _database != null ? _catalogueDatabase.KnownTechForCompletion(_database)
-        : _catalogueDatabase.KnownTech;
-
-    /// <summary>
-    /// The product IDs used for the completion counter and "Add All Missing": the catalogue
-    /// products with substances removed (the game drops substances from KnownProducts;
-    /// raw materials complete through the account SeenSubstances list).
-    /// </summary>
-    private IReadOnlyList<string>? CompletionKnownProducts =>
-        _catalogueDatabase == null ? null
-        : _database != null ? _catalogueDatabase.KnownProductsForCompletion(_database)
-        : _catalogueDatabase.KnownProducts;
-
-    /// <summary>
-    /// The special IDs used for the completion counter and "Add All Missing": the residual
-    /// editor-known list plus every catalogue product whose game trade category is
-    /// <c>SpecialShop</c>. Those products need a <c>KnownSpecials</c> entry for the in-game
-    /// catalogue to treat them as known. Falls back to the residual list without the database.
-    /// </summary>
-    private IReadOnlyList<string>? CompletionKnownSpecials =>
-        _catalogueDatabase == null ? null
-        : _database != null ? _catalogueDatabase.KnownSpecialsForCompletion(_database)
-        : _catalogueDatabase.KnownSpecials;
-
-    /// <summary>
-    /// Refreshes the per-tab "Known: have / total (pct)" counters from the verified
-    /// pack and hides the "Add All Missing" actions when the pack is unavailable.
+    /// Refreshes the remaining catalogue sub-tab counters. The technology, product and
+    /// special counters now live in their unified item panels.
     /// </summary>
     private void RefreshCompletionCounters()
     {
         bool available = _catalogueDatabase is { IsAvailable: true };
-        _addMissingTechBtn.Visible = available;
-        _addMissingProductsBtn.Visible = available;
-        _addMissingSpecialsBtn.Visible = available;
         _addMissingWordsBtn.Visible = available;
         _addMissingFishBtn.Visible = available;
         _addMissingRecipesBtn.Visible = available;
@@ -2084,18 +1887,6 @@ public partial class CataloguePanel : UserControl
         }
 
         var catalogue = _catalogueDatabase!;
-        var completionTech = CompletionKnownTech!;
-        var completionProducts = CompletionKnownProducts!;
-        var completionSpecials = CompletionKnownSpecials!;
-
-        // These tabs also depend on the account seen lists, so the counter only counts an
-        // entry as complete when it is present in both the save array and the account list.
-        SetCompletionLabel(_techCompletionLabel, CatalogueCompletionLogic.GetCombinedCompletion(
-            playerState, "KnownTech", _userSettings, "SeenTechnologies", completionTech));
-        SetCompletionLabel(_productCompletionLabel, CatalogueCompletionLogic.GetCombinedCompletion(
-            playerState, "KnownProducts", _userSettings, "SeenProducts", completionProducts));
-        SetCompletionLabel(_specialsCompletionLabel, CatalogueCompletionLogic.GetCombinedCompletion(
-            playerState, "KnownSpecials", _userSettings, "SeenProducts", completionSpecials));
         SetCompletionLabel(_recipesCompletionLabel, CatalogueCompletionLogic.GetCompletion(playerState, "KnownRefinerRecipes", catalogue.KnownRefinerRecipes));
         SetCompletionLabel(_wordsCompletionLabel, CatalogueCompletionLogic.GetWordGroupCompletion(playerState, catalogue.KnownWordGroups));
         SetCompletionLabel(_fishCompletionLabel, CatalogueCompletionLogic.GetFishingCompletion(playerState, catalogue.Fishing));
@@ -2109,9 +1900,6 @@ public partial class CataloguePanel : UserControl
 
     private void ClearCompletionLabels()
     {
-        _techCompletionLabel.Text = string.Empty;
-        _productCompletionLabel.Text = string.Empty;
-        _specialsCompletionLabel.Text = string.Empty;
         _wordsCompletionLabel.Text = string.Empty;
         _glyphsCompletionLabel.Text = string.Empty;
         _fishCompletionLabel.Text = string.Empty;
@@ -2122,102 +1910,6 @@ public partial class CataloguePanel : UserControl
     {
         int percent = total <= 0 ? 100 : (int)Math.Round(have * 100.0 / total, MidpointRounding.AwayFromZero);
         return UiStrings.Format("discovery.completion_counter", have, total, percent);
-    }
-
-    private void AddAllMissingTech_Click(object? sender, EventArgs e)
-    {
-        if (_savedPlayerState == null || _catalogueDatabase == null) return;
-        var tech = CompletionKnownTech;
-        if (tech == null) return;
-
-        // Constructed-technology wiki entries are products and use the account seen state,
-        // so completion requires the save array and SeenTechnologies together.
-        var (have, total) = CatalogueCompletionLogic.GetCombinedCompletion(
-            _savedPlayerState, "KnownTech", _userSettings, "SeenTechnologies", tech);
-        int missing = total - have;
-
-        if (!ConfirmMissing(missing)) return;
-
-        int added = CatalogueCompletionLogic.AddMissingIds(_savedPlayerState, "KnownTech", tech);
-        if (_userSettings != null)
-        {
-            // The account seen list keeps the constructed-technology entries (products) that
-            // the game drops from KnownTech on load, so the in-game Technology page stays
-            // complete for saves that never had them seen through gameplay.
-            added += CatalogueCompletionLogic.AddMissingSeen(_userSettings, "SeenTechnologies", _catalogueDatabase.KnownTech);
-        }
-
-        LoadKnownItems(_savedPlayerState, "KnownTech", _techGrid);
-        RefreshCompletionCounters();
-        RaiseDataModified();
-        ShowAddedMessage(added);
-    }
-
-    private void AddAllMissingProducts_Click(object? sender, EventArgs e)
-    {
-        if (_savedPlayerState == null || _catalogueDatabase == null) return;
-        var products = CompletionKnownProducts;
-        var specials = CompletionKnownSpecials;
-        if (products == null || specials == null) return;
-
-        // SpecialShop products must also reach KnownSpecials: the game checks that array
-        // for them even though they are catalogue products (this mirrors the verified
-        // reference tool, which merges building parts into both arrays). Catalogue
-        // products without a recipe additionally use the account SeenProducts state, and
-        // raw materials use SeenSubstances.
-        var (haveProducts, totalProducts) = CatalogueCompletionLogic.GetCombinedCompletion(
-            _savedPlayerState, "KnownProducts", _userSettings, "SeenProducts", products);
-        var (haveSpecials, totalSpecials) = CatalogueCompletionLogic.GetCombinedCompletion(
-            _savedPlayerState, "KnownSpecials", _userSettings, "SeenProducts", specials);
-        int missing = (totalProducts - haveProducts) + (totalSpecials - haveSpecials);
-
-        var substances = _catalogueDatabase.SeenSubstances;
-        if (_userSettings != null)
-        {
-            var (haveSubstances, totalSubstances) =
-                CatalogueCompletionLogic.GetSeenCompletion(_userSettings, "SeenSubstances", substances);
-            missing += totalSubstances - haveSubstances;
-        }
-
-        if (!ConfirmMissing(missing)) return;
-
-        int added = CatalogueCompletionLogic.AddMissingIds(_savedPlayerState, "KnownProducts", products);
-        added += CatalogueCompletionLogic.AddMissingIds(_savedPlayerState, "KnownSpecials", specials);
-        if (_userSettings != null)
-        {
-            added += CatalogueCompletionLogic.AddMissingSeen(_userSettings, "SeenProducts", products);
-            added += CatalogueCompletionLogic.AddMissingSeen(_userSettings, "SeenSubstances", substances);
-        }
-
-        LoadKnownItems(_savedPlayerState, "KnownProducts", _productGrid);
-        LoadKnownItems(_savedPlayerState, "KnownSpecials", _specialsGrid);
-        _rawMaterialsPanel.Reload();
-        RefreshCompletionCounters();
-        RaiseDataModified();
-        ShowAddedMessage(added);
-    }
-
-    private void AddAllMissingSpecials_Click(object? sender, EventArgs e)
-    {
-        if (_savedPlayerState == null || _catalogueDatabase == null) return;
-        var specials = CompletionKnownSpecials;
-        if (specials == null) return;
-
-        // Non-recipe specials use the account seen state, so completion requires both.
-        var (have, total) = CatalogueCompletionLogic.GetCombinedCompletion(
-            _savedPlayerState, "KnownSpecials", _userSettings, "SeenProducts", specials);
-        int missing = total - have;
-
-        if (!ConfirmMissing(missing)) return;
-
-        int added = CatalogueCompletionLogic.AddMissingIds(_savedPlayerState, "KnownSpecials", specials);
-        if (_userSettings != null)
-            added += CatalogueCompletionLogic.AddMissingSeen(_userSettings, "SeenProducts", specials);
-
-        LoadKnownItems(_savedPlayerState, "KnownSpecials", _specialsGrid);
-        RefreshCompletionCounters();
-        RaiseDataModified();
-        ShowAddedMessage(added);
     }
 
     private void AddAllMissingRecipes_Click(object? sender, EventArgs e)
@@ -2303,9 +1995,9 @@ public partial class CataloguePanel : UserControl
         // Tab pages
         if (_tabControl.TabPages.Count >= 8)
         {
-            _tabControl.TabPages[0].Text = UiStrings.Get("discovery.tab_tech");
-            _tabControl.TabPages[1].Text = UiStrings.Get("discovery.tab_products");
-            _tabControl.TabPages[2].Text = UiStrings.Get("discovery.tab_specials");
+            _tabControl.TabPages[0].Text = UiStrings.Get("discovery.tab_tech_items");
+            _tabControl.TabPages[1].Text = UiStrings.Get("discovery.tab_product_items");
+            _tabControl.TabPages[2].Text = UiStrings.Get("discovery.tab_special_items");
             _tabControl.TabPages[3].Text = UiStrings.Get("discovery.tab_words");
             _tabControl.TabPages[4].Text = UiStrings.Get("discovery.tab_glyphs");
             _tabControl.TabPages[5].Text = UiStrings.Get("discovery.tab_locations");
@@ -2322,6 +2014,9 @@ public partial class CataloguePanel : UserControl
             _tabControl.TabPages[12].Text = UiStrings.Get("discovery.tab_stats");
         }
 
+        _techPanel.ApplyUiLocalisation();
+        _productPanel.ApplyUiLocalisation();
+        _specialsPanel.ApplyUiLocalisation();
         _wondersPanel.ApplyUiLocalisation();
         _knowledgePanel.ApplyUiLocalisation();
         _fossilsPanel.ApplyUiLocalisation();
@@ -2329,12 +2024,6 @@ public partial class CataloguePanel : UserControl
         _discoveryStatsPanel.ApplyUiLocalisation();
 
         // Buttons
-        _addTechButton.Text = UiStrings.Get("discovery.add_technology");
-        _removeTechButton.Text = UiStrings.Get("discovery.remove_selected");
-        _addProductButton.Text = UiStrings.Get("discovery.add_product");
-        _removeProductButton.Text = UiStrings.Get("discovery.remove_selected");
-        _addSpecialsButton.Text = UiStrings.Get("discovery.add_special");
-        _removeSpecialsButton.Text = UiStrings.Get("discovery.remove_selected");
         _unlearnAllWordsButton.Text = UiStrings.Get("discovery.unlearn_all");
         _learnSelectedWordsButton.Text = UiStrings.Get("discovery.learn_selected");
         _unlearnSelectedWordsButton.Text = UiStrings.Get("discovery.unlearn_selected");
@@ -2352,18 +2041,13 @@ public partial class CataloguePanel : UserControl
 
         // Catalogue completion
         _curatedNameNoticeLabel.Text = UiStrings.Get("discovery.curated_names_notice");
-        _addMissingTechBtn.Text = UiStrings.Get("discovery.add_all_missing");
-        _addMissingProductsBtn.Text = UiStrings.Get("discovery.add_all_missing");
-        _addMissingSpecialsBtn.Text = UiStrings.Get("discovery.add_all_missing");
+        _completeCatalogueButton.Text = UiStrings.Get("discovery.complete_catalogue");
         _addMissingWordsBtn.Text = UiStrings.Get("discovery.add_all_missing");
         _addMissingFishBtn.Text = UiStrings.Get("discovery.add_all_missing");
         _addMissingRecipesBtn.Text = UiStrings.Get("discovery.add_all_missing");
         RefreshCompletionCounters();
 
         // Filter placeholders
-        _techFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_items");
-        _productFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_items");
-        _specialsFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_items");
         _wordFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_words");
         _locFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_locations");
         _fishFilterBox.PlaceholderText = UiStrings.Get("discovery.filter_fish");
@@ -2372,21 +2056,6 @@ public partial class CataloguePanel : UserControl
         _portalGlyphsCaptionLabel.Text = UiStrings.Get("discovery.portal_glyphs");
         _galaxyCaptionLabel.Text = UiStrings.Get("discovery.galaxy");
         _locGalaxyCoreCaptionLabel.Text = string.Empty;
-
-        // Tech grid columns
-        if (_techGrid.Columns["Name"] is DataGridViewColumn tName) tName.HeaderText = UiStrings.Get("discovery.col_name");
-        if (_techGrid.Columns["Category"] is DataGridViewColumn tCat) tCat.HeaderText = UiStrings.Get("discovery.col_category");
-        if (_techGrid.Columns["ID"] is DataGridViewColumn tId) tId.HeaderText = UiStrings.Get("discovery.col_id");
-
-        // Product grid columns
-        if (_productGrid.Columns["Name"] is DataGridViewColumn pName) pName.HeaderText = UiStrings.Get("discovery.col_name");
-        if (_productGrid.Columns["Category"] is DataGridViewColumn pCat) pCat.HeaderText = UiStrings.Get("discovery.col_category");
-        if (_productGrid.Columns["ID"] is DataGridViewColumn pId) pId.HeaderText = UiStrings.Get("discovery.col_id");
-
-        // Specials grid columns
-        if (_specialsGrid.Columns["Name"] is DataGridViewColumn sName) sName.HeaderText = UiStrings.Get("discovery.col_name");
-        if (_specialsGrid.Columns["Category"] is DataGridViewColumn sCat) sCat.HeaderText = UiStrings.Get("discovery.col_category");
-        if (_specialsGrid.Columns["ID"] is DataGridViewColumn sId) sId.HeaderText = UiStrings.Get("discovery.col_id");
 
         // Word grid columns
         if (_wordGrid.Columns["Word"] is DataGridViewColumn wCol) wCol.HeaderText = UiStrings.Get("discovery.col_word");
@@ -2408,12 +2077,6 @@ public partial class CataloguePanel : UserControl
         if (_fishGrid.Columns["LargestCatch"] is DataGridViewColumn fLargest) fLargest.HeaderText = UiStrings.Get("discovery.col_largest_catch");
 
         // Export/Import buttons
-        _exportTechBtn.Text = UiStrings.Get("common.export");
-        _importTechBtn.Text = UiStrings.Get("common.import");
-        _exportProductBtn.Text = UiStrings.Get("common.export");
-        _importProductBtn.Text = UiStrings.Get("common.import");
-        _exportSpecialsBtn.Text = UiStrings.Get("common.export");
-        _importSpecialsBtn.Text = UiStrings.Get("common.import");
         _exportWordsBtn.Text = UiStrings.Get("common.export");
         _importWordsBtn.Text = UiStrings.Get("common.import");
         _exportGlyphsBtn.Text = UiStrings.Get("common.export");

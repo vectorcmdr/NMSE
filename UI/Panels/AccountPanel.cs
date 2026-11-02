@@ -682,6 +682,17 @@ public partial class AccountPanel : UserControl
                 MxmlRewardEditor.SyncManagedRewards(_mxmlFilePath, "SeenTechnologies", entitlementSeenTechs);
         }
 
+        // Refresh the load-time redeem snapshots. Without this, checking and then
+        // unchecking Redeemed in the same session would compare against the original
+        // false state and skip the Known* cleanup, leaving the item looking redeemed.
+        _originalSeasonRedeemed = new HashSet<string>(
+            seasonRows.Where(r => r.Redeemed).Select(r => r.Id),
+            StringComparer.OrdinalIgnoreCase);
+        _originalTwitchRedeemed = new HashSet<string>(
+            twitchRows.Where(r => r.Redeemed).Select(r => r.Id),
+            StringComparer.OrdinalIgnoreCase);
+        _originalPlatformRedeemed = BuildPlatformRedeemedSet(saveData);
+
         // Raise the DataModified event so other panels can react to reward changes.
         DataModified?.Invoke(this, EventArgs.Empty);
     }
@@ -898,7 +909,8 @@ public partial class AccountPanel : UserControl
             return;
         }
 
-        var issues = AccountLogic.CheckConsistencyStructured(_currentSaveData, _database);
+        var userSettings = _accountData?.GetObject("UserSettingsData") ?? _accountData;
+        var issues = AccountLogic.CheckConsistencyStructured(_currentSaveData, _database, userSettings);
         if (issues.Count == 0)
         {
             MessageBox.Show(this, UiStrings.Get("account.consistency_ok"),

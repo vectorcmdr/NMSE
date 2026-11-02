@@ -786,41 +786,78 @@ Use the GOTO buttons to open the station stats or packed POI data in the Raw JSO
 
 The **Catalogue** tab manages your discovery progress and knowledge, with sub-tabs for Known Technologies, Known Products, Known Specials, Known Words, Known Glyphs, Teleport Locations, Fishing, Recipes, Wonders, Collected Knowledge, Fossils, Raw Materials and Discovery Stats.
 
-### Completion Tools
+### Known Item Lists
 
-The list pages show a completion counter such as `Known: 120 / 200 (60%)`. The Known Technologies, Products, Specials, Words, Glyphs, Fishing and Known Recipes pages all show a counter, and every one of them except Glyphs also has an <kbd>Add All Missing</kbd> button that adds every entry the database knows about but your save does not.
+Known Technologies, Known Products and Known Specials use one unified list each. The list contains every valid item for that tab, not only entries already present in your save.
 
-The completion sub-tabs (Wonders, Collected Knowledge, Fossils, Raw Materials and Discovery Stats) each have a filterable grid, a completion counter, <kbd>Complete All</kbd> and <kbd>Clear All</kbd> buttons, and per-row progress editing where the game tracks a value.
+Each row has one main <kbd>Known</kbd> checkbox. For normal use, knowing an item also marks it as seen:
 
-> 💡 **Note:** Names shown as `[?] Name` have no official localisation in the game files and are editor-curated approximations.
+- <kbd>Known</kbd> writes the save-known arrays for that tab. Technology writes `KnownTech`; Products write `KnownProducts`; Specials write `KnownSpecials`, and SpecialShop buildings also write `KnownProducts`. A non-building SpecialShop item never writes `KnownProducts`.
+- Checking Known also adds the item to the account seen array. Technology uses `SeenTechnologies`; Products and Specials use `SeenProducts`.
+- Unchecking Known removes the save-known state but leaves the account seen state alone. The game has no "unsee" operation, and Seen is shared across the account.
+- Redeeming a Special also adds its account `UnlockedSpecials` entry. Unchecking Known does not remove that account unlock.
 
-### Sections
+An advanced <kbd>Show seen</kbd> toggle adds a separate **Seen** column for the current session only. It lets power users inspect and clear account seen entries without touching Known, and resets to hidden when the editor restarts. Leave it off for normal editing.
 
-Most of the tabs have functionality for:
+The columns are:
 
-Sorting and filtering with the headers and the filter search field.
+- **Icon**, **Name**, **ID** and **Category**.
+- **Expedition**: the expedition number for expedition rewards. Items that are not expedition rewards show `-`.
+- **Description**: the item description. Hover the cell to see the full text.
+- **Catalogue**: `Y` means the item is part of the verified catalogue completion set and therefore affects the Catalogue counter. `N` means the item is valid but does not affect that counter.
+- **Known**: the save-known add/remove checkbox.
+- **Seen**: the advanced account-seen add/remove checkbox, shown only when <kbd>Show seen</kbd> is enabled.
 
-Use the <kbd>Add {type}</kbd> button to display a filterable list of items you can add to your known list.
+Each tab shows two counters at the bottom:
 
-The <kbd>Remove Selected</kbd> removes a known entry. Export / Import via the <kbd>Export</kbd> and <kbd>Import</kbd> buttons. Words and glyphs instead use learn / unlearn buttons.
+- `All: a / a (b%)` covers every item in the list that is save-known.
+- `Catalogue: x / y (z%)` counts the game's catalogue visibility: `KnownTech` for technology, and `KnownProducts` or `SeenProducts` for products and specials.
+
+### Add All and Complete Catalogue
+
+<kbd>Add All</kbd> is view-scoped. It adds every item in the current view, including its Seen entry:
+
+- With no filters, it adds every valid item in the list, including `Catalogue = N` items.
+- With a text filter such as `Wall`, it adds only the visible matches.
+- With <kbd>Catalogue only</kbd> ticked, it adds only catalogue-counted items.
+- With a text filter and <kbd>Catalogue only</kbd>, it uses the intersection of both.
+
+<kbd>Remove All</kbd> uses the same current-view scope and removes only the Known state. The counters remain global; filtering only changes which rows are visible and which rows a bulk action affects.
+
+| Filtered catalogue view |
+|-------|
+| <img src="../img/catalogue-add-all-filtered.png"> |
+
+The top-level <kbd>Complete Catalogue</kbd> button is a separate convenience action. It completes the save-known arrays using the game's item paths and marks the account seen entries needed by the in-game wiki, including `SeenSubstances` for the Materials page. It is not the same as <kbd>Add All</kbd>. The normal Known checkbox and <kbd>Add All</kbd> also never write `SeenSubstances`; raw materials are handled by the Raw Materials tab and by <kbd>Complete Catalogue</kbd>.
+
+The old per-tab Add Technology / Add Product / Add Special pickers and Remove Selected buttons are replaced by the Known checkbox, the advanced Seen column and the two list actions.
+
+Use the filter box to search names, IDs, categories, descriptions and expedition numbers. Searching for `catalogue` or `counted` shows catalogue-counted items; `not catalogue` or `not counted` shows non-catalogue items. The <kbd>Catalogue only</kbd> checkbox applies the same filter directly.
+
+Export and Import operate on the known entries. The GOTO JSON button remains at the right of the filter row. The completion sub-tabs (Wonders, Collected Knowledge, Fossils, Raw Materials and Discovery Stats) retain their own <kbd>Complete All</kbd> / <kbd>Clear All</kbd> tools.
+
+> ?? **Note:** Names shown as `[?] Name` have no official localisation in the game files and are editor-curated approximations.
+
+### Other Sections
+
+Words, glyphs, locations, fishing and recipes retain their dedicated controls. Words and glyphs use learn / unlearn buttons; Fishing and Known Recipes keep their existing add, remove, export and import actions.
 
 #### Known Technologies
-View and manage the technologies that you can craft or use.
+View and manage every valid technology, including technologies outside the current catalogue. Known writes `KnownTech` and marks `SeenTechnologies`; the advanced Seen column can clear the account entry separately.
 
 | Known Technologies |
 |-------|
 | <img src="../img/discoveries-tech.png"> |
 
 #### Known Products
-View and manage the products that you can craft or use.
+View and manage every valid product, including non-catalogue products. Known writes `KnownProducts` and marks `SeenProducts`. Non-building SpecialShop cosmetics and trails are listed in Specials, not Products.
 
 | Known Products |
 |-------|
 | <img src="../img/discoveries-product.png"> |
 
 #### Known Specials
-View and manage the special items that you can craft or use.
-This list is synchronised with the Account Rewards panel to some degree.
+View and manage every valid special item. Known writes `KnownSpecials` and, for SpecialShop buildings, `KnownProducts`; it also adds the account `UnlockedSpecials` entry and marks `SeenProducts`.
 
 | Known Specials |
 |-------|
@@ -898,7 +935,7 @@ Track the fossils you have seen. Fossils are stored in your account data (`accou
 | <img src="../img/catalogue-fossils.png"> |
 
 #### Raw Materials
-Track the raw materials you have seen. Like Fossils, these are stored in your account data (`accountdata.hg`).
+Track the raw materials you have seen. Like Fossils, these are stored in your account data (`accountdata.hg`). The top-level <kbd>Complete Catalogue</kbd> action also marks the compiled `SeenSubstances` entries during catalogue completion; product checkboxes and <kbd>Add All</kbd> never write them.
 
 | Raw Materials |
 |-------|
@@ -1063,7 +1100,9 @@ The reward grids show **Unlocked on Account** and **Redeemed in Save** columns. 
 - <kbd>Redeem All</kbd> / <kbd>Remove All</kbd> - mark every reward as redeemed (or remove the redeemed state) in the save
 - <kbd>Unlock All</kbd> / <kbd>Lock All</kbd> - change the unlocked state on the account
 
-The <kbd>Check Consistency</kbd> button compares your account and save reward arrays and reports entries where the states do not match, such as rewards redeemed but missing from the Known lists, or listed as known but not redeemed. This is an information tool for advanced users and does not indicate a problem.
+Unchecking **Redeemed in Save** removes the save's redeemed entry and its matching Known entry but leaves the account unlocked. That is intentional: it makes the reward available to redeem again without losing the account unlock. The editor now also handles checking and unchecking Redeemed in the same session correctly.
+
+The <kbd>Check Consistency</kbd> button compares your account and save reward arrays and reports entries where the states do not match, such as rewards redeemed but missing from the Known lists, or listed as known but not redeemed. It also checks Known Products and Known Tech, understands that entitlements have no redeem array, and marks unlocked-but-not-redeemed Known entries as ambiguous (shown in orange) rather than automatically deciding they are stale. This is an information tool for advanced users and does not indicate a problem.
 
 | Consistency Check |
 |-------|

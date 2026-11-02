@@ -211,6 +211,8 @@ internal sealed class ConsistencyDialog : Form
 
             // Tag the row with the issue index so we can find it after removes.
             _grid.Rows[rowIndex].Tag = i;
+            if (issue.IsAmbiguous)
+                _grid.Rows[rowIndex].DefaultCellStyle.ForeColor = Color.DarkOrange;
         }
     }
 

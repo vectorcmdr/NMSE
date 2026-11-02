@@ -499,7 +499,7 @@ public class CatalogueCompletionLogicTests
     }
 
     [Fact]
-    public void Pack_KnownProductsForCompletion_ExcludesSubstances()
+    public void Pack_KnownProductsForCompletion_ExcludesSubstancesAndSpecialOnly()
     {
         var jsonDir = FindResourceJsonDir();
         if (jsonDir == null) return; // Skip when the working directory does not contain Resources
@@ -510,10 +510,12 @@ public class CatalogueCompletionLogicTests
 
         var completion = pack.KnownProductsForCompletion(db);
 
-        Assert.Equal(3608, completion.Count);
+        Assert.Equal(3358, completion.Count);
         Assert.DoesNotContain("FUEL1", completion);      // substance
         Assert.DoesNotContain("ASTBELT1", completion);   // substance
+        Assert.DoesNotContain("GRUB_HAT", completion);   // non-building SpecialShop
         Assert.Contains("BASE_AQUARIUM", completion);    // building product
+        Assert.Contains("EXPD_FLAG_06E", completion);    // SpecialShop building
     }
 
     [Fact]

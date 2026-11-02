@@ -57,9 +57,10 @@ The project targets .NET 10.0 (Windows) with Native AOT and trimming enabled for
 ### [Core Logic](core-logic.md)
 
 Logic classes that encapsulate game rules, data transformation, and domain operations.
-All classes are `internal static` with no mutable state.
+Most are `internal static` with no mutable state; `CatalogueItemCatalog` is a scoped
+instance model for the unified catalogue item lists.
 
-- AccountLogic, BaseLogic, CatalogueLogic, CatalogueCompletionLogic (partials), CompanionLogic
+- AccountLogic, BaseLogic, CatalogueLogic, CatalogueCompletionLogic (partials), CatalogueItemCatalog, CompanionLogic
 - DatabaseSearchLogic, ExocraftLogic, ExosuitLogic, FreighterLogic, FrigateLogic
 - InventoryBulkActions, KnowledgeCatalogue, MainStatsLogic, MilestoneLogic, MultitoolLogic
 - OutfitLogic, RawJsonLogic, SaveContext, SettlementLogic, SpaceStationLogic
@@ -176,7 +177,7 @@ port are under review; there is no current native cross-platform plan.
 | 13 | Source-generated JSON context | `AppJsonContext` uses System.Text.Json source generation so the trimmed Native AOT build can still (de)serialize its data files |
 | 14 | Tests link source files | `NMSE.Tests` targets `net10.0` (no WinForms) and compiles linked copies of pure-logic sources; new pure-logic files must be added to `NMSE.Tests.csproj` |
 | 15 | No external packages | Only xUnit (tests) and System.Drawing.Common; LZ4, TEA and SpookyHash are implemented natively in C# with no p/invoke, for cross-platform portability |
-| 16 | Catalogue completion | `CatalogueCompletionLogic` computes completion counters and add-all-missing operations per catalogue page; completion grids in the UI run over the same logic |
+| 16 | Catalogue completion | `ItemUnlockRules` defines the canonical known/seen arrays; `CatalogueItemCatalog` builds the item lists with separate Known and Seen state; Add All/Remove All act on the visible filtered Known rows; `CatalogueCompletionLogic` retains the Complete Catalogue action and the completion sub-tabs |
 | 17 | Space POI inference | `SpacePoiSlotInference` labels slot types only when every consistent layout agrees; per-system layouts persist in the Discoveries store |
 | 18 | Backups | Every save writes a zip backup first (configured folder, else EXE-relative, else TEMP); restore uses `BackupPickerDialog` for all-or-single restore |
 | 19 | Self-update | `UpdateService` queries GitHub Releases, parses version/assets and offers in-app self-update with cloud-sync advisories |

@@ -128,6 +128,9 @@
     <Compile Include="..\Data\SpacePoiTableDatabase.cs" Link="Data\SpacePoiTableDatabase.cs" />
     <Compile Include="..\Core\DatabaseSearchLogic.cs" Link="Core\DatabaseSearchLogic.cs" />
     <Compile Include="..\Core\CatalogueCompletionLogic.cs" Link="Core\CatalogueCompletionLogic.cs" />
+    <Compile Include="..\Core\CatalogueCompletionLogic.CatalogueItems.cs" Link="Core\CatalogueCompletionLogic.CatalogueItems.cs" />
+    <Compile Include="..\Core\CatalogueItemCatalog.cs" Link="Core\CatalogueItemCatalog.cs" />
+    <Compile Include="..\Core\ItemUnlockRules.cs" Link="Core\ItemUnlockRules.cs" />
     <Compile Include="..\Core\CatalogueCompletionLogic.Wonders.cs" Link="Core\CatalogueCompletionLogic.Wonders.cs" />
     <Compile Include="..\Core\CatalogueCompletionLogic.Account.cs" Link="Core\CatalogueCompletionLogic.Account.cs" />
     <Compile Include="..\Core\CatalogueCompletionLogic.Stats.cs" Link="Core\CatalogueCompletionLogic.Stats.cs" />
