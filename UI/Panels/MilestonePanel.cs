@@ -138,6 +138,11 @@ public partial class MilestonePanel : UserControl
             ResumeLayout(true);
             _loading = previousLoading;
         }
+
+        // BuildCatalogUi creates new labels and tab pages after the initial
+        // application-wide theme pass. Re-apply the theme to the rebuilt tree so
+        // first-boot dark mode does not leave the new labels with default colours.
+        ThemeApplicator.ApplyToControlTree(this);
     }
 
     private void BuildMenuTab(TabPage page, MilestoneTab tab)
