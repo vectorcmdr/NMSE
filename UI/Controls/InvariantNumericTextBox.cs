@@ -313,6 +313,20 @@ public class InvariantNumericTextBox : UserControl, ISupportInitialize
 
     #region Layout & painting
 
+    // Child bounds are calculated in device pixels by OnLayout, not in design
+    // units. Scaling them again can make the spinner consume the entire input.
+    protected override bool ScaleChildren => false;
+
+    // Like a single-line TextBox, use the current font's preferred height.
+    // A height measured during construction is already in device pixels and
+    // must not be multiplied again when the enclosing layout autoscales.
+    protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+    {
+        if (_textBox != null)
+            height = _textBox.PreferredHeight + 2;
+        base.SetBoundsCore(x, y, width, height, specified);
+    }
+
     /// <summary>
     /// Positions the inner text box and spinner within the control.
     /// </summary>
@@ -320,9 +334,16 @@ public class InvariantNumericTextBox : UserControl, ISupportInitialize
     protected override void OnLayout(LayoutEventArgs e)
     {
         base.OnLayout(e);
-        int spinW = SystemInformation.VerticalScrollBarWidth;
+        int spinW = SystemInformation.GetVerticalScrollBarWidthForDpi(DeviceDpi);
         _spinner.SetBounds(Width - spinW, 0, spinW, Height);
-        _textBox.SetBounds(1, 1, Width - spinW - 2, Height - 2);
+        _textBox.SetBounds(1, 1, Math.Max(0, Width - spinW - 2), Height - 2);
+    }
+
+    protected override void OnDpiChangedAfterParent(EventArgs e)
+    {
+        base.OnDpiChangedAfterParent(e);
+        Height = _textBox.PreferredHeight + 2;
+        PerformLayout();
     }
 
     /// <summary>
@@ -366,7 +387,11 @@ public class InvariantNumericTextBox : UserControl, ISupportInitialize
     protected override void OnFontChanged(EventArgs e)
     {
         base.OnFontChanged(e);
-        _textBox.Font = Font;
+        if (_textBox != null)
+        {
+            _textBox.Font = Font;
+            Height = _textBox.PreferredHeight + 2;
+        }
     }
 
     #endregion

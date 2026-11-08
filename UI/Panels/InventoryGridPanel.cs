@@ -479,7 +479,6 @@ public partial class InventoryGridPanel : UserControl
                 AutoSize = true,
                 ForeColor = Color.Red,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel),
                 Margin = new Padding(8, 8, 0, 0)
             };
 
@@ -499,6 +498,24 @@ public partial class InventoryGridPanel : UserControl
         PopulateSortModeOptions();
         RefreshToolbarActions();
         WireInfoTooltips();
+        DpiChangedAfterParent += (_, _) => LayoutGridCells();
+    }
+
+    private void LayoutGridCells()
+    {
+        int width = LogicalToDeviceUnits(CellWidth);
+        int height = LogicalToDeviceUnits(CellHeight);
+        int padding = LogicalToDeviceUnits(CellPadding);
+        _gridContainer.SuspendLayout();
+        _gridContainer.AutoScrollPosition = Point.Empty;
+        foreach (var cell in _cells)
+        {
+            cell.Bounds = new Rectangle(
+                cell.GridX * (width + padding) + padding,
+                cell.GridY * (height + padding) + padding, width, height);
+            cell.Invalidate();
+        }
+        _gridContainer.ResumeLayout(true);
     }
 
     /// <summary>
@@ -1199,6 +1216,7 @@ public partial class InventoryGridPanel : UserControl
             }
         }
         _gridContainer.Controls.AddRange(cellsToAdd);
+        LayoutGridCells();
 
         _gridContainer.ResumeLayout(false);
 
@@ -4570,16 +4588,32 @@ public partial class InventoryGridPanel : UserControl
         }
 
         // Shared fonts reduce GDI object allocation per cell.
-        // These live for the application lifetime (3 GDI objects) and must NOT be disposed.
+        // These live for the application lifetime (one pair per display DPI,
+        // plus the compositing font) and must NOT be disposed by individual cells.
         // If you are disposing of these, you are going to have a bad time.
-        private static readonly Font SharedNameFont = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
-        private static readonly Font SharedAmountFont = new Font("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel);
+        private static readonly Dictionary<int, (Font Name, Font Amount)> FontsByDpi = new();
+        private (Font Name, Font Amount) ScaledFonts
+        {
+            get
+            {
+                if (!FontsByDpi.TryGetValue(DeviceDpi, out var fonts))
+                {
+                    float size = 12f * DeviceDpi / 96f;
+                    fonts = (new Font("Segoe UI", size, FontStyle.Regular, GraphicsUnit.Pixel),
+                        new Font("Segoe UI", size, FontStyle.Bold, GraphicsUnit.Pixel));
+                    FontsByDpi.Add(DeviceDpi, fonts);
+                }
+                return fonts;
+            }
+        }
+        private Font SharedNameFont => ScaledFonts.Name;
+        private Font SharedAmountFont => ScaledFonts.Amount;
         private static readonly Font SharedElementBadgeFont = new Font("Segoe UI", 21f, FontStyle.Bold, GraphicsUnit.Pixel);
 
         // Layout constants matching the old child-control arrangement
-        private const int NameBarHeight = 18;
-        private const int AmountBarHeight = 16;
-        private const int PinSize = 16;
+        private int NameBarHeight => LogicalToDeviceUnits(18);
+        private int AmountBarHeight => LogicalToDeviceUnits(16);
+        private int PinSize => LogicalToDeviceUnits(16);
         private const int MarqueeIntervalMs = 90; // milliseconds per marquee tick
 
         private readonly ToolTip _toolTip;
