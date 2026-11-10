@@ -26,12 +26,14 @@ static class Program
         Application.ThreadException += OnThreadException;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 
-        // Opt in to per-monitor DPI awareness so WinForms scales controls,
-        // fonts, and images proportionally when the display scale factor changes.
+        // If high DPI awareness is enabled, WinFormes do not always keep the original layout
+        // when the display scale factor changes because while images size change proportionally,
+        // fonts height/width as other controls change quite differently.
+        // Better use "Scaling performed by System (Enhanced)" provided by Win10/11 GDI/GDI+/DWM layers
         // Done as best effort - if not supported, default and silently degrade to default DPI.
         try
         {
-            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            Application.SetHighDpiMode(HighDpiMode.DpiUnawareGdiScaled);
         }
         catch
         {
