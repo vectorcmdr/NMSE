@@ -172,6 +172,10 @@ public static class CoordinateHelper
     }
 
 #if WINFORMS
+    public const Int32 GLYPF_BG_LEVEL=60;
+    public const Int32 GLYPF_BMP_SZ=20;
+    public const Int32 GLYPF_BTN_SZ=GLYPF_BMP_SZ+2;
+    public const Int32 GLYPF_BTN_DIST=GLYPF_BTN_SZ+2;
     /// <summary>Glyph image cache, indexed by hex digit 0-F.</summary>
     private static readonly Dictionary<char, Image?> _glyphCache = new();
     private static string? _glyphBasePath;
@@ -224,64 +228,11 @@ public static class CoordinateHelper
         catch { return null; }
     }
 
-    /// <summary>Create a FlowLayoutPanel that renders portal glyphs for a 12-character portal code.</summary>
-    public static FlowLayoutPanel CreateGlyphPanel(string portalCode, int glyphSize = 22)
+    // MV -> Josh: not sure if this is the right place for ***GlyphPanel methods
+    
+    /// <summary>Draw the glyph images in an existing glyph panel for a given portal code.</summary>
+    private static void DrawGlyphPanel(FlowLayoutPanel panel, string portalCode, int glyphSize = GLYPF_BTN_SZ)
     {
-        var panel = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            WrapContents = false,
-            FlowDirection = FlowDirection.LeftToRight,
-            Margin = new Padding(0),
-            Padding = new Padding(0),
-        };
-
-        if (string.IsNullOrEmpty(portalCode)) return panel;
-
-        foreach (char c in portalCode)
-        {
-            var img = GetGlyphImage(c);
-            if (img != null)
-            {
-                var glyphPanel = new Panel
-                {
-                    Width = glyphSize,
-                    Height = glyphSize,
-                    Margin = new Padding(0),
-                };
-                glyphPanel.Paint += (s, e) =>
-                {
-                    using var brush = new SolidBrush(Color.FromArgb(60, 60, 60));
-                    e.Graphics.FillRectangle(brush, 0, 0, glyphPanel.Width, glyphPanel.Height);
-                    e.Graphics.DrawImage(img, 0, 0, glyphPanel.Width, glyphPanel.Height);
-                };
-                panel.Controls.Add(glyphPanel);
-            }
-            else
-            {
-                // Fallback: show the hex character as text
-                var lbl = new Label
-                {
-                    Text = c.ToString(),
-                    Font = new Font("Consolas", 10, FontStyle.Bold),
-                    Width = glyphSize,
-                    Height = glyphSize,
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Margin = new Padding(0),
-                };
-                panel.Controls.Add(lbl);
-            }
-        }
-
-        return panel;
-    }
-
-    /// <summary>Update the glyph images in an existing glyph panel for a new portal code.</summary>
-    public static void UpdateGlyphPanel(FlowLayoutPanel panel, string portalCode, int glyphSize = 22)
-    {
-        panel.SuspendLayout();
-        panel.Controls.Clear();
-
         if (!string.IsNullOrEmpty(portalCode))
         {
             foreach (char c in portalCode)
@@ -297,14 +248,14 @@ public static class CoordinateHelper
                     };
                     glyphPanel.Paint += (s, e) =>
                     {
-                        using var brush = new SolidBrush(Color.FromArgb(60, 60, 60));
+                        using var brush = new SolidBrush(Color.FromArgb(GLYPF_BG_LEVEL, GLYPF_BG_LEVEL, GLYPF_BG_LEVEL));
                         e.Graphics.FillRectangle(brush, 0, 0, glyphPanel.Width, glyphPanel.Height);
                         e.Graphics.DrawImage(img, 0, 0, glyphPanel.Width, glyphPanel.Height);
                     };
                     panel.Controls.Add(glyphPanel);
                 }
-                else
-                {
+                else // Fallback: show the hex character as text
+                { 
                     var lbl = new Label
                     {
                         Text = c.ToString(),
@@ -318,7 +269,29 @@ public static class CoordinateHelper
                 }
             }
         }
+    }
 
+    /// <summary>Create a FlowLayoutPanel that renders portal glyphs for a 12-character portal code.</summary>
+    public static FlowLayoutPanel CreateGlyphPanel(string portalCode, int glyphSize = GLYPF_BTN_SZ)
+    {
+        var panel = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            WrapContents = false,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0),
+            Padding = new Padding(0),
+        };
+        DrawGlyphPanel(panel, portalCode, glyphSize);
+        return panel;
+    }
+
+    /// <summary>Update the glyph images in an existing glyph panel for a new portal code.</summary>
+    public static void UpdateGlyphPanel(FlowLayoutPanel panel, string portalCode, int glyphSize = GLYPF_BTN_SZ)
+    {
+        panel.SuspendLayout();
+        panel.Controls.Clear();
+        DrawGlyphPanel(panel, portalCode, glyphSize);
         panel.ResumeLayout(true);
     }
 #endif

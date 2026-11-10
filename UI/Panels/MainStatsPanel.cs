@@ -12,6 +12,10 @@ namespace NMSE.UI.Panels;
 
 public partial class MainStatsPanel : UserControl
 {
+    public const Int32 GLYPF_BG_LEVEL=CoordinateHelper.GLYPF_BG_LEVEL;
+    public const Int32 GLYPF_BMP_SZ=CoordinateHelper.GLYPF_BMP_SZ;
+    public const Int32 GLYPF_BTN_SZ=CoordinateHelper.GLYPF_BTN_SZ;
+    public const Int32 GLYPF_BTN_DIST=CoordinateHelper.GLYPF_BTN_DIST;
     /// <summary>Raised when a save utility operation requires the current save to be reloaded.</summary>
     public event EventHandler? ReloadRequested;
 
@@ -132,7 +136,7 @@ public partial class MainStatsPanel : UserControl
                 if (img != null)
                 {
                     var oldImage = btn.Image;
-                    btn.Image = CreateGlyphButtonImage(img, 20);
+                    btn.Image = CreateGlyphButtonImage(img, GLYPF_BMP_SZ);
                     btn.ImageAlign = ContentAlignment.MiddleCenter;
                     btn.Text = "";
                     oldImage?.Dispose();
@@ -151,9 +155,10 @@ public partial class MainStatsPanel : UserControl
         var bmp = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bmp))
         {
-            using var brush = new SolidBrush(Color.FromArgb(60, 60, 60));
+            using var brush = new SolidBrush(Color.FromArgb(GLYPF_BG_LEVEL, GLYPF_BG_LEVEL, GLYPF_BG_LEVEL));
             g.FillRectangle(brush, 0, 0, size, size);
-            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            // any high-order interpolation (like HighQualityBicubic) will increase the blur on glyph image
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             g.DrawImage(glyphImg, 0, 0, size, size);
         }
         return bmp;

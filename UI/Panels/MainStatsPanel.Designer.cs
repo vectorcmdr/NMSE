@@ -100,8 +100,8 @@ partial class MainStatsPanel
         _purpleWarpEnabled = new CheckBox { Text = "Enable Purple System Warping", AutoSize = true };
 
         // Save Utilities controls
-        _slotSourceCombo = new ComboBox { Width = 80, DropDownStyle = ComboBoxStyle.DropDownList };
-        _slotDestCombo = new ComboBox { Width = 80, DropDownStyle = ComboBoxStyle.DropDownList };
+        _slotSourceCombo = new ComboBox { AutoSize = true, DropDownStyle = ComboBoxStyle.DropDownList };
+        _slotDestCombo = new ComboBox { AutoSize = true, DropDownStyle = ComboBoxStyle.DropDownList };
         for (int i = 1; i <= 15; i++)
         {
             _slotSourceCombo.Items.Add($"Slot {i}");
@@ -203,8 +203,8 @@ partial class MainStatsPanel
             Padding = new Padding(8)
         };
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400));
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         // -- Left column: Player Statistics + Save Info --
@@ -334,7 +334,8 @@ partial class MainStatsPanel
             FlowDirection = FlowDirection.LeftToRight,
             Margin = new Padding(0),
             Padding = new Padding(0),
-            MaximumSize = new Size(8 * 24, 0), // 8 buttons per row (26px width + 1px margin each side = 28px per button)
+            // 2 rows * 8 buttons per row (22px width + 1px margin each side = 24px per button)
+            MinimumSize = new Size(8*GLYPF_BTN_DIST, 2*GLYPF_BTN_DIST),
         };
         var glyphToolTip = new ToolTip();
         for (int g = 0; g < 16; g++)
@@ -342,8 +343,8 @@ partial class MainStatsPanel
             char hexChar = "0123456789ABCDEF"[g];
             var btn = new Button
             {
-                Width = 22,
-                Height = 22,
+                Width = GLYPF_BTN_SZ,
+                Height = GLYPF_BTN_SZ,
                 Margin = new Padding(1),
                 FlatStyle = FlatStyle.Flat,
                 Tag = hexChar,
@@ -352,7 +353,7 @@ partial class MainStatsPanel
             var glyphImg = CoordinateHelper.GetGlyphImage(hexChar);
             if (glyphImg != null)
             {
-                btn.Image = CreateGlyphButtonImage(glyphImg, 20);
+                btn.Image = CreateGlyphButtonImage(glyphImg, GLYPF_BMP_SZ);
                 btn.ImageAlign = ContentAlignment.MiddleCenter;
             }
             else
@@ -769,8 +770,8 @@ partial class MainStatsPanel
     private Label _guidesTitle = null!;
     private Label _guidesFilterLabel = null!;
     private Label _titlesTitle = null!;
-        private Label _saveUtilsWarning = null!;
-        private Label _slotOpsNote = null!;
+    private Label _saveUtilsWarning = null!;
+    private Label _slotOpsNote = null!;
 
     // Multiplayer sub-panel
     private MultiplayerPanel _multiplayerPanel = null!;
