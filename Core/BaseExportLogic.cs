@@ -718,8 +718,11 @@ internal static class BaseExportLogic
                 throw new InvalidDataException("Terrain buffer size is negative.");
             total += count;
         }
-        if (total != editCount)
-            throw new InvalidDataException("Terrain edit data length does not match the buffer sizes.");
+        // TerrainEditData.Edits is a fixed-capacity 30,000-entry pool; the
+        // buffer size sum only covers the entries currently in use.
+        // Unused entries at the end are zero and must not fail validation.
+        if (total > editCount)
+            throw new InvalidDataException("Terrain edit data is shorter than the buffer sizes require.");
         return offsets;
     }
 
