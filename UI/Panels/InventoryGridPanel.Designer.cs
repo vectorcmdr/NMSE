@@ -37,7 +37,6 @@ partial class InventoryGridPanel
     {
         SuspendLayout();
 
-        var desiredRightPanelWidth = 300;
         var splitContainer = new SplitContainer
         {
             Dock = DockStyle.Fill,
@@ -48,11 +47,15 @@ partial class InventoryGridPanel
 
         splitContainer.SizeChanged += (s, e) =>
         {
-            if (splitContainer.Width <= desiredRightPanelWidth)
+            // This runs after autoscaling too; do not reset the sidebar to
+            // 300 physical pixels on a high-DPI display.
+            int desiredRightPanelWidth = LogicalToDeviceUnits(300);
+            int availableWidth = splitContainer.ClientSize.Width - splitContainer.SplitterWidth;
+            if (availableWidth < desiredRightPanelWidth + splitContainer.Panel1MinSize)
                 return;
 
             splitContainer.Panel2MinSize = desiredRightPanelWidth;
-            splitContainer.SplitterDistance = splitContainer.Width - desiredRightPanelWidth;
+            splitContainer.SplitterDistance = availableWidth - desiredRightPanelWidth;
         };
 
         // Left: info row above toolbar/grid for long inventory guidance text
@@ -72,7 +75,7 @@ partial class InventoryGridPanel
             FlowDirection = FlowDirection.LeftToRight,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            WrapContents = false
+            WrapContents = true
         };
         _resizeWidthLabel = new Label { Text = "Width:", AutoSize = true, Dock = DockStyle.Left, Padding = new Padding(0, 4, 2, 0) };
         _resizeWidth = new InvariantNumericTextBox { Minimum = 1, Maximum = 20, NumericValue = 10, Width = 50, Dock = DockStyle.Left };

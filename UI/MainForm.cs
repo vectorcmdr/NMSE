@@ -250,6 +250,7 @@ public partial class MainFormResources : Form
         // Apply the initial theme to this form so the user sees it from the first paint.
         ThemeApplicator.ApplyToForm(this);
 
+        DpiScaling.Initialize(this);
         ResumeLayout(false);
         PerformLayout();
     }
@@ -510,6 +511,26 @@ public partial class MainFormResources : Form
         _backupPathCombo.ComboBox.DropDown += (_, _) => FitToolbarDropDownWidth(_backupPathCombo);
         _saveSlotCombo.ComboBox.DropDown += (_, _) => FitToolbarDropDownWidth(_saveSlotCombo);
         _saveFileCombo.ComboBox.DropDown += (_, _) => FitToolbarDropDownWidth(_saveFileCombo);
+        _toolStrip.Layout += (_, _) => SizePathSelectors();
+    }
+
+    private void SizePathSelectors()
+    {
+        // Share the space left after labels/buttons, using their current font,
+        // language and DPI metrics rather than a fixed backup-field width.
+        int availableWidth = _toolStrip.DisplayRectangle.Width;
+        foreach (ToolStripItem item in _toolStrip.Items)
+        {
+            availableWidth -= item.Margin.Horizontal;
+            if (item != _directoryCombo && item != _backupPathCombo)
+                availableWidth -= item.GetPreferredSize(Size.Empty).Width;
+        }
+
+        int width = Math.Max(LogicalToDeviceUnits(80), availableWidth / 2);
+        if (_directoryCombo.Width != width)
+            _directoryCombo.Width = width;
+        if (_backupPathCombo.Width != width)
+            _backupPathCombo.Width = width;
     }
 
     /// <summary>
@@ -4031,9 +4052,7 @@ public partial class MainFormResources : Form
 
     private void OnFormResize(object? sender, EventArgs e)
     {
-        int halfWidth = ClientSize.Width / 2;
         int thirdWidth = ClientSize.Width / 3;
-        _directoryCombo.Width = Math.Min(halfWidth, 1200);
         _saveFileCombo.Width = Math.Min(thirdWidth, 800);
         DeselectComboText(_directoryCombo);
         DeselectComboText(_saveFileCombo);
