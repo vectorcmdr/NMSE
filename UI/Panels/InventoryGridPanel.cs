@@ -4608,7 +4608,18 @@ public partial class InventoryGridPanel : UserControl
         }
         private Font SharedNameFont => ScaledFonts.Name;
         private Font SharedAmountFont => ScaledFonts.Amount;
-        private static readonly Font SharedElementBadgeFont = new Font("Segoe UI", 21f, FontStyle.Bold, GraphicsUnit.Pixel);
+        private static readonly Dictionary<int, Font> ElementBadgeFontsByDpi = new();
+
+        private static Font GetElementBadgeFont(int dpi)
+        {
+            if (!ElementBadgeFontsByDpi.TryGetValue(dpi, out var font))
+            {
+                float size = 21f * dpi / 96f;
+                font = new Font("Segoe UI", size, FontStyle.Bold, GraphicsUnit.Pixel);
+                ElementBadgeFontsByDpi.Add(dpi, font);
+            }
+            return font;
+        }
 
         // Layout constants matching the old child-control arrangement
         private int NameBarHeight => LogicalToDeviceUnits(18);
@@ -5158,7 +5169,7 @@ public partial class InventoryGridPanel : UserControl
                     if (elementSymbol != null)
                     {
                         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        var font = SharedElementBadgeFont;
+                        var font = GetElementBadgeFont(DeviceDpi);
                         var textSize = g.MeasureString(elementSymbol, font);
                         float pad = 2f;
                         float buffer = 10f;
