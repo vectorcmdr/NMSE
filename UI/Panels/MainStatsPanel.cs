@@ -12,6 +12,13 @@ namespace NMSE.UI.Panels;
 
 public partial class MainStatsPanel : UserControl
 {
+    private const int GlyphButtonSize = 22;
+    private const int GlyphButtonMargin = 1;
+    private const int GlyphButtonPitch = GlyphButtonSize + (GlyphButtonMargin * 2);
+    private const int GlyphButtonImageSize = 20;
+    private const int GlyphButtonsPerRow = 8;
+    private const int GlyphBackgroundLevel = 60;
+
     /// <summary>Raised when a save utility operation requires the current save to be reloaded.</summary>
     public event EventHandler? ReloadRequested;
 
@@ -132,7 +139,7 @@ public partial class MainStatsPanel : UserControl
                 if (img != null)
                 {
                     var oldImage = btn.Image;
-                    btn.Image = CreateGlyphButtonImage(img, 20);
+                    btn.Image = CreateGlyphButtonImage(img, GlyphButtonImageSize);
                     btn.ImageAlign = ContentAlignment.MiddleCenter;
                     btn.Text = "";
                     oldImage?.Dispose();
@@ -151,9 +158,10 @@ public partial class MainStatsPanel : UserControl
         var bmp = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bmp))
         {
-            using var brush = new SolidBrush(Color.FromArgb(60, 60, 60));
+            using var brush = new SolidBrush(Color.FromArgb(
+                GlyphBackgroundLevel, GlyphBackgroundLevel, GlyphBackgroundLevel));
             g.FillRectangle(brush, 0, 0, size, size);
-            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
             g.DrawImage(glyphImg, 0, 0, size, size);
         }
         return bmp;

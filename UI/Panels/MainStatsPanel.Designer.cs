@@ -100,8 +100,8 @@ partial class MainStatsPanel
         _purpleWarpEnabled = new CheckBox { Text = "Enable Purple System Warping", AutoSize = true };
 
         // Save Utilities controls
-        _slotSourceCombo = new ComboBox { Width = 80, DropDownStyle = ComboBoxStyle.DropDownList };
-        _slotDestCombo = new ComboBox { Width = 80, DropDownStyle = ComboBoxStyle.DropDownList };
+        _slotSourceCombo = new ComboBox { AutoSize = true, DropDownStyle = ComboBoxStyle.DropDownList };
+        _slotDestCombo = new ComboBox { AutoSize = true, DropDownStyle = ComboBoxStyle.DropDownList };
         for (int i = 1; i <= 15; i++)
         {
             _slotSourceCombo.Items.Add($"Slot {i}");
@@ -203,8 +203,8 @@ partial class MainStatsPanel
             Padding = new Padding(8)
         };
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400));
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         // -- Left column: Player Statistics + Save Info --
@@ -334,7 +334,7 @@ partial class MainStatsPanel
             FlowDirection = FlowDirection.LeftToRight,
             Margin = new Padding(0),
             Padding = new Padding(0),
-            MaximumSize = new Size(8 * 24, 0), // 8 buttons per row (26px width + 1px margin each side = 28px per button)
+            MaximumSize = new Size(GlyphButtonsPerRow * GlyphButtonPitch, 0),
         };
         var glyphToolTip = new ToolTip();
         for (int g = 0; g < 16; g++)
@@ -342,9 +342,9 @@ partial class MainStatsPanel
             char hexChar = "0123456789ABCDEF"[g];
             var btn = new Button
             {
-                Width = 22,
-                Height = 22,
-                Margin = new Padding(1),
+                Width = GlyphButtonSize,
+                Height = GlyphButtonSize,
+                Margin = new Padding(GlyphButtonMargin),
                 FlatStyle = FlatStyle.Flat,
                 Tag = hexChar,
             };
@@ -352,7 +352,7 @@ partial class MainStatsPanel
             var glyphImg = CoordinateHelper.GetGlyphImage(hexChar);
             if (glyphImg != null)
             {
-                btn.Image = CreateGlyphButtonImage(glyphImg, 20);
+                btn.Image = CreateGlyphButtonImage(glyphImg, GlyphButtonImageSize);
                 btn.ImageAlign = ContentAlignment.MiddleCenter;
             }
             else
