@@ -37,6 +37,9 @@ public partial class StarshipPanel : UserControl
     /// <summary>True while the panel is performing an initial data load; suppresses UI side-effects.</summary>
     private bool _loading;
 
+    /// <summary>Suppresses the pre-refresh detail commit after an import has already written the ship.</summary>
+    private bool _suppressDetailCommit;
+
     /// <summary>Suppresses ship-detail dirty tracking while controls are populated programmatically.</summary>
     private bool _suppressShipDetailChanged;
 
@@ -459,7 +462,7 @@ public partial class StarshipPanel : UserControl
         // Commit the previously displayed ship's edits before switching away, so unsaved
         // changes are not overwritten by the new ship's data. Skipped during programmatic
         // loads (the selection is set while _loading is true).
-        if (!_loading)
+        if (!_loading && !_suppressDetailCommit)
             CommitCurrentShipDetail();
 
         // Freeze painting on the entire panel to prevent visible intermediate
@@ -1382,27 +1385,35 @@ public partial class StarshipPanel : UserControl
                 }
             }
 
-            if (importToEmpty)
+            _suppressDetailCommit = true;
+            try
             {
-                // Rebuild ship list and select the newly imported ship
-                _shipSelector.Items.Clear();
-                var shipList = StarshipLogic.BuildShipList(_shipOwnership);
-                foreach (var shipItem in shipList)
-                    _shipSelector.Items.Add(shipItem);
-
-                for (int i = 0; i < _shipSelector.Items.Count; i++)
+                if (importToEmpty)
                 {
-                    if (((StarshipLogic.ShipListItem)_shipSelector.Items[i]!).DataIndex == targetIdx)
+                    // Rebuild ship list and select the newly imported ship
+                    _shipSelector.Items.Clear();
+                    var shipList = StarshipLogic.BuildShipList(_shipOwnership);
+                    foreach (var shipItem in shipList)
+                        _shipSelector.Items.Add(shipItem);
+
+                    for (int i = 0; i < _shipSelector.Items.Count; i++)
                     {
-                        _shipSelector.SelectedIndex = i;
-                        break;
+                        if (((StarshipLogic.ShipListItem)_shipSelector.Items[i]!).DataIndex == targetIdx)
+                        {
+                            _shipSelector.SelectedIndex = i;
+                            break;
+                        }
                     }
                 }
+                else
+                {
+                    // Refresh display for in-place import
+                    OnShipSelected(this, EventArgs.Empty);
+                }
             }
-            else
+            finally
             {
-                // Refresh display for in-place import
-                OnShipSelected(this, EventArgs.Empty);
+                _suppressDetailCommit = false;
             }
 
             DataModified?.Invoke(this, EventArgs.Empty);
@@ -1584,8 +1595,17 @@ public partial class StarshipPanel : UserControl
                 }
             }
 
-            // Refresh display
-            OnShipSelected(this, EventArgs.Empty);
+            // Refresh display without committing the pre-import control values back
+            // over the snapshot we just applied.
+            _suppressDetailCommit = true;
+            try
+            {
+                OnShipSelected(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _suppressDetailCommit = false;
+            }
         }
         catch (Exception ex)
         {
