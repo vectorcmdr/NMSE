@@ -23,6 +23,8 @@ public class SaveMetaInfo
     public int DifficultyPreset { get; set; }
     /// <summary>Gets or sets the difficulty preset type tag string (e.g., "Normal", "Custom").</summary>
     public string? DifficultyPresetTag { get; set; }
+    /// <summary>Gets or sets whether the save is an Expedition (Season) save.</summary>
+    public bool IsExpedition { get; set; }
 }
 
 /// <summary>
@@ -777,8 +779,10 @@ public static class MetaFileWriter
         // (BaseContext.GameMode for regular saves, ExpeditionContext.GameMode for
         // expeditions).  Older saves store a string on PlayerStateData.PresetGameMode.
         // Only fall back to the difficulty preset when neither exists.
+        info.IsExpedition = string.Equals(
+            saveData.Get("ActiveContext") as string, "Season", StringComparison.Ordinal);
         int contextMode = 0;
-        if (string.Equals(saveData.Get("ActiveContext") as string, "Season", StringComparison.Ordinal))
+        if (info.IsExpedition)
         {
             var expeditionContext = saveData.GetObject("ExpeditionContext");
             if (expeditionContext != null) contextMode = ReadGameModeInt(expeditionContext.Get("GameMode"));
@@ -867,14 +871,30 @@ public static class MetaFileWriter
 
     /// <summary>
     /// Preserves an alternate game mode recorded in an existing meta when the save data
-    /// reports the generic "Custom" preset (e.g. "Abandoned Universe"). A deliberate
-    /// change to a standard preset still wins. Platforms without a difficulty tag string
-    /// (Switch) treat any recorded preset other than Custom as an alternate mode.
+    /// reports the generic "Custom" preset (e.g. "Abandoned Universe"). Expedition metas
+    /// also retain their non-standard mode tag (e.g. "Community Expedition") because
+    /// expedition save data normally reports a standard difficulty preset. A deliberate
+    /// change to a standard preset still wins for non-expedition saves. Platforms without
+    /// a difficulty tag string (Switch) treat any recorded preset other than Custom as
+    /// an alternate mode.
     /// </summary>
     private static void PreserveExistingDifficulty(SaveMetaInfo info, uint existingPreset, string? existingTag)
     {
         if (existingPreset == 0)
             return;
+
+        // Expedition meta carries a mode tag such as "Community Expedition" even
+        // though the save data reports a standard difficulty preset (usually Normal).
+        // Preserve that tag so an unrelated edit cannot relabel an expedition slot.
+        if (info.IsExpedition
+            && !string.IsNullOrEmpty(existingTag)
+            && !IsStandardDifficultyPreset(existingTag))
+        {
+            info.DifficultyPreset = (int)existingPreset;
+            info.DifficultyPresetTag = existingTag;
+            return;
+        }
+
         if (!string.IsNullOrEmpty(info.DifficultyPresetTag)
             && !string.Equals(info.DifficultyPresetTag, "Custom", StringComparison.Ordinal))
             return;

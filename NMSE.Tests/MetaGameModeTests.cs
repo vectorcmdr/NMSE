@@ -103,6 +103,17 @@ public class MetaGameModeTests
 
         var metaInfo = MetaFileWriter.ExtractMetaInfo(save);
         Assert.Equal(6, metaInfo.GameMode);
+        Assert.True(metaInfo.IsExpedition);
+    }
+
+    [Fact]
+    public void ExtractMetaInfo_ExpeditionFlagIsFalseForMainContext()
+    {
+        string json = """{"ActiveContext":"Main","BaseContext":{"GameMode":1},"PlayerStateData":{}}""";
+        var save = JsonObject.Parse(json);
+
+        var metaInfo = MetaFileWriter.ExtractMetaInfo(save);
+        Assert.False(metaInfo.IsExpedition);
     }
 
     [Fact]
@@ -133,10 +144,16 @@ public class MetaGameModeTests
     private const int MetaBaseVersion = 5000; // META_FORMAT_4 (Worlds Part II) so the tag is written
 
     private static (int Preset, string Tag) WriteAndReadMeta(string savePath,
-        int preset, string tag)
+        int preset, string tag, bool isExpedition = false)
     {
         MetaFileWriter.WriteSteamMeta(savePath, [0xAA, 0xBB], 2,
-            new SaveMetaInfo { BaseVersion = MetaBaseVersion, DifficultyPreset = preset, DifficultyPresetTag = tag },
+            new SaveMetaInfo
+            {
+                BaseVersion = MetaBaseVersion,
+                DifficultyPreset = preset,
+                DifficultyPresetTag = tag,
+                IsExpedition = isExpedition,
+            },
             MetaSlot);
 
         var meta = MetaFileWriter.ReadSteamMeta(savePath, MetaSlot);
@@ -166,6 +183,30 @@ public class MetaGameModeTests
 
             Assert.Equal(6, preset);
             Assert.Equal("Abandoned Universe", tag);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WriteSteamMeta_PreservesExpeditionTag()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"nmse_meta_{Guid.NewGuid()}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            string savePath = Path.Combine(root, "save9.hg");
+            File.WriteAllBytes(savePath, [0x01, 0x02, 0x03]);
+
+            WriteAndReadMeta(savePath, 258, "Community Expedition");
+
+            // Expedition save data reports Normal, but the meta's mode tag must survive.
+            var (preset, tag) = WriteAndReadMeta(savePath, 2, "Normal", isExpedition: true);
+
+            Assert.Equal(258, preset);
+            Assert.Equal("Community Expedition", tag);
         }
         finally
         {
@@ -238,10 +279,17 @@ public class MetaGameModeTests
         return BitConverter.ToInt32(bytes, 296);
     }
 
-    private static void WritePs4Manifest(string savePath, int preset, string tag)
+    private static void WritePs4Manifest(string savePath, int preset, string tag,
+        bool isExpedition = false)
     {
         MetaFileWriter.WritePlaystationStreamingMeta(savePath, 1000,
-            new SaveMetaInfo { BaseVersion = MetaBaseVersion, DifficultyPreset = preset, DifficultyPresetTag = tag },
+            new SaveMetaInfo
+            {
+                BaseVersion = MetaBaseVersion,
+                DifficultyPreset = preset,
+                DifficultyPresetTag = tag,
+                IsExpedition = isExpedition,
+            },
             9);
     }
 
@@ -297,6 +345,31 @@ public class MetaGameModeTests
             var (preset, tag) = ReadPs4Manifest(savePath);
             Assert.Equal(6, preset);
             Assert.Equal("Abandoned Universe", tag);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void WritePlaystationStreamingMeta_PreservesExpeditionTag()
+    {
+        string root = Path.Combine(Path.GetTempPath(), $"nmse_meta_{Guid.NewGuid()}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            string savePath = Path.Combine(root, "savedata09.hg");
+            File.WriteAllBytes(savePath, [0x01, 0x02, 0x03]);
+
+            WritePs4Manifest(savePath, 258, "Community Expedition");
+
+            // Expedition save data reports Normal, but the manifest's mode tag must survive.
+            WritePs4Manifest(savePath, 2, "Normal", isExpedition: true);
+
+            var (preset, tag) = ReadPs4Manifest(savePath);
+            Assert.Equal(258, preset);
+            Assert.Equal("Community Expedition", tag);
         }
         finally
         {
