@@ -1,4 +1,5 @@
 using System.Globalization;
+using NMSE.Models;
 
 namespace NMSE.Core.Utilities;
 
@@ -68,6 +69,42 @@ public static class NumericParseHelper
     }
 
     /// <summary>
+    /// Parses user-entered numeric text and produces a syntactically valid JSON
+    /// number representation.  Locale-specific input such as <c>1,5</c> is accepted
+    /// and normalised to <c>1.5</c>.  Non-finite values are rejected.
+    /// </summary>
+    /// <param name="input">The raw text entered by the user.</param>
+    /// <param name="result">The parsed value on success; <c>0</c> on failure.</param>
+    /// <param name="jsonText">The JSON-safe number text on success; empty on failure.</param>
+    /// <returns><c>true</c> when the input was parsed and normalised successfully.</returns>
+    public static bool TryParseJsonNumber(string? input, out double result, out string jsonText)
+    {
+        jsonText = "";
+        if (!TryParseDouble(input, out result) || !double.IsFinite(result))
+            return false;
+
+        string candidate = input!.Trim();
+        if (candidate.StartsWith('+'))
+            candidate = candidate[1..];
+        if (candidate.StartsWith('.'))
+            candidate = "0" + candidate;
+        else if (candidate.StartsWith("-.", StringComparison.Ordinal))
+            candidate = "-0" + candidate[1..];
+        if (candidate.EndsWith('.'))
+            candidate += "0";
+
+        if (RawDouble.IsValidJsonNumber(candidate)
+            && (candidate.Contains('.') || candidate.Contains('e') || candidate.Contains('E')))
+        {
+            jsonText = candidate;
+            return true;
+        }
+
+        jsonText = FormatJsonDouble(result);
+        return true;
+    }
+
+    /// <summary>
     /// Formats a double using invariant culture with full 17-significant-digit
     /// precision ("G17"), producing a string that is safe for JSON serialisation
     /// (always uses <c>.</c> as the decimal separator) and preserves full IEEE 754
@@ -76,6 +113,14 @@ public static class NumericParseHelper
     /// </summary>
     public static string FormatDouble(double value)
         => value.ToString("G17", CultureInfo.InvariantCulture);
+
+    private static string FormatJsonDouble(double value)
+    {
+        string text = FormatDouble(value);
+        return text.Contains('.') || text.Contains('e') || text.Contains('E')
+            ? text
+            : text + ".0";
+    }
 
     /// <summary>
     /// Formats a double with the specified format string using invariant culture.

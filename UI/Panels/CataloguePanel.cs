@@ -1067,15 +1067,12 @@ public partial class CataloguePanel : UserControl
                     string existingText = largestList.GetDoubleText(idx);
                     if (cellText != existingText)
                     {
-                        if (double.TryParse(cellText,
-                                System.Globalization.NumberStyles.Float,
-                                System.Globalization.CultureInfo.InvariantCulture, out double lc))
+                        if (NumericParseHelper.TryParseJsonNumber(cellText, out double lc, out string lcText))
                         {
-                            // Store as RawDouble using the cell text directly so that
-                            // the serialised output matches exactly what the user typed,
-                            // rather than reformatting through G17 which can add or
-                            // change trailing digits.
-                            largestList.Set(idx, new RawDouble(lc, cellText));
+                            // Store as RawDouble using the normalised JSON text so
+                            // malformed input such as ".5" or "1,5" cannot produce
+                            // an invalid save file.
+                            largestList.Set(idx, new RawDouble(lc, lcText));
                         }
                     }
                 }

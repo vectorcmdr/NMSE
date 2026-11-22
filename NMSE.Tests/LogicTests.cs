@@ -4833,6 +4833,137 @@ public class LogicTests
         }
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-0")]
+    [InlineData("1")]
+    [InlineData("-1.5")]
+    [InlineData("0.9666812419891358")]
+    [InlineData("1e5")]
+    [InlineData("1E+5")]
+    [InlineData("-1.2e-3")]
+    public void RawDouble_IsValidJsonNumber_AcceptsStrictJsonNumbers(string text)
+    {
+        Assert.True(RawDouble.IsValidJsonNumber(text));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(".9666812419891358")]
+    [InlineData("1.")]
+    [InlineData("+1.5")]
+    [InlineData("1,5")]
+    [InlineData("01")]
+    [InlineData("00")]
+    [InlineData("NaN")]
+    [InlineData("Infinity")]
+    [InlineData("-Infinity")]
+    [InlineData("0x10")]
+    [InlineData("1e")]
+    [InlineData("1e+")]
+    public void RawDouble_IsValidJsonNumber_RejectsInvalidJsonNumbers(string text)
+    {
+        Assert.False(RawDouble.IsValidJsonNumber(text));
+    }
+
+    [Fact]
+    public void RawDouble_IsValidJsonNumber_RejectsNull()
+    {
+        Assert.False(RawDouble.IsValidJsonNumber(null));
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_NormalisesLeadingDot()
+    {
+        Assert.True(NumericParseHelper.TryParseJsonNumber(
+            ".9666812419891358", out double value, out string jsonText));
+
+        Assert.True(RawDouble.IsValidJsonNumber(jsonText));
+        Assert.Equal("0.9666812419891358", jsonText);
+        Assert.Equal(value, double.Parse(jsonText, CultureInfo.InvariantCulture));
+    }
+
+    [Theory]
+    [InlineData("+1.5", "1.5")]
+    [InlineData("1.", "1.0")]
+    [InlineData("-.5", "-0.5")]
+    [InlineData("+.5", "0.5")]
+    public void NumericParseHelper_TryParseJsonNumber_NormalisesMalformedSyntax(
+        string input, string expected)
+    {
+        Assert.True(NumericParseHelper.TryParseJsonNumber(
+            input, out _, out string jsonText));
+
+        Assert.Equal(expected, jsonText);
+        Assert.True(RawDouble.IsValidJsonNumber(jsonText));
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_NormalisesLocalisedComma()
+    {
+        var saved = CultureInfo.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture =
+                new CultureInfo("de-DE");
+
+            Assert.True(NumericParseHelper.TryParseJsonNumber(
+                "1,5", out double value, out string jsonText));
+
+            Assert.Equal(1.5, value, 10);
+            Assert.Equal("1.5", jsonText);
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = saved;
+        }
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_KeepsValidDecimalText()
+    {
+        Assert.True(NumericParseHelper.TryParseJsonNumber(
+            "0.9666812419891358", out _, out string jsonText));
+
+        Assert.Equal("0.9666812419891358", jsonText);
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_KeepsExponentText()
+    {
+        Assert.True(NumericParseHelper.TryParseJsonNumber(
+            "1e5", out _, out string jsonText));
+
+        Assert.Equal("1e5", jsonText);
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_AddsDecimalPointToWholeNumber()
+    {
+        Assert.True(NumericParseHelper.TryParseJsonNumber(
+            "2", out _, out string jsonText));
+
+        Assert.Equal("2.0", jsonText);
+    }
+
+    [Fact]
+    public void NumericParseHelper_TryParseJsonNumber_RejectsNonFiniteValues()
+    {
+        Assert.False(NumericParseHelper.TryParseJsonNumber("NaN", out _, out _));
+        Assert.False(NumericParseHelper.TryParseJsonNumber("Infinity", out _, out _));
+        Assert.False(NumericParseHelper.TryParseJsonNumber("-Infinity", out _, out _));
+    }
+
+    [Fact]
+    public void JsonParser_RawDouble_RejectsInvalidNumberText()
+    {
+        var array = new JsonArray();
+        array.Add(new RawDouble(0.9666812419891358, ".9666812419891358"));
+
+        Assert.Throws<InvalidOperationException>(() => JsonParser.Serialize(array, false));
+    }
+
     [Fact]
     public void JsonParser_Integers_ReturnIntOrLong()
     {

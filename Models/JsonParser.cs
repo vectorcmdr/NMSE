@@ -154,7 +154,11 @@ public static class JsonParser
             case int i: sb.Append(i); break;
             case long l: sb.Append(l); break;
             case float f: AppendDouble(sb, (double)f); break;
-            case RawDouble rd: sb.Append(rd.Text); break;
+            case RawDouble rd:
+                if (!RawDouble.IsValidJsonNumber(rd.Text))
+                    throw new InvalidOperationException("RawDouble contains invalid JSON number text.");
+                sb.Append(rd.Text);
+                break;
             case double d: AppendDouble(sb, d); break;
             case string s: AppendQuotedString(sb, s); break;
             case JsonObject obj: SerializeObject(sb, obj, depth, spaces, mapper, skipReverseMapping); break;

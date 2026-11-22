@@ -279,23 +279,16 @@ public class InvariantNumericTextBox : UserControl, ISupportInitialize
             return false;
         }
 
-        if (NumericParseHelper.TryParseDouble(input, out double parsed))
+        if (NumericParseHelper.TryParseJsonNumber(input, out double parsed, out string jsonText))
         {
             double old = _value ?? double.NaN;
             _value = parsed;
 
-            // Normalise to invariant format for JSON safety. If the text already
-            // uses a dot as the decimal separator (or has no decimal separator at
-            // all), it is already invariant-safe and we keep the user's exact text
-            // to avoid G17 adding or changing trailing digits. Only reformat when
-            // the user entered a locale-specific format (e.g. comma decimal).
-            // AllowThousands is included to mirror the style used by
-            // NumericParseHelper.TryParseDouble so the invariant check matches
-            // the same inputs that the primary parse accepts.
-            bool alreadyInvariant = double.TryParse(input,
-                System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
-                System.Globalization.CultureInfo.InvariantCulture, out _);
-            _textBox.Text = alreadyInvariant ? input : NumericParseHelper.FormatDouble(parsed);
+            // Keep the exact text only when it is already a valid JSON number;
+            // otherwise use the normalised invariant representation. This prevents
+            // inputs such as ".966", "1.", "+1.5", "1,5", "NaN" and "Infinity"
+            // from being written into the save as invalid JSON.
+            _textBox.Text = jsonText;
 
             if (!old.Equals(parsed))
             {
